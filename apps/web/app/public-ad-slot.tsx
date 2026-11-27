@@ -1,7 +1,7 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
 type Props={code:string};
-const api=()=>process.env.NEXT_PUBLIC_API_URL||'https://api.index-assist.io.vn';
+const api=()=>process.env.NEXT_PUBLIC_API_URL||(process.env.NODE_ENV==='production'?'https://api.index-assist.io.vn':'http://localhost:4000');
 export function PublicAdSlot({code}:Props){
  const [ad,setAd]=useState<any>(null),ref=useRef<HTMLDivElement>(null),impression=useRef(false);
  useEffect(()=>{let live=true;fetch(api()+'/api/v1/public/ads/slots/'+encodeURIComponent(code),{cache:'no-store'}).then(async r=>{if(!r.ok)return null;return r.json();}).then(d=>{if(live&&d)setAd(d);}).catch(()=>{});return()=>{live=false};},[code]);
