@@ -10,7 +10,7 @@ This repository is being built incrementally toward production. A successful Git
 - PostgreSQL initial schema for tenants, membership, projects, URL inventory, tier relationships, campaigns, observations, integrations, orders, payments, CMS, and advertising inventory.
 - Initial tenant RLS policies and additional RLS hardening migration.
 - VPS infrastructure Compose foundation for PostgreSQL, Redis, Redpanda, ClickHouse, and MinIO.
-- Go crawler health service and SSRF-resistant URL validation/transport foundation.
+- Go Kafka consumer for URL ingestion events, tenant-scoped task leasing, robots.txt policy checks, HTTP health inspection, retry events, and SSRF-resistant outbound transport.
 - CI workflow for Node workspaces and Go crawler tests.
 
 ## Not yet production-ready
@@ -18,10 +18,10 @@ This repository is being built incrementally toward production. A successful Git
 - Authentication, MFA enrollment, session rotation, password reset, and admin bootstrap.
 - Full authorization guards and tenant context propagation in API transactions.
 - Database connection pool, migration runner, secrets manager, and backup/restore automation.
-- Kafka topic contracts, durable ingestion pipeline, worker consumers, retries, DLQ, and per-tenant quotas.
-- Full crawl engine, HTML analyzer, backlink verification, discovery integrations, Google Search Console OAuth, and Bing/IndexNow verification workflows.
+- Broker authentication/TLS and ACLs, DLQ policy, consumer metrics, and load-tested worker autoscaling; the transactional outbox relay and first crawler consumer are implemented.
+- HTML analysis, backlink verification, discovery integrations, Google Search Console OAuth, and Bing/IndexNow verification workflows.
 - Admin CMS, customer dashboard, orders, payment-provider webhooks, ad serving, consent controls, and analytics UI.
-- Load, security, recovery, and end-to-end tests on the selected VPS.
+- CI execution confirmation, load/security/recovery/end-to-end tests on the selected VPS, and tenant RLS integration run.
 
 ## Release gate
 
