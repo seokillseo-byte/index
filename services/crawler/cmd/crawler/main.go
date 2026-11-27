@@ -31,7 +31,7 @@ type envelope struct {
 type task struct { ID string; URLID string; URL string; Attempts int }
 var hostLocks [256]sync.Mutex
 
-type fetchResult struct { StatusCode int `json:"statusCode"`; FinalURL string `json:"finalUrl"`; ContentType string `json:"contentType"`; Server string `json:"server"`; RobotsAllowed bool `json:"robotsAllowed"`; Redirects int `json:"redirects"`; Error string `json:"error,omitempty"` }
+type fetchResult struct { StatusCode int `json:"statusCode"`; FinalURL string `json:"finalUrl"`; ContentType string `json:"contentType"`; Server string `json:"server"`; RobotsAllowed bool `json:"robotsAllowed"`; Redirects int `json:"redirects"`; Error string `json:"error,omitempty"`; Permanent bool `json:"permanent,omitempty"` }
 
 func main() {
  ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -140,15 +140,15 @@ func inspect(ctx context.Context,raw string)fetchResult{
  current:=raw
  client:=safefetch.SafeClient(18*time.Second)
  for hop:=0;hop<=5;hop++{
-  parsed,err:=safefetch.ValidateURL(current);if err!=nil{result.Error=err.Error();return result}
+  parsed,err:=safefetch.ValidateURL(current);if err!=nil{result.Error=err.Error();result.Permanent=true;return result}
   allowed,err:=robotsAllows(ctx,client,parsed)
-  if err!=nil{result.Error="robots check failed: "+err.Error();return result}
+  if err!=nil{result.Error="robots check failed: "+err.Error();result.Permanent=strings.Contains(err.Error(),"non-public IP");return result}
   result.RobotsAllowed=allowed
-  if !allowed{result.Error="disallowed by robots.txt";return result}
+  if !allowed{result.Error="disallowed by robots.txt";result.Permanent=true;return result}
   req,err:=http.NewRequestWithContext(ctx,http.MethodHead,parsed.String(),nil);if err!=nil{result.Error=err.Error();return result}
   req.Header.Set("User-Agent","IndexAssistBot/1.0 (+https://index-assist.io.vn/)")
   resp,err:=client.Do(req)
-  if err!=nil{result.Error=err.Error();return result}
+  if err!=nil{result.Error=err.Error();result.Permanent=strings.Contains(err.Error(),"non-public IP");return result}
   if resp.StatusCode==http.StatusMethodNotAllowed||resp.StatusCode==http.StatusNotImplemented{
    resp.Body.Close()
    fallback,reqErr:=http.NewRequestWithContext(ctx,http.MethodGet,parsed.String(),nil)
@@ -165,13 +165,13 @@ func inspect(ctx context.Context,raw string)fetchResult{
   if resp.StatusCode>=300&&resp.StatusCode<400{
    location:=resp.Header.Get("Location")
    if location==""{return result}
-   next,err:=parsed.Parse(location);if err!=nil{result.Error="invalid redirect location";return result}
-   if _,err:=safefetch.ValidateURL(next.String());err!=nil{result.Error="unsafe redirect: "+err.Error();return result}
+   next,err:=parsed.Parse(location);if err!=nil{result.Error="invalid redirect location";result.Permanent=true;return result}
+   if _,err:=safefetch.ValidateURL(next.String());err!=nil{result.Error="unsafe redirect: "+err.Error();result.Permanent=true;return result}
    current=next.String();result.FinalURL=current;result.Redirects++;continue
   }
   result.FinalURL=parsed.String();return result
  }
- result.Error="redirect limit exceeded";return result
+ result.Error="redirect limit exceeded";result.Permanent=true;return result
 }
 
 func robotsAllows(ctx context.Context,client *http.Client,target *url.URL)(bool,error){
@@ -201,9 +201,9 @@ func saveResult(ctx context.Context,pool *pgxpool.Pool,tenantID,projectID,worker
  payload,_:=json.Marshal(result)
  if _,err=tx.Exec(ctx,"INSERT INTO app.url_observations(tenant_id,url_id,kind,source,result,confidence) VALUES($1,$2,'http','index-assist-crawler',$3::jsonb,'observed')",tenantID,item.URLID,string(payload));err!=nil{return err}
  status:="eligible";taskStatus:="completed";retry:=false
- if !result.RobotsAllowed&&result.Error=="disallowed by robots.txt"{status="blocked"}
+ if result.Permanent||(!result.RobotsAllowed&&result.Error=="disallowed by robots.txt"){status="blocked"}
  if result.StatusCode>=400&&result.StatusCode<500&&result.StatusCode!=429{status="blocked"}
- if result.Error!=""&&result.Error!="disallowed by robots.txt"||result.StatusCode==429||result.StatusCode>=500||result.StatusCode==0{status="error";retry=true}
+ if !result.Permanent&&result.Error!=""&&result.Error!="disallowed by robots.txt"||result.StatusCode==429||result.StatusCode>=500||result.StatusCode==0{status="error";retry=true}
  if retry{
   if item.Attempts>=8{taskStatus="dead_letter"}else{taskStatus="retrying"}
   retryDelay:=minInt(3600,1<<minInt(item.Attempts,10))
