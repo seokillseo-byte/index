@@ -1,0 +1,2 @@
+import {AdminDataPage} from '../admin-data-page';
+export default function Page(){return <AdminDataPage title="Đơn hàng" description="Theo dõi đơn hàng SaaS và trạng thái thanh toán từ provider." endpoint="orders" columns={['order_number','tenant_name','status','total_minor','currency','payments','created_at']}/>;}
