@@ -156,4 +156,4 @@ The API uses the Resend REST API for transactional delivery. Configure `RESEND_A
 - DELETE /api/v1/auth/sessions/{sessionId} — revokes one session.
 - POST /api/v1/auth/sessions/revoke-all — revokes all sessions except the current access-token session.
 
-MFA uses TOTP compatible with standard authenticator applications. MFA login/recovery and enrollment verification endpoints are rate-limited; a login challenge is invalidated after five failed TOTP attempts. Password reset and MFA disable have stricter limits. Recovery codes are single-use. Password-reset and MFA challenge tokens are stored only as SHA-256 hashes. MFA secrets are encrypted with the existing AES-256-GCM integration key.
+MFA uses TOTP compatible with standard authenticator applications. MFA login/recovery and enrollment verification endpoints are rate-limited; a login challenge is invalidated after five failed TOTP or recovery-code attempts. Password reset and MFA disable have stricter limits. Recovery codes are single-use. Password-reset and MFA challenge tokens are stored only as SHA-256 hashes. MFA secrets are encrypted with the existing AES-256-GCM integration key.
