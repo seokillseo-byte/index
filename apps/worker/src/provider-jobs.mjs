@@ -91,9 +91,13 @@ async function markConnectionError(tenantId,connectionId,message){
  await tenantTransaction(tenantId,client=>client.query("UPDATE app.integration_connections SET status='error',updated_at=now() WHERE tenant_id=$1 AND id=$2",[tenantId,connectionId]));
  console.error('Provider connection requires attention',connectionId,message);
 }
+async function markAttempt(tenantId,jobIds){
+ await tenantTransaction(tenantId,client=>client.query("UPDATE app.provider_jobs SET last_attempt_at=now(),updated_at=now() WHERE tenant_id=$1 AND id=ANY($2::uuid[]) AND lease_owner=$3",[tenantId,jobIds,workerId]));
+}
 async function processGoogle(payload,jobs,credential){
  for(const job of jobs){
   try{
+   await markAttempt(payload.tenantId,[job.id]);
    const response=await fetch('https://searchconsole.googleapis.com/v1/urlInspection/index:inspect',{method:'POST',headers:{authorization:'Bearer '+credential.accessToken,'content-type':'application/json',accept:'application/json'},body:JSON.stringify({inspectionUrl:job.url,siteUrl:job.site_url,languageCode:'en-US'}),signal:AbortSignal.timeout(20000)});
    const text=await response.text();let data;try{data=JSON.parse(text);}catch{throw new Error('Google URL Inspection returned invalid JSON');}
    if(!response.ok){await scheduleRetry(payload.tenantId,payload,job,'Google URL Inspection HTTP '+response.status+': '+JSON.stringify(data).slice(0,500),response.status===408||response.status===429||response.status>=500);continue;}
@@ -109,6 +113,7 @@ async function processGoogle(payload,jobs,credential){
 async function processBing(payload,jobs,credential){
  if(!jobs.length)return;
  try{
+  await markAttempt(payload.tenantId,jobs.map(job=>job.id));
   const endpoint=new URL('https://ssl.bing.com/webmaster/api.svc/json/SubmitUrlBatch');
   endpoint.searchParams.set('siteUrl',jobs[0].site_url);
   const headers={'content-type':'application/json','accept':'application/json'};
