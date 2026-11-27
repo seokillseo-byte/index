@@ -19,7 +19,7 @@ export class PublicAdsController{
   return {received:true,inquiryId:r.rows[0].id,createdAt:r.rows[0].created_at};
  }
 
- @Post('events') @Public() @ApiOperation({summary:'Record a contextual ad impression or click'})
+ @Post('events') @Public() @Throttle({default:{limit:60,ttl:60_000}}) @ApiOperation({summary:'Record a contextual ad impression or click'})
  async event(@Body() dto:PublicAdEventDto){
   const r=await this.db.query("INSERT INTO app.ad_events(campaign_id,creative_id,slot_id,event_type,consent_state) VALUES($1,$2,$3,$4,$5) RETURNING id,occurred_at",[dto.campaignId,dto.creativeId,dto.slotId,dto.eventType,dto.consentState]);
   return {recorded:true,eventId:r.rows[0].id,occurredAt:r.rows[0].occurred_at};
