@@ -1,0 +1,31 @@
+name: index-assist-workloads
+services:
+  api:
+    build:
+      context: ../..
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    env_file: ../../.env
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+    ports: ["127.0.0.1:4000:4000"]
+    depends_on:
+      postgres: { condition: service_healthy }
+    networks: [index-assist-infrastructure_data]
+  outbox-relay:
+    build:
+      context: ../..
+      dockerfile: apps/worker/Dockerfile
+    restart: unless-stopped
+    env_file: ../../.env
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      KAFKA_BROKERS: redpanda:9092
+    depends_on:
+      postgres: { condition: service_healthy }
+      redpanda: { condition: service_started }
+    networks: [index-assist-infrastructure_data]
+networks:
+  index-assist-infrastructure_data:
+    external: true
