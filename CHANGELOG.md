@@ -1,3 +1,14 @@
+## 2026-11-28
+
+### Authentication — email verification
+
+- Added single-use email verification tokens with 30-minute expiry.
+- Added transactional verification email delivery via Resend REST API.
+- Registration no longer issues access/refresh sessions before email verification.
+- Login and refresh now require a verified email address.
+- Added rate-limited email verification and resend endpoints.
+- Documented RESEND_API_KEY and EMAIL_FROM configuration.
+
 # Changelog
 
 ## 2026-11-28
