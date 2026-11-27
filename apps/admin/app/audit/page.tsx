@@ -1,0 +1,2 @@
+import {AdminDataPage} from '../admin-data-page';
+export default function Page(){return <AdminDataPage title="Audit log" description="Lịch sử thao tác quản trị và thay đổi quan trọng." endpoint="audit" columns={['actor_email','action','resource_type','resource_id','ip_address','metadata','created_at']}/>;}
