@@ -1,5 +1,14 @@
 ## 2026-11-28
 
+### Benchmark harness hardening
+
+- Fixed the benchmark worker claim path to use a unique worker lease owner.
+- Isolated each benchmark run with a unique idempotency prefix so concurrent runs cannot claim or delete each other's jobs.
+- Added bounded integer validation for job count, concurrency and batch size.
+- Added guaranteed run-scoped cleanup in a `finally` block.
+- Separated seed duration from queue-drain throughput metrics.
+- Clarified that benchmark output measures PostgreSQL queue-path throughput only, not Google/Bing provider throughput.
+
 ### Authentication — MFA, recovery and sessions
 
 - Added encrypted TOTP MFA enrollment and MFA-gated login.
