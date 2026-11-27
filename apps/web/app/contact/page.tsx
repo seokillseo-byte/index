@@ -1,0 +1,4 @@
+import Link from 'next/link';
+import {PublicSiteShell} from '../public-site-shell';
+export const metadata={title:'Liên hệ'};
+export default function Contact(){return <PublicSiteShell><div className="eyebrow">CONTACT</div><h1 className="page-title">Liên hệ Index Assist</h1><p className="section-intro">Bạn cần hỗ trợ kỹ thuật, tư vấn triển khai hoặc hợp tác quảng cáo?</p><div className="feature-grid"><article className="feature"><h3>Hỗ trợ sản phẩm</h3><p>Gửi yêu cầu qua dashboard sau khi đăng nhập workspace.</p><Link href="https://app.index-assist.io.vn/login">Mở workspace →</Link></article><article className="feature"><h3>Hợp tác quảng cáo</h3><p>Trao đổi về placement, chiến dịch và nội dung tài trợ.</p><Link href="/advertise">Gửi yêu cầu quảng cáo →</Link></article><article className="feature"><h3>Đối tác kỹ thuật</h3><p>Liên hệ qua email ops@index-assist.io.vn.</p></article></div></PublicSiteShell>;}
