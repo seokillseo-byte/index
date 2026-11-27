@@ -2,6 +2,7 @@ package main
 
 import (
  "context"
+ "bytes"
  "encoding/json"
  "errors"
   "fmt"
@@ -279,6 +280,7 @@ func analyzeAndSaveHTML(ctx context.Context,pool *pgxpool.Pool,tenantID,projectI
  client:=safefetch.SafeClient(20*time.Second);current:=parsed
  var body []byte;finalURL:=item.URL;statusCode:=0
  for hop:=0;hop<=5;hop++{
+  allowed,robotsErr:=robotsAllows(ctx,client,current);if robotsErr!=nil{return robotsErr};if !allowed{return markHTMLTask(ctx,pool,tenantID,projectID,workerID,item,"completed","disallowed by robots.txt")}
   req,reqErr:=http.NewRequestWithContext(ctx,http.MethodGet,current.String(),nil);if reqErr!=nil{return reqErr}
   req.Header.Set("User-Agent","IndexAssistBot/1.0 (+https://index-assist.io.vn/)")
   req.Header.Set("Range","bytes=0-2097151")
@@ -315,7 +317,7 @@ func analyzeAndSaveHTML(ctx context.Context,pool *pgxpool.Pool,tenantID,projectI
 }
 
 func extractBacklinks(body []byte,baseURL,targetCanonical string)([]discoveredLink,error){
- z:=html.NewTokenizer(strings.NewReader(string(body)))
+ z:=html.NewTokenizer(bytes.NewReader(body))
  var links []discoveredLink;inAnchor:=false;anchor:="";href:="";rel:=[]string{}
  for{
   tt:=z.Next()
