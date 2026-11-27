@@ -1,0 +1,2 @@
+import {AdminActionDataPage} from '../../admin-action-data-page';
+export default function Page(){return <AdminActionDataPage title="Ad Creatives" description="Duyệt nội dung quảng cáo trước khi phân phối công khai." endpoint="ads/creatives" columns={['campaign_name','slot_code','headline','asset_key','disclosure_label','status','created_at']} actionPathPrefix="ads/creatives" actionPathSuffix="/status" actions={[{label:'Duyệt',value:'approved'},{label:'Từ chối',value:'rejected'},{label:'Vô hiệu hóa',value:'disabled'}]}/>;}
