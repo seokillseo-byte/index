@@ -49,6 +49,22 @@ services:
       postgres: { condition: service_healthy }
       redpanda-init: { condition: service_completed_successfully }
     networks: [index-assist-infrastructure_data]
+
+  provider-worker:
+    build:
+      context: ../..
+      dockerfile: apps/worker/Dockerfile
+    command: ["node","src/provider-jobs.mjs"]
+    restart: unless-stopped
+    env_file: ../../.env.provider-worker
+    environment:
+      KAFKA_BROKERS: redpanda:9092
+      PROVIDER_KAFKA_TOPIC: provider.jobs
+      PROVIDER_KAFKA_GROUP_ID: index-assist-provider-v1
+    depends_on:
+      postgres: { condition: service_healthy }
+      redpanda-init: { condition: service_completed_successfully }
+    networks: [index-assist-infrastructure_data]
 networks:
   index-assist-infrastructure_data:
     external: true
