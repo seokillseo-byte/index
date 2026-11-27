@@ -1,0 +1,2 @@
+import {AdminDataPage} from '../../admin-data-page';
+export default function Page(){return <AdminDataPage title="Blog & SEO" description="Quản lý bài viết, chuyên mục và metadata phục vụ SEO." endpoint="cms/posts" columns={['title','slug','status','excerpt','seo_title','meta_description','published_at','updated_at']}/>;}
