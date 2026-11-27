@@ -1,2 +1,2 @@
-import {AdminDataPage} from '../../admin-data-page';
-export default function Page(){return <AdminDataPage title="Nhà quảng cáo" description="Tiếp nhận và xử lý yêu cầu hợp tác quảng cáo." endpoint="ads/inquiries" columns={['company_name','contact_name','email','website_url','requested_budget_minor','status','created_at']}/>;}
+import {AdminActionDataPage} from '../../admin-action-data-page';
+export default function Page(){return <AdminActionDataPage title="Nhà quảng cáo" description="Tiếp nhận và xử lý yêu cầu hợp tác quảng cáo." endpoint="ads/inquiries" columns={['company_name','contact_name','email','website_url','requested_budget_minor','status','created_at']} actionPath={id=>'ads/inquiries/'+id+'/status'} actions={[{label:'Đã liên hệ',value:'contacted'},{label:'Đủ điều kiện',value:'qualified'},{label:'Chuyển đổi',value:'converted'},{label:'Từ chối',value:'rejected'}]}/>;}
