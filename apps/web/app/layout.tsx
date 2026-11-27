@@ -6,7 +6,6 @@ export const metadata: Metadata = {
   metadataBase: new URL('https://index-assist.io.vn'),
   title: { default: 'Index Assist | Backlink Discovery & Index Monitoring', template: '%s | Index Assist' },
   description: 'Analyze backlink crawlability, organize tiered links, and monitor search visibility with Index Assist.',
-  alternates: { canonical: '/' },
   robots: { index: true, follow: true },
   openGraph: { type: 'website', siteName: 'Index Assist', url: 'https://index-assist.io.vn' },
 };
