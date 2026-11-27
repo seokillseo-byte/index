@@ -1,6 +1,6 @@
 # Provider Job Engine — Non-production benchmark
 
-This benchmark is intentionally narrow. It measures only the PostgreSQL queue claim/update path used by the provider worker. It does **not** call Google/Bing and does not prove provider throughput or indexing throughput.
+This benchmark measures only the PostgreSQL provider-queue claim/update path. It does **not** call Google/Bing and does not prove provider submission throughput or indexing throughput.
 
 ## Run
 
@@ -19,8 +19,8 @@ Optional:
 
 - `BENCHMARK_PROVIDER=bing_webmaster` (default) or `google_search_console`
 - `BENCHMARK_JOBS=10000`
-- `BENCHMARK_CONCURRENCY=8`
-- `BENCHMARK_BATCH_SIZE=100`
+- `BENCHMARK_CONCURRENCY=8` (maximum 64)
+- `BENCHMARK_BATCH_SIZE=100` (maximum 500)
 
 Example:
 
@@ -36,17 +36,17 @@ BENCHMARK_CONCURRENCY=8 \
 pnpm --filter @index-assist/worker benchmark:provider-jobs
 ```
 
-## What to record
+## What it measures
 
-- jobs/sec
-- estimated jobs/day
-- queue batch size
-- concurrency
-- benchmark duration
-- PostgreSQL CPU/IO/connection saturation
+- Seed duration (reported separately).
+- Queue-drain jobs/sec and estimated jobs/day.
+- Queue batch size and worker concurrency.
+- PostgreSQL CPU/IO/connection saturation (collect from the database host during the run).
+
+Each invocation creates a unique run ID and workers claim only that run's jobs. Cleanup is scoped to the same unique idempotency prefix and runs from a `finally` block, including when seeding or draining fails. Concurrent benchmark runs therefore do not clean up one another's rows.
 
 The result is a database queue-path measurement only. It must not be presented as proof that the system can submit or inspect 1,000,000 URLs/day through Google/Bing.
 
 ## Safety
 
-Do not point `BENCHMARK_DATABASE_URL` at production. The script requires an explicit non-production confirmation and deletes only rows carrying its own `benchmark:` idempotency prefix.
+Do not point `BENCHMARK_DATABASE_URL` at production. The script requires `BENCHMARK_CONFIRM_NONPROD=YES`, validates numeric limits, and deletes only rows created by its own invocation. Run against a disposable/non-production database and use a dedicated benchmark tenant/project/connection.
