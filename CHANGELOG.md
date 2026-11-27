@@ -1,5 +1,11 @@
 ## 2026-11-28
 
+### Authentication validation hardening
+
+- Corrected Unicode property and six-digit TOTP validation patterns in DTO validators.
+- Tightened rate limits for MFA login, recovery, enrollment verification and MFA disable endpoints.
+- Corrected the registration API documentation: sessions are issued only after email verification.
+
 ### Benchmark harness hardening
 
 - Fixed the benchmark worker claim path to use a unique worker lease owner.
