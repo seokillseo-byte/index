@@ -27,3 +27,9 @@ func TestCanonicalURLRemovesFragmentAndDefaultPort(t *testing.T){
  if err!=nil{t.Fatal(err)}
  if got!="https://target.example/path"{t.Fatalf("unexpected canonical URL: %s",got)}
 }
+
+func TestCanonicalURLNormalizesEmptyRootPath(t *testing.T) {
+ got,err:=canonicalURL("https://TARGET.example")
+ if err!=nil{t.Fatal(err)}
+ if got!="https://target.example/"{t.Fatalf("unexpected root URL: %s",got)}
+}
