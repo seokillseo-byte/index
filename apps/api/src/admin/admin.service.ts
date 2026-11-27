@@ -17,7 +17,7 @@ export class AdminService{
  async customers(actorId:string,page=1,limit=50,search?:string,status?:string){
   return this.db.withAdminTransaction(actorId,async client=>{
    const offset=(page-1)*limit;
-   const rows=await client.query("SELECT t.id,t.name,t.slug,t.status,t.created_at,s.status subscription_status,p.code plan_code,p.name plan_name,count(DISTINCT tm.user_id)::int member_count,count(DISTINCT pr.id)::int project_count,count(DISTINCT u.id)::bigint url_count FROM app.tenants t LEFT JOIN app.subscriptions s ON s.tenant_id=t.id AND s.status IN ('trialing','active','past_due','paused') LEFT JOIN app.plans p ON p.id=s.plan_id LEFT JOIN app.tenant_members tm ON tm.tenant_id=t.id AND tm.status='active' LEFT JOIN app.projects pr ON pr.tenant_id=t.id LEFT JOIN app.urls u ON u.tenant_id=t.id WHERE ($1::text IS NULL OR t.name ILIKE '%'||$1||'%' OR t.slug ILIKE '%'||$1||'%') AND ($2::text IS NULL OR t.status=$2) GROUP BY t.id,s.status,p.code,p.name ORDER BY t.created_at DESC LIMIT $3 OFFSET $4",[search||null,status||null,limit,offset]);
+   const rows=await client.query("SELECT t.id,t.name,t.slug,t.status,t.created_at,s.status subscription_status,p.code plan_code,p.name plan_name,count(DISTINCT tm.user_id)::int member_count,count(DISTINCT pr.id)::int project_count,count(DISTINCT u.id)::bigint url_count FROM app.tenants t LEFT JOIN LATERAL(SELECT * FROM app.subscriptions WHERE tenant_id=t.id AND status IN ('trialing','active','past_due','paused') ORDER BY created_at DESC LIMIT 1)s ON true LEFT JOIN app.plans p ON p.id=s.plan_id LEFT JOIN app.tenant_members tm ON tm.tenant_id=t.id AND tm.status='active' LEFT JOIN app.projects pr ON pr.tenant_id=t.id LEFT JOIN app.urls u ON u.tenant_id=t.id WHERE ($1::text IS NULL OR t.name ILIKE '%'||$1||'%' OR t.slug ILIKE '%'||$1||'%') AND ($2::text IS NULL OR t.status=$2) GROUP BY t.id,s.status,p.code,p.name ORDER BY t.created_at DESC LIMIT $3 OFFSET $4",[search||null,status||null,limit,offset]);
    const total=await client.query("SELECT count(*)::bigint total FROM app.tenants t WHERE ($1::text IS NULL OR t.name ILIKE '%'||$1||'%' OR t.slug ILIKE '%'||$1||'%') AND ($2::text IS NULL OR t.status=$2)",[search||null,status||null]);
    return {page,limit,total:Number(total.rows[0].total),items:rows.rows};
   });
@@ -53,7 +53,7 @@ export class AdminService{
    const current=await client.query("SELECT id,tenant_id,status FROM app.orders WHERE id=$1 FOR UPDATE",[orderId]);
    if(!current.rowCount)throw new NotFoundException('Order not found');
    if(status==='fulfilled'&&current.rows[0].status!=='paid')throw new BadRequestException('Only paid orders can be fulfilled');
-   if(['cancelled','rejected'].includes(status)&&!['pending','awaiting_payment','paid'].includes(current.rows[0].status))throw new BadRequestException('Order cannot transition to the requested status');
+   if(['cancelled','rejected'].includes(status)&&!['pending','awaiting_payment'].includes(current.rows[0].status))throw new BadRequestException('Order cannot transition to the requested status');
    const r=await client.query("UPDATE app.orders SET status=$2,updated_at=now() WHERE id=$1 RETURNING id,order_number,status,total_minor,currency",[orderId,status]);
    await this.audit(client,actorId,'order.status.updated','order',orderId,{from:current.rows[0].status,to:status,tenantId:current.rows[0].tenant_id},ip);
    return r.rows[0];
@@ -70,7 +70,7 @@ export class AdminService{
    const table=type==='page'?'cms_pages':'cms_posts';
    let r;
    if(input.id){
-    r=await client.query("UPDATE app."+table+" SET title=$2,slug=$3,body=$4::jsonb,status=$5,published_at=CASE WHEN $5='published' THEN COALESCE(published_at,now()) ELSE published_at END,updated_at=now(),"+(type==='page'?'updated_by':'author_id')+"=COALESCE("+(type==='page'?'updated_by':'author_id')+",$6) WHERE id=$1 RETURNING *",[input.id,input.title,input.slug,JSON.stringify(input.body),input.status||'draft',actorId]);
+    r=await client.query("UPDATE app."+table+" SET title=$2,slug=$3,body=$4::jsonb,status=$5,published_at=CASE WHEN $5='published' THEN COALESCE(published_at,now()) ELSE published_at END,updated_at=now(),"+(type==='page'?'updated_by=$6':'author_id=COALESCE(author_id,$6)') WHERE id=$1 RETURNING *",[input.id,input.title,input.slug,JSON.stringify(input.body),input.status||'draft',actorId]);
     if(!r.rowCount)throw new NotFoundException('CMS item not found');
    }else{
     if(type==='page')r=await client.query("INSERT INTO app.cms_pages(title,slug,body,status,published_at,created_by,updated_by) VALUES($1,$2,$3::jsonb,$4,CASE WHEN $4='published' THEN now() ELSE NULL END,$5,$5) RETURNING *",[input.title,input.slug,JSON.stringify(input.body),input.status||'draft',actorId]);
