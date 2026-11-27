@@ -94,10 +94,31 @@ async function markConnectionError(tenantId,connectionId,message){
 async function markAttempt(tenantId,jobIds){
  await tenantTransaction(tenantId,client=>client.query("UPDATE app.provider_jobs SET last_attempt_at=now(),updated_at=now() WHERE tenant_id=$1 AND id=ANY($2::uuid[]) AND lease_owner=$3",[tenantId,jobIds,workerId]));
 }
+
+async function reserveGoogleAttempt(payload,job){
+ const now=new Date(),dayStart=new Date(now);dayStart.setUTCHours(0,0,0,0);
+ const configured=Number(process.env.GOOGLE_INSPECTION_DAILY_LIMIT||2000);
+ const dailyLimit=Number.isFinite(configured)?Math.min(2000,Math.max(1,configured)):2000;
+ const decision=await tenantTransaction(payload.tenantId,async client=>{
+  await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[payload.tenantId+':'+payload.siteUrl+':'+dayStart.toISOString().slice(0,10)]);
+  const row=await client.query("SELECT created_at,last_attempt_at FROM app.provider_jobs WHERE tenant_id=$1 AND id=$2 AND lease_owner=$3",[payload.tenantId,job.id,workerId]);
+  if(!row.rowCount)return {allowed:false,defer:false};
+  const created=new Date(row.rows[0].created_at),last=row.rows[0].last_attempt_at?new Date(row.rows[0].last_attempt_at):null;
+  if(last&&last>=dayStart)return {allowed:false,defer:true};
+  if(created<dayStart){
+   const count=await client.query("SELECT count(*)::int total FROM app.provider_jobs WHERE tenant_id=$1 AND site_url=$2 AND provider='google_search_console' AND action='inspect' AND status<>'cancelled' AND (created_at >= $3 OR last_attempt_at >= $3)",[payload.tenantId,payload.siteUrl,dayStart]);
+   if(count.rows[0].total>=dailyLimit)return {allowed:false,defer:true};
+  }
+  await client.query("UPDATE app.provider_jobs SET last_attempt_at=now(),updated_at=now() WHERE tenant_id=$1 AND id=$2 AND lease_owner=$3",[payload.tenantId,job.id,workerId]);
+  return {allowed:true,defer:false};
+ });
+ if(decision.defer){const next=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate()+1,0,5));await deferProviderJobs(payload,[job],next,'Google Search Console daily inspection quota window exhausted');}
+ return decision.allowed;
+}
 async function processGoogle(payload,jobs,credential){
  for(const job of jobs){
   try{
-   await markAttempt(payload.tenantId,[job.id]);
+   const allowed=await reserveGoogleAttempt(payload,job);if(!allowed)continue;
    const response=await fetch('https://searchconsole.googleapis.com/v1/urlInspection/index:inspect',{method:'POST',headers:{authorization:'Bearer '+credential.accessToken,'content-type':'application/json',accept:'application/json'},body:JSON.stringify({inspectionUrl:job.url,siteUrl:job.site_url,languageCode:'en-US'}),signal:AbortSignal.timeout(20000)});
    const text=await response.text();let data;try{data=JSON.parse(text);}catch{throw new Error('Google URL Inspection returned invalid JSON');}
    if(!response.ok){await scheduleRetry(payload.tenantId,payload,job,'Google URL Inspection HTTP '+response.status+': '+JSON.stringify(data).slice(0,500),response.status===408||response.status===429||response.status>=500);continue;}
