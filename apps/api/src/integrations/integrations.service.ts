@@ -1,4 +1,4 @@
-import {BadRequestException,ForbiddenException,Injectable,NotFoundException,ServiceUnavailableException} from '@nestjs/common';
+import {BadRequestException,ForbiddenException,HttpException,HttpStatus,Injectable,NotFoundException,ServiceUnavailableException} from '@nestjs/common';
 import {ConfigService} from '@nestjs/config';
 import {createCipheriv,createDecipheriv,createHmac,randomBytes,randomUUID,createHash,timingSafeEqual} from 'node:crypto';
 import {DatabaseService} from '../database/database.module';
@@ -206,6 +206,103 @@ export class IntegrationsService{
    await client.query("INSERT INTO app.integration_secrets(id,tenant_id,connection_id,ciphertext,iv,auth_tag,key_version) VALUES($1,$2,$3,$4,$5,$6,'v1')",[secretId,principal.tenantId,connectionId,encrypted.ciphertext,encrypted.iv,encrypted.authTag]);
   },principal.tenantId);
   return {connected:true,provider:'bing_webmaster',connectionId,availableSites:sites.length};
+ }
+
+ private normalizeProviderUrl(value:string):string{
+  let url:URL;try{url=new URL(value);}catch{throw new BadRequestException('Invalid provider URL');}
+  if(!['http:','https:'].includes(url.protocol)||url.username||url.password)throw new BadRequestException('Only public HTTP(S) URLs are supported');
+  url.hash='';if((url.protocol==='https:'&&url.port==='443')||(url.protocol==='http:'&&url.port==='80'))url.port='';
+  return url.toString();
+ }
+ private urlMatchesSite(value:string,siteUrl:string):boolean{
+  let target:URL;try{target=new URL(value);}catch{return false;}
+  if(siteUrl.startsWith('sc-domain:')){
+   const domain=siteUrl.slice(10).toLowerCase();
+   return target.hostname.toLowerCase()===domain||target.hostname.toLowerCase().endsWith('.'+domain);
+  }
+  try{const property=new URL(siteUrl);return target.origin===property.origin&&target.pathname.startsWith(property.pathname);}catch{return false;}
+ }
+ private async bingSubmissionQuota(principal:Principal,connectionId:string,siteUrl:string){
+  const {provider,credential}=await this.connectionCredential(principal,connectionId);
+  if(provider!=='bing_webmaster')throw new BadRequestException('This operation requires a Bing Webmaster connection');
+  if(!credential.apiKey)credential.accessToken=await this.accessToken(principal,connectionId,provider,credential);
+  const endpoint=new URL('https://www.bing.com/webmaster/api.svc/json/GetUrlSubmissionQuota');
+  endpoint.searchParams.set('siteUrl',siteUrl);if(credential.apiKey)endpoint.searchParams.set('apikey',credential.apiKey);
+  const headers:Record<string,string>={'accept':'application/json'};if(!credential.apiKey)headers.authorization='Bearer '+credential.accessToken;
+  const response=await fetch(endpoint,{headers,signal:AbortSignal.timeout(15_000)});
+  let data:any;try{data=JSON.parse(await response.text());}catch{throw new ServiceUnavailableException('Bing quota endpoint returned invalid JSON');}
+  const daily=Number(data?.d?.DailyQuota),monthly=Number(data?.d?.MonthlyQuota);
+  if(!response.ok||data?.ErrorCode||!Number.isFinite(daily)||!Number.isFinite(monthly)||daily<1||monthly<1)throw new ForbiddenException('Unable to retrieve the live Bing URL submission quota');
+  return {daily,monthly};
+ }
+ private async assertProviderSite(client:any,principal:Principal,connectionId:string,projectId:string,provider:Provider,siteUrl:string){
+  const permission=await client.query("SELECT 1 FROM app.tenant_members tm JOIN app.role_permissions rp ON rp.role_id=tm.role_id JOIN app.permissions p ON p.id=rp.permission_id WHERE tm.tenant_id=$1 AND tm.user_id=$2 AND tm.status='active' AND p.code='integration.manage'",[principal.tenantId,principal.userId]);
+  if(!permission.rowCount)throw new ForbiddenException('Integration management permission required');
+  const connection=await client.query("SELECT 1 FROM app.integration_connections WHERE tenant_id=$1 AND id=$2 AND provider=$3 AND status='connected'",[principal.tenantId,connectionId,provider]);
+  if(!connection.rowCount)throw new NotFoundException('Connected provider account not found');
+  const project=await client.query("SELECT 1 FROM app.projects WHERE tenant_id=$1 AND id=$2 AND status='active'",[principal.tenantId,projectId]);
+  if(!project.rowCount)throw new NotFoundException('Project not found');
+  const site=await client.query("SELECT 1 FROM app.integration_sites WHERE tenant_id=$1 AND connection_id=$2 AND project_id=$3 AND site_url=$4 AND verification_status='verified'",[principal.tenantId,connectionId,projectId,siteUrl]);
+  if(!site.rowCount)throw new ForbiddenException('Bind a verified provider property to this project first');
+ }
+ private async insertProviderJobs(client:any,principal:Principal,projectId:string,connectionId:string,provider:Provider,action:'inspect'|'submit_url',siteUrl:string,urls:string[],idempotencyKeys:string[]){
+  const existing=await client.query("SELECT idempotency_key FROM app.provider_jobs WHERE tenant_id=$1 AND idempotency_key=ANY($2::text[])",[principal.tenantId,idempotencyKeys]);
+  const seen=new Set(existing.rows.map((row:any)=>row.idempotency_key));
+  const pending=urls.map((url,index)=>({url,key:idempotencyKeys[index]})).filter(item=>!seen.has(item.key));
+  for(const item of pending){
+   await client.query("INSERT INTO app.provider_jobs(tenant_id,project_id,connection_id,provider,action,status,url,site_url,idempotency_key) VALUES($1,$2,$3,$4,$5,'queued',$6,$7,$8) ON CONFLICT(tenant_id,idempotency_key) DO NOTHING",[principal.tenantId,projectId,connectionId,provider,action,item.url,siteUrl,item.key]);
+  }
+  if(pending.length){
+   const eventKey='provider-batch:'+randomUUID();
+   const payload=JSON.stringify({tenantId:principal.tenantId,projectId,connectionId,provider,siteUrl});
+   await client.query("INSERT INTO app.outbox_events(tenant_id,aggregate_type,aggregate_id,event_type,topic,partition_key,payload,idempotency_key) VALUES($1,'provider_batch',$2,'provider.jobs.queued','provider.jobs',$3,$4::jsonb,$5) ON CONFLICT(idempotency_key) DO NOTHING",[principal.tenantId,projectId,principal.tenantId+':'+projectId+':'+connectionId,payload,eventKey]);
+  }
+  return pending.length;
+ }
+ async queueGoogleInspections(principal:Principal,connectionId:string,input:{projectId:string;siteUrl:string;urls:string[]}){
+  const {provider}=await this.connectionCredential(principal,connectionId);
+  if(provider!=='google_search_console')throw new BadRequestException('This operation requires a Google Search Console connection');
+  const siteUrl=input.siteUrl,urls=[...new Set(input.urls.map(url=>this.normalizeProviderUrl(url)))];
+  if(urls.length>500)throw new BadRequestException('Maximum 500 URLs per inspection batch');
+  if(urls.some(url=>!this.urlMatchesSite(url,siteUrl)))throw new ForbiddenException('Every inspected URL must belong to the selected verified Search Console property');
+  const dayStart=new Date();dayStart.setUTCHours(0,0,0,0);
+  const minuteStart=new Date(Date.now()-60_000);
+  const dailyLimit=Math.min(2000,Math.max(1,Number(this.config.get<string>('GOOGLE_INSPECTION_DAILY_LIMIT')??2000)));
+  const minuteLimit=Math.min(600,Math.max(1,Number(this.config.get<string>('GOOGLE_INSPECTION_PER_MINUTE_LIMIT')??600)));
+  const keys=urls.map(url=>'gsc-inspect:'+connectionId+':'+createHash('sha256').update(siteUrl+'|'+url).digest('hex')+':'+dayStart.toISOString().slice(0,10));
+  return this.db.withTransaction(async client=>{
+   await this.assertProviderSite(client,principal,connectionId,input.projectId,'google_search_console',siteUrl);
+   await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[principal.tenantId+':'+connectionId+':'+siteUrl+':'+dayStart.toISOString().slice(0,10)]);
+   const existing=await client.query("SELECT idempotency_key FROM app.provider_jobs WHERE tenant_id=$1 AND idempotency_key=ANY($2::text[])",[principal.tenantId,keys]);
+   const seen=new Set(existing.rows.map((row:any)=>row.idempotency_key));
+   const pending=urls.filter((url,index)=>!seen.has(keys[index]));
+   const counts=await client.query("SELECT count(*) FILTER(WHERE created_at >= $4)::int daily,count(*) FILTER(WHERE created_at >= $5)::int minute FROM app.provider_jobs WHERE tenant_id=$1 AND connection_id=$2 AND site_url=$3 AND provider='google_search_console' AND action='inspect' AND status<>'cancelled'",[principal.tenantId,connectionId,siteUrl,dayStart,minuteStart]);
+   const daily=counts.rows[0].daily,minute=counts.rows[0].minute;
+   if(daily+pending.length>dailyLimit||minute+pending.length>minuteLimit)throw new HttpException({message:'Google Search Console inspection quota would be exceeded',dailyLimit,dailyUsed:daily,perMinuteLimit:minuteLimit,minuteUsed:minute},HttpStatus.TOO_MANY_REQUESTS);
+   const queued=await this.insertProviderJobs(client,principal,input.projectId,connectionId,'google_search_console','inspect',siteUrl,urls,keys);
+   return {provider:'google_search_console',action:'inspect',queued,duplicate:urls.length-queued,quota:{dailyLimit,dailyUsed:daily+queued,perMinuteLimit:minuteLimit,minuteUsed:minute+queued},note:'Inspection results are not indexing requests.'};
+  },principal.tenantId);
+ }
+ async queueBingSubmissions(principal:Principal,connectionId:string,input:{projectId:string;siteUrl:string;urls:string[]}){
+  const quota=await this.bingSubmissionQuota(principal,connectionId,input.siteUrl);
+  const urls=[...new Set(input.urls.map(url=>this.normalizeProviderUrl(url)))];
+  if(urls.length>500)throw new BadRequestException('Bing URL submission supports at most 500 URLs per batch');
+  if(urls.some(url=>!this.urlMatchesSite(url,input.siteUrl)))throw new ForbiddenException('Every submitted URL must belong to the selected verified Bing site');
+  const now=new Date(),dayStart=new Date(now);dayStart.setUTCHours(0,0,0,0);
+  const monthStart=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),1));
+  const keys=urls.map(url=>'bing-submit:'+connectionId+':'+createHash('sha256').update(input.siteUrl+'|'+url).digest('hex')+':'+dayStart.toISOString().slice(0,10));
+  return this.db.withTransaction(async client=>{
+   await this.assertProviderSite(client,principal,connectionId,input.projectId,'bing_webmaster',input.siteUrl);
+   await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[principal.tenantId+':'+connectionId+':'+input.siteUrl+':'+dayStart.toISOString().slice(0,10)]);
+   const existing=await client.query("SELECT idempotency_key FROM app.provider_jobs WHERE tenant_id=$1 AND idempotency_key=ANY($2::text[])",[principal.tenantId,keys]);
+   const seen=new Set(existing.rows.map((row:any)=>row.idempotency_key));
+   const pending=urls.filter((url,index)=>!seen.has(keys[index]));
+   const counts=await client.query("SELECT count(*) FILTER(WHERE created_at >= $4)::int daily,count(*) FILTER(WHERE created_at >= $5)::int monthly FROM app.provider_jobs WHERE tenant_id=$1 AND connection_id=$2 AND site_url=$3 AND provider='bing_webmaster' AND action='submit_url' AND status<>'cancelled'",[principal.tenantId,connectionId,input.siteUrl,dayStart,monthStart]);
+   const daily=counts.rows[0].daily,monthly=counts.rows[0].monthly;
+   if(daily+pending.length>quota.daily||monthly+pending.length>quota.monthly)throw new HttpException({message:'Bing Webmaster submission quota would be exceeded',dailyLimit:quota.daily,dailyUsed:daily,monthlyLimit:quota.monthly,monthlyUsed:monthly},HttpStatus.TOO_MANY_REQUESTS);
+   const queued=await this.insertProviderJobs(client,principal,input.projectId,connectionId,'bing_webmaster','submit_url',input.siteUrl,urls,keys);
+   return {provider:'bing_webmaster',action:'submit_url',queued,duplicate:urls.length-queued,quota:{dailyLimit:quota.daily,dailyUsed:daily+queued,monthlyLimit:quota.monthly,monthlyUsed:monthly+queued},note:'Provider acceptance does not mean the URL is indexed.'};
+  },principal.tenantId);
  }
  async list(principal:Principal){
   return this.db.withTransaction(async client=>{
