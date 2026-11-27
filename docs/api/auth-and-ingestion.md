@@ -151,9 +151,9 @@ The API uses the Resend REST API for transactional delivery. Configure `RESEND_A
 - POST /api/v1/auth/mfa/login with { "challengeToken": "...", "code": "123456" } — completes an MFA-protected login challenge and only then issues a session.
 - POST /api/v1/auth/mfa/recovery with { "challengeToken": "...", "recoveryCode": "..." } — consumes one recovery code for a login challenge.
 - POST /api/v1/auth/password-reset/request with { "email": "..." } — sends a generic password reset response; the reset token expires after 30 minutes.
-- POST /api/v1/auth/password-reset with { "token": "...", "password": "..." } — changes the password and revokes existing sessions.
+- POST /api/v1/auth/password-reset with { "token": "...", "password": "..." } — changes the password and revokes existing sessions; the response does not disclose the account identifier.
 - GET /api/v1/auth/sessions — lists the authenticated user's server-side sessions.
 - DELETE /api/v1/auth/sessions/{sessionId} — revokes one session.
 - POST /api/v1/auth/sessions/revoke-all — revokes all sessions except the current access-token session.
 
-MFA uses TOTP compatible with standard authenticator applications. MFA login/recovery and enrollment verification endpoints are rate-limited; password reset and MFA disable have stricter limits. Recovery codes are single-use. Password-reset and MFA challenge tokens are stored only as SHA-256 hashes. MFA secrets are encrypted with the existing AES-256-GCM integration key.
+MFA uses TOTP compatible with standard authenticator applications. MFA login/recovery and enrollment verification endpoints are rate-limited; a login challenge is invalidated after five failed TOTP attempts. Password reset and MFA disable have stricter limits. Recovery codes are single-use. Password-reset and MFA challenge tokens are stored only as SHA-256 hashes. MFA secrets are encrypted with the existing AES-256-GCM integration key.
