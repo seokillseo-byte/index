@@ -1,4 +1,4 @@
-import {IsUUID} from 'class-validator';
+import {IsString,IsUUID,Length} from 'class-validator';
 export class ConnectIntegrationDto { @IsUUID() projectId!:string; }
 
 export class AttachIntegrationSiteDto {
