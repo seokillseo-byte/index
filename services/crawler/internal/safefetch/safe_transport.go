@@ -37,6 +37,10 @@ func ValidateURL(raw string) (*url.URL, error) {
 	if u.Scheme != "http" && u.Scheme != "https" { return nil, errors.New("only http and https are supported") }
 	if u.User != nil { return nil, errors.New("userinfo in URL is not allowed") }
 	if u.Hostname() == "" { return nil, errors.New("hostname is required") }
+ if port:=u.Port(); port!="" {
+  expected:="80";if u.Scheme=="https"{expected="443"}
+  if port!=expected{return nil,errors.New("only standard HTTP and HTTPS ports are allowed")}
+ }
 	if strings.Contains(u.Hostname(), "%") { return nil, errors.New("scoped IP literals are not allowed") }
 	if ip := net.ParseIP(u.Hostname()); ip != nil && !isPublicIP(ip) { return nil, errors.New("destination IP is not globally routable") }
 	return u, nil
