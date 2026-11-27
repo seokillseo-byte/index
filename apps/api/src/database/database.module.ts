@@ -32,6 +32,20 @@ export class DatabaseService implements OnApplicationShutdown {
     } catch (error) { await client.query('ROLLBACK'); throw error; }
     finally { client.release(); }
   }
+  async withAdminTransaction<T>(adminUserId: string, work: (client: PoolClient) => Promise<T>): Promise<T> {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query("SELECT set_config('app.auth_user_id',$1,true)", [adminUserId]);
+      await client.query("SELECT set_config('app.tenant_id','',true)");
+      const allowed = await client.query("SELECT app.is_platform_admin() AS allowed");
+      if (!allowed.rows[0]?.allowed) throw new Error('Platform administrator access required');
+      const result = await work(client);
+      await client.query('COMMIT');
+      return result;
+    } catch (error) { await client.query('ROLLBACK'); throw error; }
+    finally { client.release(); }
+  }
   async onApplicationShutdown(): Promise<void> { await this.pool.end(); }
 }
 @Global()
