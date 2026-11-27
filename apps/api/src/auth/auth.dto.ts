@@ -7,3 +7,5 @@ export class RegisterDto {
 }
 export class LoginDto { @IsEmail() @MaxLength(254) email!: string; @IsString() @Length(12,128) password!: string; }
 export class RefreshDto { @IsString() @Length(40,200) refreshToken!: string; }
+export class VerifyEmailDto { @IsString() @Length(40,100) token!: string; }
+export class ResendVerificationDto { @IsEmail() @MaxLength(254) email!: string; }
