@@ -5,7 +5,7 @@ import { Request } from 'express';
 import { DatabaseService } from '../database/database.module';
 import { IS_PUBLIC_KEY } from './auth.constants';
 export type AuthPrincipal={userId:string;sessionId:string;tenantId:string;role:string};
-declare module 'express-serve-static-core'{interface Request{principal?:AuthPrincipal}}
+declare module 'express'{interface Request{principal?:AuthPrincipal}}
 @Injectable()
 export class JwtAuthGuard implements CanActivate{
  constructor(private readonly jwt:JwtService,private readonly reflector:Reflector,private readonly db:DatabaseService){}
