@@ -68,3 +68,26 @@ A response with `accepted: 2` means the URLs entered the Index Assist processing
 - The seeded Free plan allows 500 accepted URLs/day; Growth 25,000/day; Scale 1,000,000/day. Pricing and entitlement changes must be managed through the billing/admin system before commercial launch.
 - The public registration flow currently lacks email verification, MFA and account recovery. Keep public signup closed until those modules and their delivery providers are completed and tested.
 - Search Console and Bing integrations are not yet connected to this API.
+
+
+## Projects
+
+- `GET /api/v1/projects` — list projects in the authenticated workspace, including URL and discovered-backlink counts.
+- `POST /api/v1/projects` — create a project, subject to the active plan's project limit.
+
+```json
+{
+  "name": "Example domain",
+  "targetUrl": "https://example.com/"
+}
+```
+
+- `PATCH /api/v1/projects/{projectId}` — update the project name or target URL. The target URL is the destination that backlink verification compares against.
+
+## Backlink verification
+
+`GET /api/v1/projects/{projectId}/backlinks?page=1&limit=50`
+
+Returns discovered source pages, target URLs, anchor text, rel attributes, link classification, first/last observation timestamps and occurrence counts. The Go crawler schedules HTML analysis after a successful HTML health check, fetches a bounded response, revalidates robots policy on redirects and compares resolved anchor destinations to the configured project target URL.
+
+A discovered backlink is an observed HTML link, not proof that a search engine has crawled or indexed the source page. Search-engine index status is reported separately and requires an authorized Google Search Console or Bing Webmaster connection.

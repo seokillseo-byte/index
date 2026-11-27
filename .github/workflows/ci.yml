@@ -27,7 +27,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.23'
-      - run: cd services/crawler && go mod download
+      - run: cd services/crawler && go mod tidy
       - run: cd services/crawler && go test -race ./...
       - run: cd services/crawler && go vet ./...
   database:
