@@ -1,2 +1,4 @@
-export const metadata = { title: 'Index Assist Workspace', robots: { index: false, follow: false } };
-export default function CustomerLayout({children}:{children:React.ReactNode}){return <html lang="en"><body style={{margin:0,background:'#0b1220',color:'#edf2ff',fontFamily:'system-ui'}}>{children}</body></html>}
+import type {Metadata} from 'next';
+import './globals.css';
+export const metadata:Metadata={title:'Index Assist · Workspace',description:'Backlink indexing SaaS workspace'};
+export default function CustomerLayout({children}:{children:React.ReactNode}){return <html lang="vi"><body>{children}</body></html>}
