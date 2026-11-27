@@ -70,7 +70,7 @@ export class AdminService{
    const table=type==='page'?'cms_pages':'cms_posts';
    let r;
    if(input.id){
-    r=await client.query("UPDATE app."+table+" SET title=$2,slug=$3,body=$4::jsonb,status=$5,published_at=CASE WHEN $5='published' THEN COALESCE(published_at,now()) ELSE published_at END,updated_at=now(),"+(type==='page'?'updated_by=$6':'author_id=COALESCE(author_id,$6)') WHERE id=$1 RETURNING *",[input.id,input.title,input.slug,JSON.stringify(input.body),input.status||'draft',actorId]);
+    r=await client.query("UPDATE app."+table+" SET title=$2,slug=$3,body=$4::jsonb,status=$5,published_at=CASE WHEN $5='published' THEN COALESCE(published_at,now()) ELSE NULL END,updated_at=now(),"+(type==='page'?'updated_by=$6':'author_id=COALESCE(author_id,$6)') WHERE id=$1 RETURNING *",[input.id,input.title,input.slug,JSON.stringify(input.body),input.status||'draft',actorId]);
     if(!r.rowCount)throw new NotFoundException('CMS item not found');
    }else{
     if(type==='page')r=await client.query("INSERT INTO app.cms_pages(title,slug,body,status,published_at,created_by,updated_by) VALUES($1,$2,$3::jsonb,$4,CASE WHEN $4='published' THEN now() ELSE NULL END,$5,$5) RETURNING *",[input.title,input.slug,JSON.stringify(input.body),input.status||'draft',actorId]);
