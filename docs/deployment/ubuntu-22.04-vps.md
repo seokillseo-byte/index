@@ -5,12 +5,12 @@
 - Docker Engine and Docker Compose plugin.
 - A firewall allowing inbound 80/443 only; database, Redis, Kafka, ClickHouse and MinIO ports stay on loopback/internal Docker networks.
 - DNS A/AAAA records for `index-assist.io.vn` pointed to the VPS.
-- At least 16 GB RAM for a single-node all-in-one evaluation deployment; 32-64 GB RAM and 16-32 vCPU are a more realistic starting point for sustained high-throughput ingestion. A single VPS is not high availability.
+- Target deployment: 32 vCPU, 64 GB RAM, 2 TB NVMe and 1 Gbps network. This is a capacity target for benchmark and tuning, not a verified one-million-URL/day throughput result. A single VPS is not high availability.
 
 ## First boot
 
-1. Clone the repository and copy `.env.example` to `.env`, `.env.api.example` to `.env.api`, `.env.worker.example` to `.env.worker`, and `.env.crawler.example` to `.env.crawler`.
-2. Generate independent secrets, e.g. `openssl rand -hex 32`, for the PostgreSQL bootstrap password, runtime DB password, relay DB password, Redis, ClickHouse, MinIO and JWT signing secret. Set the same runtime password in `APP_DB_PASSWORD` and the password portion of `DATABASE_URL`.
+1. Clone the repository and copy `.env.example` to `.env`, `.env.api.example` to `.env.api`, `.env.worker.example` to `.env.worker`, and `.env.crawler.example` to `.env.crawler`, and `.env.provider-worker.example` to `.env.provider-worker`.
+2. Generate independent secrets, e.g. `openssl rand -hex 32`, for the PostgreSQL bootstrap password, runtime DB password, relay DB password, Redis, ClickHouse, MinIO, JWT signing secret, OAUTH_STATE_SECRET and INTEGRATION_ENCRYPTION_KEY. Use a separate 32-byte hex encryption key and share that exact value between `.env.api` and `.env.provider-worker`. Set the same runtime password in `APP_DB_PASSWORD` and the password portion of `DATABASE_URL` and `PROVIDER_DATABASE_URL`.
 3. Keep `MIGRATION_DATABASE_URL` only in the host-side `.env` file; the API and crawler env files contain only `index_assist_runtime`, while the relay env file contains only `index_assist_relay`, and the provider-worker env file uses the restricted `index_assist_runtime` role. Do not mount the root `.env` into app containers.
 4. Start the infrastructure from the repository root:
 
@@ -24,7 +24,7 @@
    bash infra/postgres/migrate.sh
    ```
 
-6. Build and start the API and outbox relay:
+6. Build and start the API, crawler, outbox relay and provider worker:
 
    ```bash
    docker compose --env-file .env -f infra/docker/compose.infrastructure.yml -f infra/docker/compose.workloads.yml up -d --build
