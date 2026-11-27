@@ -4,7 +4,7 @@ VALUES('integration.manage','Connect and manage search-engine integrations')
 ON CONFLICT(code) DO NOTHING;
 INSERT INTO app.role_permissions(role_id,permission_id)
 SELECT r.id,p.id FROM app.roles r CROSS JOIN app.permissions p
-WHERE r.code='manager' AND p.code='integration.manage'
+WHERE r.code IN ('owner','admin','manager') AND p.code='integration.manage'
 ON CONFLICT DO NOTHING;
 
 CREATE TABLE app.integration_oauth_states (
