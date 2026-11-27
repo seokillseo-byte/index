@@ -306,6 +306,19 @@ export class IntegrationsService{
    return {provider:'bing_webmaster',action:'submit_url',queued,duplicate:urls.length-queued,quota:{dailyLimit:quota.daily,dailyUsed:daily+queued,monthlyLimit:quota.monthly,monthlyUsed:monthly+queued},note:'Provider acceptance does not mean the URL is indexed.'};
   },principal.tenantId);
  }
+
+ async listProviderJobs(principal:Principal,connectionId:string,projectId:string,page=1,limit=50){
+  return this.db.withTransaction(async client=>{
+   const permission=await client.query("SELECT 1 FROM app.tenant_members tm JOIN app.role_permissions rp ON rp.role_id=tm.role_id JOIN app.permissions p ON p.id=rp.permission_id WHERE tm.tenant_id=$1 AND tm.user_id=$2 AND tm.status='active' AND p.code='integration.manage'",[principal.tenantId,principal.userId]);
+   if(!permission.rowCount)throw new ForbiddenException('Integration management permission required');
+   const project=await client.query("SELECT 1 FROM app.projects WHERE tenant_id=$1 AND id=$2",[principal.tenantId,projectId]);
+   if(!project.rowCount)throw new NotFoundException('Project not found');
+   const offset=(page-1)*limit;
+   const rows=await client.query("SELECT id,provider,action,status,url,site_url,attempt_count,response_code,provider_request_id,provider_result,last_error,submitted_at,completed_at,created_at,updated_at FROM app.provider_jobs WHERE tenant_id=$1 AND connection_id=$2 AND project_id=$3 ORDER BY created_at DESC LIMIT $4 OFFSET $5",[principal.tenantId,connectionId,projectId,limit,offset]);
+   const count=await client.query("SELECT count(*)::bigint total FROM app.provider_jobs WHERE tenant_id=$1 AND connection_id=$2 AND project_id=$3",[principal.tenantId,connectionId,projectId]);
+   return {connectionId,projectId,page,limit,total:Number(count.rows[0].total),items:rows.rows};
+  },principal.tenantId);
+ }
  async list(principal:Principal){
   return this.db.withTransaction(async client=>{
    const permission=await client.query("SELECT 1 FROM app.tenant_members tm JOIN app.role_permissions rp ON rp.role_id=tm.role_id JOIN app.permissions p ON p.id=rp.permission_id WHERE tm.tenant_id=$1 AND tm.user_id=$2 AND tm.status='active' AND p.code='integration.manage'",[principal.tenantId,principal.userId]);
