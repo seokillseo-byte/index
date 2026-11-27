@@ -23,7 +23,7 @@ Updated: 2026-11-28
 - MFA recovery codes are one-time and stored as SHA-256 hashes.
 - Password recovery uses single-use 30-minute tokens and revokes existing sessions after reset.
 - Server-side session listing, individual revocation and revoke-all controls are implemented.
-- MFA login challenges now persist failed-attempt counts and are invalidated after five incorrect TOTP codes.
+- MFA login challenges now persist failed-attempt counts and are invalidated after five incorrect TOTP or recovery-code attempts.
 - Password-reset success responses no longer return internal user IDs.
 - Added migration `0019_mfa_challenge_attempt_limits.sql`.
 
