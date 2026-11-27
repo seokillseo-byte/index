@@ -1,3 +1,5 @@
-import type { Metadata } from 'next';
-export const metadata: Metadata = { title: 'Blog', description: 'SEO engineering, backlink analysis, and search visibility guides.' };
-export default function BlogPage(){return <section className="content-page"><div className="eyebrow">Knowledge base</div><h1>SEO research and practical guides.</h1><p className="muted">The CMS-backed article listing will be connected to the Admin publishing module. No placeholder articles are published as factual research.</p></section>}
+import Link from 'next/link';
+import {PublicSiteShell} from '../public-site-shell';
+import {cmsApi} from '../../lib/public-api';
+export const metadata={title:'Blog SEO',description:'Kiến thức backlink, crawl và index.'};
+export default async function Blog(){const data=await cmsApi('posts?page=1&limit=30');return <PublicSiteShell><div className="eyebrow">RESOURCES</div><h1 className="page-title">Blog & SEO resources</h1><p className="section-intro">Hướng dẫn về backlink, crawlability, URL inspection và chiến lược index bền vững.</p><div className="blog-grid">{(data?.items||[]).map((p:any)=><article className="blog-card" key={p.id}><div className="meta">{p.published_at?new Date(p.published_at).toLocaleDateString('vi-VN'):''}</div><h2><Link href={'/blog/'+p.slug}>{p.title}</Link></h2><p>{p.excerpt||p.seo_title||'Đọc thêm bài viết.'}</p><Link href={'/blog/'+p.slug}>Đọc bài viết →</Link></article>)}</div>{!data?.items?.length&&<p className="muted">Bài viết sẽ được cập nhật trong thời gian tới.</p>}</PublicSiteShell>;}
