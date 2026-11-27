@@ -1,0 +1,2 @@
+import {AdminDataPage} from '../../admin-data-page';
+export default function Page(){return <AdminDataPage title="Chiến dịch quảng cáo" description="Duyệt chiến dịch, theo dõi impressions và clicks." endpoint="ads/campaigns" columns={['name','advertiser_name','status','budget_minor','currency','creative_count','impressions','clicks','starts_at','ends_at']}/>;}
