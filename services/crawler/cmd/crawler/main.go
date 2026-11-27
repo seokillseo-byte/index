@@ -10,6 +10,7 @@ import (
  "log"
   "net/http"
  "net/url"
+ "net"
  "os"
  "os/signal"
  "strings"
@@ -20,6 +21,7 @@ import (
   "github.com/jackc/pgx/v5/pgxpool"
  "github.com/segmentio/kafka-go"
  "github.com/temoto/robotstxt"
+ "golang.org/x/net/html"
  "github.com/seokillseo-byte/index/services/crawler/internal/safefetch"
 )
 
@@ -28,7 +30,7 @@ type envelope struct {
  Type string `json:"type"`
  Payload struct { TenantID string `json:"tenantId"`; ProjectID string `json:"projectId"` } `json:"payload"`
 }
-type task struct { ID string; URLID string; URL string; Attempts int }
+type task struct { ID string; URLID string; URL string; Attempts int; Type string }
 var hostLocks [256]sync.Mutex
 
 type fetchResult struct { StatusCode int `json:"statusCode"`; FinalURL string `json:"finalUrl"`; ContentType string `json:"contentType"`; Server string `json:"server"`; RobotsAllowed bool `json:"robotsAllowed"`; Redirects int `json:"redirects"`; Error string `json:"error,omitempty"`; Permanent bool `json:"permanent,omitempty"` }
@@ -94,8 +96,12 @@ func processBatch(ctx context.Context,pool *pgxpool.Pool,tenantID,projectID stri
     lock:=hostMutex(parsedURL.Hostname())
     lock.Lock()
     defer lock.Unlock()
-    result:=inspect(ctx,item.URL)
-    if err:=saveResult(ctx,pool,tenantID,projectID,workerID,item,result);err!=nil{errCh<-err}
+    var taskErr error
+    if item.Type=="html_analysis" { taskErr=analyzeAndSaveHTML(ctx,pool,tenantID,projectID,workerID,item) } else {
+     result:=inspect(ctx,item.URL)
+     taskErr=saveResult(ctx,pool,tenantID,projectID,workerID,item,result)
+    }
+    if taskErr!=nil{errCh<-taskErr}
    }()
   }
   wg.Wait()
@@ -107,10 +113,10 @@ func processBatch(ctx context.Context,pool *pgxpool.Pool,tenantID,projectID stri
 func claimTasks(ctx context.Context,pool *pgxpool.Pool,tenantID,projectID,workerID string,limit int)([]task,error){
  tx,err:=pool.Begin(ctx);if err!=nil{return nil,err};defer tx.Rollback(ctx)
  if _,err=tx.Exec(ctx,"SELECT set_config('app.tenant_id',$1,true)",tenantID);err!=nil{return nil,err}
- if _,err=tx.Exec(ctx,"UPDATE app.url_processing_tasks t SET status='dead_letter',lease_owner=NULL,lease_expires_at=NULL,last_error=COALESCE(last_error,'lease expired at maximum attempts'),updated_at=now() FROM app.urls u WHERE t.tenant_id=$1 AND u.tenant_id=t.tenant_id AND u.id=t.url_id AND u.project_id=$2 AND t.task_type='http_check' AND t.status='leased' AND t.lease_expires_at<now() AND t.attempt_count>=t.max_attempts",tenantID,projectID);err!=nil{return nil,err}
+ if _,err=tx.Exec(ctx,"UPDATE app.url_processing_tasks t SET status='dead_letter',lease_owner=NULL,lease_expires_at=NULL,last_error=COALESCE(last_error,'lease expired at maximum attempts'),updated_at=now() FROM app.urls u WHERE t.tenant_id=$1 AND u.tenant_id=t.tenant_id AND u.id=t.url_id AND u.project_id=$2 AND t.task_type IN ('http_check','html_analysis') AND t.status='leased' AND t.lease_expires_at<now() AND t.attempt_count>=t.max_attempts",tenantID,projectID);err!=nil{return nil,err}
  rows,err:=tx.Query(ctx,`WITH due AS (
   SELECT t.id FROM app.url_processing_tasks t JOIN app.urls u ON u.tenant_id=t.tenant_id AND u.id=t.url_id
-  WHERE t.tenant_id=$1 AND u.project_id=$2 AND t.task_type='http_check'
+  WHERE t.tenant_id=$1 AND u.project_id=$2 AND t.task_type IN ('http_check','html_analysis')
     AND (t.status IN ('pending','retrying') OR (t.status='leased' AND (t.lease_expires_at<now() OR t.lease_owner=$3)))
     AND t.scheduled_at<=now() AND t.attempt_count<t.max_attempts
   ORDER BY t.priority DESC,t.scheduled_at
@@ -120,11 +126,11 @@ func claimTasks(ctx context.Context,pool *pgxpool.Pool,tenantID,projectID,worker
   lease_expires_at=now()+interval '30 minutes',attempt_count=CASE WHEN t.status='leased' AND t.lease_owner=$3 AND t.lease_expires_at>now() THEN t.attempt_count ELSE t.attempt_count+1 END,updated_at=now()
  FROM due d,app.urls u
  WHERE t.id=d.id AND u.tenant_id=t.tenant_id AND u.id=t.url_id AND u.project_id=$2
- RETURNING t.id::text,t.url_id::text,u.normalized_url,t.attempt_count`,tenantID,projectID,workerID,limit)
+ RETURNING t.id::text,t.url_id::text,u.normalized_url,t.attempt_count,t.task_type`,tenantID,projectID,workerID,limit)
  if err!=nil{return nil,err}
  defer rows.Close()
  var out []task
- for rows.Next(){var t task;if err:=rows.Scan(&t.ID,&t.URLID,&t.URL,&t.Attempts);err!=nil{return nil,err};out=append(out,t)}
+ for rows.Next(){var t task;if err:=rows.Scan(&t.ID,&t.URLID,&t.URL,&t.Attempts,&t.Type);err!=nil{return nil,err};out=append(out,t)}
  if err:=rows.Err();err!=nil{return nil,err}
  if len(out)==0{
   var activeLease bool
