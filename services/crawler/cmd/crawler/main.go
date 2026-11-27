@@ -18,6 +18,7 @@ import (
 
   "github.com/jackc/pgx/v5/pgxpool"
  "github.com/segmentio/kafka-go"
+ "github.com/temoto/robotstxt"
  "github.com/seokillseo-byte/index/services/crawler/internal/safefetch"
 )
 
@@ -69,7 +70,8 @@ func main() {
 }
 
 func processBatch(ctx context.Context,pool *pgxpool.Pool,tenantID,projectID string) error {
- workerID := env("WORKER_ID", "crawler-"+fmt.Sprint(os.Getpid()))
+ host,_:=os.Hostname()
+ workerID := env("WORKER_ID", "crawler-"+host+"-"+fmt.Sprint(os.Getpid()))
  for {
   tasks,err:=claimTasks(ctx,pool,tenantID,projectID,workerID,100)
   if err!=nil{return err}
@@ -106,7 +108,7 @@ func claimTasks(ctx context.Context,pool *pgxpool.Pool,tenantID,projectID,worker
   LIMIT $4 FOR UPDATE OF t SKIP LOCKED
  )
  UPDATE app.url_processing_tasks t SET status='leased',lease_owner=$3,
-  lease_expires_at=now()+interval '2 minutes',attempt_count=t.attempt_count+1,updated_at=now()
+  lease_expires_at=now()+interval '10 minutes',attempt_count=t.attempt_count+1,updated_at=now()
  FROM due d,app.urls u
  WHERE t.id=d.id AND u.tenant_id=t.tenant_id AND u.id=t.url_id AND u.project_id=$2
  RETURNING t.id::text,t.url_id::text,u.normalized_url,t.attempt_count`,tenantID,projectID,workerID,limit)
@@ -175,21 +177,10 @@ func robotsAllows(ctx context.Context,client *http.Client,target *url.URL)(bool,
 }
 
 func parseRobots(body,path string)bool{
- lines:=strings.Split(body,"\n");active:=false;rules:=make([][2]string,0)
- for _,line:=range lines{
-  line=strings.TrimSpace(strings.SplitN(line,"#",2)[0]);if line==""{continue}
-  parts:=strings.SplitN(line,":",2);if len(parts)!=2{continue}
-  key,val:=strings.ToLower(strings.TrimSpace(parts[0])),strings.TrimSpace(parts[1])
-  if key=="user-agent"{
-   agent:=strings.ToLower(val)
-   if agent=="*"||strings.Contains(agent,"indexassistbot"){active=true}else{active=false}
-   continue
-  }
-  if active&&(key=="disallow"||key=="allow")&&val!=""{rules=append(rules,[2]string{key,val})}
- }
- bestLen:=-1;allowed:=true
- for _,rule:=range rules{pattern:=rule[1];if strings.HasPrefix(path,pattern)&&len(pattern)>bestLen{bestLen=len(pattern);allowed=rule[0]=="allow"}}
- return allowed
+ data,err:=robotstxt.FromBytes([]byte(body))
+ if err!=nil{return false}
+ group:=data.FindGroup("IndexAssistBot")
+ return group.Test(path)
 }
 
 func saveResult(ctx context.Context,pool *pgxpool.Pool,tenantID,projectID,workerID string,item task,result fetchResult)error{
