@@ -12,6 +12,9 @@
 - [x] Password recovery with single-use 30-minute reset tokens.
 - [x] Password reset revokes existing sessions.
 - [x] Server-side session listing and revocation endpoints.
+- [x] Rate limits applied to MFA login, recovery, enrollment verification and disable endpoints.
+- [x] Corrected Unicode workspace-name and six-digit TOTP validation regexes.
+
 - [ ] Authentication CI/typecheck/test validation for the current branch head.
 - [ ] Focused authentication security tests (TOTP replay/brute force, recovery-code replay, token replay, tenant/session isolation).
 
