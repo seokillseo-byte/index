@@ -9,10 +9,10 @@
 
 ## First boot
 
-1. Clone the repository and copy `.env.example` to `.env`, `.env.api.example` to `.env.api`, `.env.worker.example` to `.env.worker`, `.env.crawler.example` to `.env.crawler`, and `.env.provider-worker.example` to `.env.provider-worker`.
+1. Clone the repository and copy `.env.example` to `.env`, `.env.api.example` to `.env.api`, `.env.worker.example` to `.env.worker`, `.env.crawler.example` to `.env.crawler`, and `.env.provider-worker.example` to `.env.provider-worker`, and `.env.proxy.example` to `.env.proxy`.
 2. Generate independent secrets, e.g. `openssl rand -hex 32`, for the PostgreSQL bootstrap password, runtime DB password, relay DB password, Redis, ClickHouse, MinIO, JWT signing secret, OAUTH_STATE_SECRET and INTEGRATION_ENCRYPTION_KEY. Use a separate 32-byte hex encryption key and share that exact value between `.env.api` and `.env.provider-worker`. Set the same runtime password in `APP_DB_PASSWORD` and the password portion of `DATABASE_URL` and `PROVIDER_DATABASE_URL`.
 3. Keep `MIGRATION_DATABASE_URL` only in the host-side `.env` file; the API and crawler env files contain only `index_assist_runtime`, while the relay env file contains only `index_assist_relay`, and the provider-worker env file uses the restricted `index_assist_runtime` role. Do not mount the root `.env` into app containers.
-4. Register OAuth clients with Google and Microsoft/Bing and allow the exact callback URLs configured in `.env.api.example`: `/api/v1/integrations/google_search_console/callback` and `/api/v1/integrations/bing_webmaster/callback`. Use the production HTTPS origin; OAuth connections cannot be tested until DNS and TLS are live.
+4. Point DNS A/AAAA records for `index-assist.io.vn`, `www`, `app`, `admin` and `api` to the VPS. Set `ADMIN_ALLOWED_IPS` in `.env.proxy` to space-separated trusted operator IPs/CIDRs; Caddy fails closed if the allowlist is not configured. Register Google and Microsoft/Bing OAuth clients with the exact HTTPS callback URLs configured in `.env.api.example`: `/api/v1/integrations/google_search_console/callback` and `/api/v1/integrations/bing_webmaster/callback`.
 5. Start the infrastructure from the repository root:
 
    ```bash
@@ -46,3 +46,6 @@ The provider worker also requires the same INTEGRATION_ENCRYPTION_KEY and Google
 
 
 After registering the first trusted operator account, set PLATFORM_ADMIN_EMAIL and PLATFORM_ADMIN_ROLE in the host-side .env file and run `bash infra/postgres/bootstrap-platform-admin.sh` using the migration-owner connection. See docs/admin/platform-administration.md. Do not expose the admin hostname publicly until MFA/WebAuthn and account recovery controls are enabled.
+
+
+Caddy terminates HTTPS and routes the public site to index-assist.io.vn, the SaaS dashboard to app.index-assist.io.vn, the restricted admin console to admin.index-assist.io.vn, and the API to api.index-assist.io.vn. The admin host is IP-allowlisted at the proxy and must remain restricted until MFA/WebAuthn and account recovery are delivered. Web, customer and admin containers bind only to loopback host ports; do not expose their ports directly to the internet.
