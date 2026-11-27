@@ -276,7 +276,6 @@ func analyzeAndSaveHTML(ctx context.Context,pool *pgxpool.Pool,tenantID,projectI
  if err=tx.Commit(ctx);err!=nil{return err}
  targetCanonical,err:=canonicalURL(targetURL);if err!=nil{return err}
  parsed,err:=safefetch.ValidateURL(item.URL);if err!=nil{return err}
- allowed,err:=robotsAllows(ctx,safefetch.SafeClient(20*time.Second),parsed);if err!=nil{return err};if !allowed{return markHTMLTask(ctx,pool,tenantID,projectID,workerID,item,"completed","disallowed by robots.txt")}
  client:=safefetch.SafeClient(20*time.Second);current:=parsed
  var body []byte;finalURL:=item.URL;statusCode:=0
  for hop:=0;hop<=5;hop++{
