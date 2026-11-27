@@ -224,13 +224,13 @@ func saveResult(ctx context.Context,pool *pgxpool.Pool,tenantID,projectID,worker
  if !owned{return tx.Commit(ctx)}
  payload,_:=json.Marshal(result)
  if _,err=tx.Exec(ctx,"INSERT INTO app.url_observations(tenant_id,url_id,kind,source,result,confidence) VALUES($1,$2,'http','index-assist-crawler',$3::jsonb,'observed')",tenantID,item.URLID,string(payload));err!=nil{return err}
- status:="eligible";taskStatus:="completed";retry:=false
+ status:="eligible";taskStatus:="completed";retry:=false;retryDelay:=0
  if result.Permanent||(!result.RobotsAllowed&&result.Error=="disallowed by robots.txt"){status="blocked"}
  if result.StatusCode>=400&&result.StatusCode<500&&result.StatusCode!=429{status="blocked"}
  if !result.Permanent&&result.Error!=""&&result.Error!="disallowed by robots.txt"||result.StatusCode==429||result.StatusCode>=500||result.StatusCode==0{status="error";retry=true}
  if retry{
   if item.Attempts>=8{taskStatus="dead_letter"}else{taskStatus="retrying"}
-  retryDelay:=minInt(3600,1<<minInt(item.Attempts,10))
+  retryDelay=minInt(3600,1<<minInt(item.Attempts,10))
   if _,err=tx.Exec(ctx,"UPDATE app.url_processing_tasks SET status=$3,lease_owner=NULL,lease_expires_at=NULL,scheduled_at=now()+($4::text || ' seconds')::interval,last_error=$5,updated_at=now() WHERE id=$1 AND tenant_id=$2 AND lease_owner=$6",item.ID,tenantID,taskStatus,retryDelay,result.Error,workerID);err!=nil{return err}
  }else{
   if _,err=tx.Exec(ctx,"UPDATE app.url_processing_tasks SET status=$3,lease_owner=NULL,lease_expires_at=NULL,last_error=NULL,updated_at=now() WHERE id=$1 AND tenant_id=$2 AND lease_owner=$4",item.ID,tenantID,taskStatus,workerID);err!=nil{return err}
@@ -240,11 +240,11 @@ func saveResult(ctx context.Context,pool *pgxpool.Pool,tenantID,projectID,worker
   htmlKey:="html-analysis:"+item.URLID
   _,err=tx.Exec(ctx,"INSERT INTO app.url_processing_tasks(tenant_id,url_id,task_type,status,priority,idempotency_key) VALUES($1,$2,'html_analysis','pending',4,$3) ON CONFLICT(idempotency_key) DO NOTHING",tenantID,item.URLID,htmlKey)
   if err!=nil{return err}
-  _,err=tx.Exec(ctx,"INSERT INTO app.outbox_events(tenant_id,aggregate_type,aggregate_id,event_type,topic,partition_key,payload,idempotency_key) VALUES($1,'url_task',$2,'url.batch.accepted','url.ingestion',$3,$4::jsonb,$5) ON CONFLICT(idempotency_key) DO NOTHING",tenantID,item.URLID,tenantID+':'+projectID,string(mustJSON(map[string]string{"tenantId":tenantID,"projectId":projectID})),htmlKey)
+  _,err=tx.Exec(ctx,"INSERT INTO app.outbox_events(tenant_id,aggregate_type,aggregate_id,event_type,topic,partition_key,payload,idempotency_key) VALUES($1,'url_task',$2,'url.batch.accepted','url.ingestion',$3,$4::jsonb,$5) ON CONFLICT(idempotency_key) DO NOTHING",tenantID,item.URLID,tenantID+":"+projectID,string(mustJSON(map[string]string{"tenantId":tenantID,"projectId":projectID})),htmlKey)
   if err!=nil{return err}
  }
  if retry&&taskStatus=="retrying"{
-  _,err=tx.Exec(ctx,"INSERT INTO app.outbox_events(tenant_id,aggregate_type,aggregate_id,event_type,topic,partition_key,payload,idempotency_key,next_attempt_at) VALUES($1,'url_task',$2,'url.batch.accepted','url.ingestion',$3,$4::jsonb,$5,now()+(($6::text || ' seconds')::interval + interval '5 seconds')) ON CONFLICT(idempotency_key) DO NOTHING",tenantID,item.ID,tenantID+':'+projectID,string(mustJSON(map[string]string{"tenantId":tenantID,"projectId":projectID})),fmt.Sprintf("retry-task:%s:%d",item.ID,item.Attempts),retryDelay)
+  _,err=tx.Exec(ctx,"INSERT INTO app.outbox_events(tenant_id,aggregate_type,aggregate_id,event_type,topic,partition_key,payload,idempotency_key,next_attempt_at) VALUES($1,'url_task',$2,'url.batch.accepted','url.ingestion',$3,$4::jsonb,$5,now()+(($6::text || ' seconds')::interval + interval '5 seconds')) ON CONFLICT(idempotency_key) DO NOTHING",tenantID,item.ID,tenantID+":"+projectID,string(mustJSON(map[string]string{"tenantId":tenantID,"projectId":projectID})),fmt.Sprintf("retry-task:%s:%d",item.ID,item.Attempts),retryDelay)
   if err!=nil{return err}
  }
  return tx.Commit(ctx)
@@ -360,7 +360,7 @@ func markHTMLTask(ctx context.Context,pool *pgxpool.Pool,tenantID,projectID,work
  if err!=nil{return err}
  if status=="retrying"&&item.Attempts<8{
   delay:=minInt(3600,1<<minInt(item.Attempts,10))
-  _,err=tx.Exec(ctx,"INSERT INTO app.outbox_events(tenant_id,aggregate_type,aggregate_id,event_type,topic,partition_key,payload,idempotency_key,next_attempt_at) VALUES($1,'url_task',$2,'url.batch.accepted','url.ingestion',$3,$4::jsonb,$5,now()+(($6::text || ' seconds')::interval + interval '5 seconds')) ON CONFLICT(idempotency_key) DO NOTHING",tenantID,item.ID,tenantID+':'+projectID,string(mustJSON(map[string]string{"tenantId":tenantID,"projectId":projectID})),fmt.Sprintf("retry-html:%s:%d",item.ID,item.Attempts),delay)
+  _,err=tx.Exec(ctx,"INSERT INTO app.outbox_events(tenant_id,aggregate_type,aggregate_id,event_type,topic,partition_key,payload,idempotency_key,next_attempt_at) VALUES($1,'url_task',$2,'url.batch.accepted','url.ingestion',$3,$4::jsonb,$5,now()+(($6::text || ' seconds')::interval + interval '5 seconds')) ON CONFLICT(idempotency_key) DO NOTHING",tenantID,item.ID,tenantID+":"+projectID,string(mustJSON(map[string]string{"tenantId":tenantID,"projectId":projectID})),fmt.Sprintf("retry-html:%s:%d",item.ID,item.Attempts),delay)
   if err!=nil{return err}
  }
  return tx.Commit(ctx)
