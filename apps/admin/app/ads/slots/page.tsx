@@ -1,2 +1,2 @@
-import {AdminDataPage} from '../../admin-data-page';
-export default function Page(){return <AdminDataPage title="Vị trí quảng cáo" description="Quản lý inventory và bật/tắt từng placement." endpoint="ads/slots" columns={['code','name','surface','placement','allowed_formats','enabled']}/>;}
+import {AdminActionDataPage} from '../../admin-action-data-page';
+export default function Page(){return <AdminActionDataPage title="Vị trí quảng cáo" description="Quản lý inventory và bật/tắt từng placement." endpoint="ads/slots" columns={['code','name','surface','placement','allowed_formats','enabled']} actionPathPrefix="ads/slots" actions={[{label:'Bật',value:'enable',body:{enabled:true}},{label:'Tắt',value:'disable',body:{enabled:false}}]}/>;}
