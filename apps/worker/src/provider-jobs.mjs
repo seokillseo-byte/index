@@ -56,7 +56,7 @@ async function refreshAccessToken(tenantId,connectionId,provider,credential){
  return next;
 }
 async function claimBatch(payload){
- const limit=payload.provider==='bing_webmaster'?500:50;
+ const limit=payload.provider==='bing_webmaster'?500:10;
  return tenantTransaction(payload.tenantId,async client=>{
   const result=await client.query(
    "WITH due AS (SELECT id FROM app.provider_jobs WHERE tenant_id=$1 AND project_id=$2 AND connection_id=$3 AND provider=$4 AND ((status IN ('queued','retrying') AND scheduled_at<=now()) OR (status='leased' AND lease_expires_at<now())) ORDER BY created_at LIMIT $5 FOR UPDATE SKIP LOCKED) UPDATE app.provider_jobs j SET status='leased',lease_owner=$6,lease_expires_at=now()+interval '10 minutes',attempt_count=j.attempt_count+1,updated_at=now() FROM due WHERE j.tenant_id=$1 AND j.id=due.id RETURNING j.id,j.url,j.site_url,j.action,j.attempt_count,j.max_attempts",
@@ -101,7 +101,7 @@ async function processGoogle(payload,jobs,credential){
     await client.query("UPDATE app.provider_jobs SET status='completed',response_code=$4,provider_result=$5::jsonb,last_error=NULL,lease_owner=NULL,lease_expires_at=NULL,completed_at=now(),updated_at=now() WHERE tenant_id=$1 AND id=$2 AND lease_owner=$3",[payload.tenantId,job.id,workerId,response.status,JSON.stringify(result)]);
     await client.query("INSERT INTO app.url_observations(tenant_id,url_id,kind,source,result,confidence) SELECT $1,u.id,'index','google-search-console-url-inspection',$4::jsonb,'verified' FROM app.urls u WHERE u.tenant_id=$1 AND u.project_id=$2 AND u.normalized_url=$3",[payload.tenantId,payload.projectId,job.url,JSON.stringify(result)]);
    });
-  }catch(error){await scheduleRetry(payload.tenantId,payload,job,error,false===false);}
+  }catch(error){await scheduleRetry(payload.tenantId,payload,job,error,true);}
  }
 }
 async function processBing(payload,jobs,credential){
