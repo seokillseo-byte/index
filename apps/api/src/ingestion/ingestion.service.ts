@@ -34,12 +34,13 @@ export class IngestionService{
    ].join(' ');
    const inserted=await client.query<{id:string}>(sql,[principal.tenantId,input.projectId,items.map(x=>x.url),items.map(x=>x.hash),items.map(x=>x.hostname),input.tier]);
    const accepted=inserted.rowCount??0,duplicates=valid-accepted;
-   const quota=await client.query<{daily_url_quota:string;used:string}>(\"SELECT p.daily_url_quota::text,COALESCE(u.accepted_urls,0)::text used FROM app.subscriptions s JOIN app.plans p ON p.id=s.plan_id LEFT JOIN app.tenant_usage_daily u ON u.tenant_id=s.tenant_id AND u.usage_date=current_date WHERE s.tenant_id=$1 AND s.status IN ('active','trialing') AND s.current_period_end>now() ORDER BY s.created_at DESC LIMIT 1\",[principal.tenantId]);
+   const quota=await client.query<{daily_url_quota:string}>("SELECT p.daily_url_quota::text FROM app.subscriptions s JOIN app.plans p ON p.id=s.plan_id WHERE s.tenant_id=$1 AND s.status IN ('active','trialing') AND s.current_period_end>now() ORDER BY s.created_at DESC LIMIT 1",[principal.tenantId]);
    if(!quota.rows[0])throw new ForbiddenException('No active subscription for this workspace');
-   if(Number(quota.rows[0].used)+accepted>Number(quota.rows[0].daily_url_quota))throw new TooManyRequestsException({message:'Daily URL quota exceeded',dailyLimit:Number(quota.rows[0].daily_url_quota),usedToday:Number(quota.rows[0].used)});
+   const dailyLimit=Number(quota.rows[0].daily_url_quota);
+   const usage=await client.query("INSERT INTO app.tenant_usage_daily(tenant_id,usage_date,accepted_urls) SELECT $1,current_date,$2 WHERE $2 <= $3 ON CONFLICT(tenant_id,usage_date) DO UPDATE SET accepted_urls=app.tenant_usage_daily.accepted_urls+EXCLUDED.accepted_urls,updated_at=now() WHERE app.tenant_usage_daily.accepted_urls+EXCLUDED.accepted_urls <= $3 RETURNING accepted_urls",[principal.tenantId,accepted,dailyLimit]);
+   if(!usage.rowCount)throw new TooManyRequestsException({message:'Daily URL quota exceeded',dailyLimit});
    await client.query("UPDATE app.ingestion_batches SET accepted_count=$2,duplicate_count=$3,rejected_count=$4,status=CASE WHEN $4>0 THEN 'partial' ELSE 'accepted' END WHERE id=$1",[batchId,accepted,duplicates,rejected]);
    await client.query("INSERT INTO app.outbox_events(tenant_id,aggregate_type,aggregate_id,event_type,topic,partition_key,payload,idempotency_key) VALUES($1,'ingestion_batch',$2,'url.batch.accepted','url.ingestion',$1::text,$3::jsonb,$4) ON CONFLICT(idempotency_key) DO NOTHING",[principal.tenantId,batchId,JSON.stringify({batchId,projectId:input.projectId,tier:input.tier,acceptedCount:accepted}),"url-batch:"+batchId]);
-   await client.query('INSERT INTO app.tenant_usage_daily(tenant_id,usage_date,accepted_urls) VALUES($1,current_date,$2) ON CONFLICT(tenant_id,usage_date) DO UPDATE SET accepted_urls=app.tenant_usage_daily.accepted_urls+EXCLUDED.accepted_urls,updated_at=now()',[principal.tenantId,accepted]);
    return {batchId,totalSubmitted:input.urls.length,accepted,duplicates,rejected,status:rejected?'partial':'accepted',replayed:false};
   },principal.tenantId);
  }
