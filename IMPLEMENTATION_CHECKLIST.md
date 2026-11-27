@@ -1,5 +1,17 @@
 # Index Assist — Implementation Checklist
 
+## Authentication hardening
+
+- [x] Email verification token storage added.
+- [x] Verification tokens are single-use and expire after 30 minutes.
+- [x] Registration sends transactional verification email and does not issue sessions before verification.
+- [x] Login and refresh require a verified email address.
+- [x] Verification and resend endpoints are rate-limited.
+- [ ] MFA.
+- [ ] Password recovery.
+- [ ] Device/session management.
+
+
 ## Provider Job Engine
 
 - [x] Provider job database model exists.
