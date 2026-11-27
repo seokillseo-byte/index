@@ -39,7 +39,7 @@ export class AuthService{
     await client.query("INSERT INTO app.tenant_members(tenant_id,user_id,role_id,status,joined_at) VALUES($1,$2,$3,'active',now())",[tenant.rows[0].id,user.rows[0].id,owner.rows[0].id]);
     const plan=await client.query<{id:string}>("SELECT id FROM app.plans WHERE code='free' AND is_active=true");
     if(!plan.rowCount)throw new Error('Default SaaS plan has not been seeded');
-    await client.query("INSERT INTO app.subscriptions(tenant_id,plan_id,status,billing_interval,current_period_start,current_period_end) VALUES($1,$2,'active','month',now(),now()+interval '100 years')",[tenant.rows[0].id,plan.rows[0].id]);
+    await client.query("INSERT INTO app.subscriptions(tenant_id,plan_id,status,billing_interval,current_period_start,current_period_end) VALUES($1,$2,'active','month',now(),'infinity'::timestamptz)",[tenant.rows[0].id,plan.rows[0].id]);
     const project=await client.query<{id:string}>("INSERT INTO app.projects(tenant_id,name,slug) VALUES($1,'My first project','my-first-project') RETURNING id",[tenant.rows[0].id]);
     return {userId:user.rows[0].id,tenantId:tenant.rows[0].id,tenantName:tenant.rows[0].name,projectId:project.rows[0].id};
    });
