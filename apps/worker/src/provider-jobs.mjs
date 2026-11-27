@@ -59,7 +59,7 @@ async function claimBatch(payload){
  const limit=payload.provider==='bing_webmaster'?500:10;
  return tenantTransaction(payload.tenantId,async client=>{
   const result=await client.query(
-   "WITH due AS (SELECT id FROM app.provider_jobs WHERE tenant_id=$1 AND project_id=$2 AND connection_id=$3 AND provider=$4 AND ((status IN ('queued','retrying') AND scheduled_at<=now()) OR (status='leased' AND lease_expires_at<now())) ORDER BY created_at LIMIT $5 FOR UPDATE SKIP LOCKED) UPDATE app.provider_jobs j SET status='leased',lease_owner=$6,lease_expires_at=now()+interval '10 minutes',attempt_count=j.attempt_count+1,updated_at=now() FROM due WHERE j.tenant_id=$1 AND j.id=due.id RETURNING j.id,j.url,j.site_url,j.action,j.attempt_count,j.max_attempts",
+   "WITH due AS (SELECT id FROM app.provider_jobs WHERE tenant_id=$1 AND project_id=$2 AND connection_id=$3 AND provider=$4 AND action=CASE WHEN $4='google_search_console' THEN 'inspect' ELSE 'submit_url' END AND ((status IN ('queued','retrying') AND scheduled_at<=now()) OR (status='leased' AND lease_expires_at<now())) ORDER BY created_at LIMIT $5 FOR UPDATE SKIP LOCKED) UPDATE app.provider_jobs j SET status='leased',lease_owner=$6,lease_expires_at=now()+interval '10 minutes',attempt_count=j.attempt_count+1,updated_at=now() FROM due WHERE j.tenant_id=$1 AND j.id=due.id RETURNING j.id,j.url,j.site_url,j.action,j.attempt_count,j.max_attempts",
    [payload.tenantId,payload.projectId,payload.connectionId,payload.provider,limit,workerId],
   );
   if(!result.rowCount){
@@ -127,6 +127,16 @@ async function processBing(payload,jobs,credential){
   });
  }catch(error){for(const job of jobs)await scheduleRetry(payload.tenantId,payload,job,error,true);}
 }
+
+async function scheduleNextBatch(payload){
+ await tenantTransaction(payload.tenantId,async client=>{
+  const pending=await client.query("SELECT 1 FROM app.provider_jobs WHERE tenant_id=$1 AND project_id=$2 AND connection_id=$3 AND provider=$4 AND action=CASE WHEN $4='google_search_console' THEN 'inspect' ELSE 'submit_url' END AND status IN ('queued','retrying') AND scheduled_at<=now() LIMIT 1",[payload.tenantId,payload.projectId,payload.connectionId,payload.provider]);
+  if(pending.rowCount){
+   const key='provider-next-batch:'+randomUUID();
+   await client.query("INSERT INTO app.outbox_events(tenant_id,aggregate_type,aggregate_id,event_type,topic,partition_key,payload,idempotency_key) VALUES($1,'provider_batch',$2,'provider.jobs.queued','provider.jobs',$3,$4::jsonb,$5) ON CONFLICT(idempotency_key) DO NOTHING",[payload.tenantId,payload.projectId,payload.tenantId+':'+payload.projectId+':'+payload.connectionId,JSON.stringify(payload),key]);
+  }
+ });
+}
 async function processEvent(event){
  const payload=event?.payload;
  if(!payload?.tenantId||!payload?.projectId||!payload?.connectionId||!['google_search_console','bing_webmaster'].includes(payload.provider))return;
@@ -136,6 +146,7 @@ async function processEvent(event){
  catch(error){for(const job of jobs)await scheduleRetry(payload.tenantId,payload,job,error,false);await markConnectionError(payload.tenantId,payload.connectionId,String(error));return;}
  if(payload.provider==='google_search_console')await processGoogle(payload,jobs,credential);
  else await processBing(payload,jobs,credential);
+ await scheduleNextBatch(payload);
 }
 async function shutdown(){stopping=true;try{await consumer.disconnect();}finally{await pool.end();}}
 process.on('SIGTERM',shutdown);process.on('SIGINT',shutdown);
