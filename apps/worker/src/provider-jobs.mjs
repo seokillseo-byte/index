@@ -157,10 +157,10 @@ async function reserveBingBatch(payload,jobs,credential){
  const usage=await tenantTransaction(payload.tenantId,async client=>{
   await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[payload.tenantId+':'+payload.connectionId+':'+payload.siteUrl+':'+dayStart.toISOString().slice(0,10)]);
   const counts=await client.query("SELECT count(*) FILTER(WHERE created_at >= $3 OR last_attempt_at >= $3)::int daily,count(*) FILTER(WHERE created_at >= $4 OR last_attempt_at >= $4)::int monthly FROM app.provider_jobs WHERE tenant_id=$1 AND connection_id=$2 AND site_url=$5 AND provider='bing_webmaster' AND action='submit_url' AND status<>'cancelled'",[payload.tenantId,payload.connectionId,dayStart,monthStart,payload.siteUrl]);
-  const extra=await client.query("SELECT count(*) FILTER(WHERE created_at < $3 AND (last_attempt_at IS NULL OR last_attempt_at < $4))::int daily,count(*) FILTER(WHERE created_at < $5 AND (last_attempt_at IS NULL OR last_attempt_at < $6))::int monthly FROM app.provider_jobs WHERE tenant_id=$1 AND id=ANY($2::uuid[])",[payload.tenantId,jobs.map(j=>j.id),dayStart,dayStart,monthStart,monthStart]);
-  return {daily:counts.rows[0].daily+extra.rows[0].daily,monthly:counts.rows[0].monthly+extra.rows[0].monthly};
+  const extra=await client.query("SELECT count(*) FILTER(WHERE created_at < $3 AND (last_attempt_at IS NULL OR last_attempt_at < $4))::int daily,count(*) FILTER(WHERE created_at < $5 AND (last_attempt_at IS NULL OR last_attempt_at < $6))::int monthly,count(*) FILTER(WHERE last_attempt_at >= $3)::int attempted_today FROM app.provider_jobs WHERE tenant_id=$1 AND id=ANY($2::uuid[])",[payload.tenantId,jobs.map(j=>j.id),dayStart,dayStart,monthStart,monthStart]);
+  return {daily:counts.rows[0].daily+extra.rows[0].daily,monthly:counts.rows[0].monthly+extra.rows[0].monthly,attemptedToday:extra.rows[0].attempted_today};
  });
- if(usage.daily>quota.daily||usage.monthly>quota.monthly){
+ if(usage.attemptedToday>0||usage.daily>quota.daily||usage.monthly>quota.monthly){
   const next=usage.monthly>quota.monthly?new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth()+1,1,0,5)):new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate()+1,0,5));
   await deferProviderJobs(payload,jobs,next,'Bing provider quota window exhausted; deferred to the next quota window');
   return false;
