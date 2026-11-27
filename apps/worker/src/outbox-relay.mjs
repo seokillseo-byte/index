@@ -1,4 +1,5 @@
 import pg from 'pg';
+import { randomUUID } from 'node:crypto';
 import { Kafka } from 'kafkajs';
 
 const { Pool } = pg;
@@ -19,13 +20,17 @@ let stopping = false;
 async function publishBatch() {
   const client = await pool.connect();
   let rows = [];
+  const leaseOwner = randomUUID();
   try {
     await client.query('BEGIN');
     const result = await client.query(
-      "SELECT id,topic,partition_key,event_type,payload,attempts FROM app.outbox_events WHERE published_at IS NULL AND next_attempt_at <= now() ORDER BY created_at FOR UPDATE SKIP LOCKED LIMIT $1",
+      "SELECT id,topic,partition_key,event_type,payload,attempts FROM app.outbox_events WHERE published_at IS NULL AND next_attempt_at <= now() AND (lease_expires_at IS NULL OR lease_expires_at < now()) ORDER BY created_at FOR UPDATE SKIP LOCKED LIMIT $1",
       [batchSize],
     );
     rows = result.rows;
+    if (rows.length) {
+      await client.query("UPDATE app.outbox_events SET lease_owner=$1,lease_expires_at=now()+interval '2 minutes' WHERE id=ANY($2::uuid[])", [leaseOwner, rows.map(row => row.id)]);
+    }
     await client.query('COMMIT');
   } catch (error) {
     await client.query('ROLLBACK');
@@ -46,13 +51,13 @@ async function publishBatch() {
           headers: { 'event-id': String(row.id), 'event-type': row.event_type },
         }],
       });
-      await pool.query('UPDATE app.outbox_events SET published_at=now(),last_error=NULL WHERE id=$1 AND published_at IS NULL', [row.id]);
+      await pool.query('UPDATE app.outbox_events SET published_at=now(),last_error=NULL,lease_owner=NULL,lease_expires_at=NULL WHERE id=$1 AND lease_owner=$2 AND published_at IS NULL', [row.id, leaseOwner]);
     } catch (error) {
       const attempts = Number(row.attempts) + 1;
       const delaySeconds = Math.min(3600, 2 ** Math.min(attempts, 10));
       await pool.query(
-        "UPDATE app.outbox_events SET attempts=$2,next_attempt_at=now()+($3::text || ' seconds')::interval,last_error=$4 WHERE id=$1 AND published_at IS NULL",
-        [row.id, attempts, delaySeconds, String(error).slice(0, 2000)],
+        "UPDATE app.outbox_events SET attempts=$2,next_attempt_at=now()+($3::text || ' seconds')::interval,last_error=$4,lease_owner=NULL,lease_expires_at=NULL WHERE id=$1 AND lease_owner=$5 AND published_at IS NULL",
+        [row.id, attempts, delaySeconds, String(error).slice(0, 2000), leaseOwner],
       );
     }
   }
