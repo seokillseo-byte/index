@@ -1,4 +1,4 @@
-import {BadRequestException,ForbiddenException,Injectable,TooManyRequestsException} from '@nestjs/common';
+import {BadRequestException,ForbiddenException,HttpException,HttpStatus,Injectable} from '@nestjs/common';
 import {createHash,randomUUID} from 'node:crypto';
 import {DatabaseService} from '../database/database.module';
 type Principal={userId:string;tenantId:string};
@@ -41,7 +41,7 @@ export class IngestionService{
    if(!quota.rows[0])throw new ForbiddenException('No active subscription for this workspace');
    const dailyLimit=Number(quota.rows[0].daily_url_quota);
    const usage=await client.query("INSERT INTO app.tenant_usage_daily(tenant_id,usage_date,accepted_urls) SELECT $1,current_date,$2 WHERE $2 <= $3 ON CONFLICT(tenant_id,usage_date) DO UPDATE SET accepted_urls=app.tenant_usage_daily.accepted_urls+EXCLUDED.accepted_urls,updated_at=now() WHERE app.tenant_usage_daily.accepted_urls+EXCLUDED.accepted_urls <= $3 RETURNING accepted_urls",[principal.tenantId,accepted,dailyLimit]);
-   if(!usage.rowCount)throw new TooManyRequestsException({message:'Daily URL quota exceeded',dailyLimit});
+   if(!usage.rowCount)throw new HttpException({message:'Daily URL quota exceeded',dailyLimit},HttpStatus.TOO_MANY_REQUESTS);
    await client.query("UPDATE app.ingestion_batches SET accepted_count=$2,duplicate_count=$3,rejected_count=$4,status=CASE WHEN $4>0 THEN 'partial' ELSE 'accepted' END WHERE id=$1",[batchId,accepted,duplicates,rejected]);
    await client.query("INSERT INTO app.outbox_events(tenant_id,aggregate_type,aggregate_id,event_type,topic,partition_key,payload,idempotency_key) VALUES($1,'ingestion_batch',$2,'url.batch.accepted','url.ingestion',$4,$3::jsonb,$5) ON CONFLICT(idempotency_key) DO NOTHING",[principal.tenantId,batchId,JSON.stringify({tenantId:principal.tenantId,batchId,projectId:input.projectId,tier:input.tier,acceptedCount:accepted}),principal.tenantId+':'+input.projectId+':'+batchId,"url-batch:"+batchId]);
    return {batchId,totalSubmitted:input.urls.length,accepted,duplicates,rejected,status:rejected?'partial':'accepted',replayed:false};
