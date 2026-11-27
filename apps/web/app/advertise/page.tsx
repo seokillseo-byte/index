@@ -1,7 +1,7 @@
 'use client';
 import {FormEvent,useState} from 'react';
 import {PublicSiteShell} from '../public-site-shell';
-const api=()=>process.env.NEXT_PUBLIC_API_URL||'https://api.index-assist.io.vn';
+const api=()=>process.env.NEXT_PUBLIC_API_URL||(process.env.NODE_ENV==='production'?'https://api.index-assist.io.vn':'http://localhost:4000');
 export default function Advertise(){
  const [companyName,setCompany]=useState(''),[contactName,setContact]=useState(''),[email,setEmail]=useState(''),[websiteUrl,setWebsite]=useState(''),[budget,setBudget]=useState(''),[message,setMessage]=useState(''),[error,setError]=useState(''),[success,setSuccess]=useState(false),[busy,setBusy]=useState(false);
  async function submit(e:FormEvent){e.preventDefault();setBusy(true);setError('');setSuccess(false);try{const r=await fetch(api()+'/api/v1/public/ads/advertiser-inquiries',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({companyName,contactName,email,websiteUrl:websiteUrl||undefined,requestedBudgetMinor:budget?Math.round(Number(budget)*100):undefined,message:message||undefined})});const d=await r.json();if(!r.ok)throw new Error(d.message||'Không thể gửi yêu cầu');setSuccess(true);setCompany('');setContact('');setEmail('');setWebsite('');setBudget('');setMessage('');}catch(e){setError(e instanceof Error?e.message:'Lỗi gửi yêu cầu');}finally{setBusy(false);}}
