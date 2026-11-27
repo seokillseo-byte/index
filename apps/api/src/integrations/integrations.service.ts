@@ -98,6 +98,104 @@ export class IntegrationsService{
   },tenantId);
   return {connected:true,provider,connectionId,projectId:pending.project_id,expiresAt:expiresAt.toISOString(),message:'Account connected. Select a verified provider property before enabling inspections or submissions.'};
  }
+
+ private decryptSecret(row:{ciphertext:Buffer;iv:Buffer;auth_tag:Buffer}):any{
+  const decipher=createDecipheriv('aes-256-gcm',this.encryptionKey(),row.iv);
+  decipher.setAuthTag(row.auth_tag);
+  const clear=Buffer.concat([decipher.update(row.ciphertext),decipher.final()]);
+  return JSON.parse(clear.toString('utf8'));
+ }
+ private async connectionCredential(principal:Principal,connectionId:string){
+  return this.db.withTransaction(async client=>{
+   const r=await client.query<{provider:Provider;status:string;id:string}>("SELECT id,provider,status FROM app.integration_connections WHERE tenant_id=$1 AND id=$2",[principal.tenantId,connectionId]);
+   if(!r.rowCount||r.rows[0].status!=='connected')throw new NotFoundException('Active integration connection not found');
+   const secret=await client.query<{ciphertext:Buffer;iv:Buffer;auth_tag:Buffer}>("SELECT ciphertext,iv,auth_tag FROM app.integration_secrets WHERE tenant_id=$1 AND connection_id=$2",[principal.tenantId,connectionId]);
+   if(!secret.rowCount)throw new NotFoundException('Integration credentials are unavailable');
+   return {provider:r.rows[0].provider,credential:this.decryptSecret(secret.rows[0])};
+  },principal.tenantId);
+ }
+ private async refreshCredential(principal:Principal,connectionId:string,provider:Provider,credential:any){
+  if(!credential.refreshToken)throw new ForbiddenException('Provider authorization expired; reconnect the account');
+  const cfg=this.providerConfig(provider);
+  const body=new URLSearchParams({client_id:cfg.clientId??'',client_secret:cfg.clientSecret??'',refresh_token:credential.refreshToken,grant_type:'refresh_token'});
+  const response=await fetch(cfg.tokenUrl,{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded','accept':'application/json'},body,signal:AbortSignal.timeout(15_000)});
+  const text=await response.text();let data:TokenResponse;
+  try{data=JSON.parse(text) as TokenResponse;}catch{throw new ServiceUnavailableException('Provider token refresh returned invalid JSON');}
+  if(!response.ok||!data.access_token)throw new ForbiddenException('Provider authorization expired; reconnect the account');
+  const next={...credential,accessToken:data.access_token,refreshToken:data.refresh_token??credential.refreshToken,expiresAt:new Date(Date.now()+Math.max(60,data.expires_in??3600)*1000).toISOString(),scope:data.scope??credential.scope};
+  const encrypted=this.encrypt(next);
+  await this.db.withTransaction(async client=>{
+   await client.query("UPDATE app.integration_secrets SET ciphertext=$3,iv=$4,auth_tag=$5,updated_at=now() WHERE tenant_id=$1 AND connection_id=$2",[principal.tenantId,connectionId,encrypted.ciphertext,encrypted.iv,encrypted.authTag]);
+  },principal.tenantId);
+  return next;
+ }
+ private async accessToken(principal:Principal,connectionId:string,provider:Provider,credential:any):Promise<string>{
+  const expires=Date.parse(credential.expiresAt??'1970-01-01T00:00:00Z');
+  if(!credential.accessToken||expires<Date.now()+5*60_000){
+   credential=await this.refreshCredential(principal,connectionId,provider,credential);
+  }
+  return credential.accessToken as string;
+ }
+ private async bingSites(credential:any){
+  const url=new URL('https://www.bing.com/webmaster/api.svc/json/GetUserSites');
+  const headers:Record<string,string>={'accept':'application/json'};
+  if(credential.apiKey)url.searchParams.set('apikey',credential.apiKey);
+  else headers.authorization='Bearer '+credential.accessToken;
+  const response=await fetch(url,{headers,signal:AbortSignal.timeout(15_000)});
+  const text=await response.text();let data:any;
+  try{data=JSON.parse(text);}catch{throw new ServiceUnavailableException('Bing Webmaster returned invalid JSON');}
+  if(!response.ok||data.ErrorCode||!Array.isArray(data.d))throw new ForbiddenException('Unable to list Bing Webmaster sites; verify the account credentials');
+  return data.d.map((site:any)=>({siteUrl:String(site.Url??''),verified:Boolean(site.IsVerified),permission:site.IsVerified?'verified':'unverified'})).filter((site:any)=>site.siteUrl);
+ }
+ async listSites(principal:Principal,connectionId:string){
+  const {provider,credential}=await this.connectionCredential(principal,connectionId);
+  if(provider==='bing_webmaster'){
+   if(!credential.apiKey)credential.accessToken=await this.accessToken(principal,connectionId,provider,credential);
+   return this.bingSites(credential);
+  }
+  credential.accessToken=await this.accessToken(principal,connectionId,provider,credential);
+  const response=await fetch('https://www.googleapis.com/webmasters/v3/sites',{headers:{authorization:'Bearer '+credential.accessToken,accept:'application/json'},signal:AbortSignal.timeout(15_000)});
+  const text=await response.text();let data:any;
+  try{data=JSON.parse(text);}catch{throw new ServiceUnavailableException('Google Search Console returned invalid JSON');}
+  if(!response.ok||!Array.isArray(data.siteEntry))throw new ForbiddenException('Unable to list Search Console properties; verify the Google account permissions');
+  return data.siteEntry.map((site:any)=>({siteUrl:String(site.siteUrl??''),verified:true,permission:String(site.permissionLevel??'unknown')})).filter((site:any)=>site.siteUrl);
+ }
+ async attachSite(principal:Principal,connectionId:string,projectId:string,siteUrl:string){
+  const sites=await this.listSites(principal,connectionId),site=sites.find((item:any)=>item.siteUrl===siteUrl);
+  if(!site)throw new ForbiddenException('The selected property is not available to this connected account');
+  return this.db.withTransaction(async client=>{
+   const project=await client.query<{target_url:string|null}>("SELECT target_url FROM app.projects WHERE tenant_id=$1 AND id=$2",[principal.tenantId,projectId]);
+   if(!project.rowCount||!project.rows[0].target_url)throw new NotFoundException('Project or target URL not found');
+   let target:URL;try{target=new URL(project.rows[0].target_url);}catch{throw new BadRequestException('Project target URL is invalid');}
+   let matches=false;
+   if(siteUrl.startsWith('sc-domain:')){
+    const domain=siteUrl.slice('sc-domain:'.length).toLowerCase();
+    matches=target.hostname.toLowerCase()===domain||target.hostname.toLowerCase().endsWith('.'+domain);
+   }else{
+    try{const property=new URL(siteUrl);matches=target.origin===property.origin&&target.pathname.startsWith(property.pathname);}catch{matches=false;}
+   }
+   if(!matches)throw new ForbiddenException('The provider property does not cover the project target URL');
+   const allowed=site.verified&&(site.permission==='siteOwner'||site.permission==='siteFullUser'||site.permission==='verified'||site.permission==='unknown');
+   const verification=allowed?'verified':'insufficient_permission';
+   const r=await client.query("INSERT INTO app.integration_sites(tenant_id,connection_id,project_id,site_url,permission_level,verification_status,last_verified_at) VALUES($1,$2,$3,$4,$5,$6,CASE WHEN $6='verified' THEN now() ELSE NULL END) ON CONFLICT(tenant_id,project_id,connection_id,site_url) DO UPDATE SET permission_level=EXCLUDED.permission_level,verification_status=EXCLUDED.verification_status,last_verified_at=EXCLUDED.last_verified_at,updated_at=now() RETURNING id,site_url,permission_level,verification_status,last_verified_at",[principal.tenantId,connectionId,projectId,siteUrl,site.permission,verification]);
+   return r.rows[0];
+  },principal.tenantId);
+ }
+ async createBingApiKey(principal:Principal,projectId:string,apiKey:string){
+  if(!apiKey||apiKey.length<20||apiKey.length>512)throw new BadRequestException('Invalid Bing API key');
+  const sites=await this.bingSites({apiKey});
+  if(!sites.length)throw new ForbiddenException('The Bing API key has no accessible verified sites');
+  const connectionId=randomUUID(),secretId=randomUUID(),encrypted=this.encrypt({apiKey,authMode:'api_key'});
+  await this.db.withTransaction(async client=>{
+   const permission=await client.query("SELECT 1 FROM app.tenant_members tm JOIN app.role_permissions rp ON rp.role_id=tm.role_id JOIN app.permissions p ON p.id=rp.permission_id WHERE tm.tenant_id=$1 AND tm.user_id=$2 AND tm.status='active' AND p.code='integration.manage'",[principal.tenantId,principal.userId]);
+   if(!permission.rowCount)throw new ForbiddenException('Integration management permission required');
+   const project=await client.query("SELECT 1 FROM app.projects WHERE tenant_id=$1 AND id=$2",[principal.tenantId,projectId]);
+   if(!project.rowCount)throw new NotFoundException('Project not found');
+   await client.query("INSERT INTO app.integration_connections(id,tenant_id,provider,display_name,credential_secret_ref,scopes,status) VALUES($1,$2,'bing_webmaster','Bing Webmaster API key',$3,ARRAY['api_key'],'connected')",[connectionId,principal.tenantId,secretId]);
+   await client.query("INSERT INTO app.integration_secrets(id,tenant_id,connection_id,ciphertext,iv,auth_tag,key_version) VALUES($1,$2,$3,$4,$5,$6,'v1')",[secretId,principal.tenantId,connectionId,encrypted.ciphertext,encrypted.iv,encrypted.authTag]);
+  },principal.tenantId);
+  return {connected:true,provider:'bing_webmaster',connectionId,availableSites:sites.length};
+ }
  async list(principal:Principal){
   return this.db.withTransaction(async client=>{
    const permission=await client.query("SELECT 1 FROM app.tenant_members tm JOIN app.role_permissions rp ON rp.role_id=tm.role_id JOIN app.permissions p ON p.id=rp.permission_id WHERE tm.tenant_id=$1 AND tm.user_id=$2 AND tm.status='active' AND p.code='integration.manage'",[principal.tenantId,principal.userId]);
