@@ -12,7 +12,8 @@
 - [x] Password recovery with single-use 30-minute reset tokens.
 - [x] Password reset revokes existing sessions.
 - [x] Server-side session listing and revocation endpoints.
-
+- [ ] Authentication CI/typecheck/test validation for the current branch head.
+- [ ] Focused authentication security tests (TOTP replay/brute force, recovery-code replay, token replay, tenant/session isolation).
 
 ## Provider Job Engine
 
@@ -39,14 +40,14 @@
 - [x] Provider job indexes added.
 - [x] Runtime RLS claim test added.
 - [x] Provider quota SQL test added.
-- [x] CI passes at latest checkpoint.
+- [ ] CI passes at latest checkpoint.
 
 ## Production-readiness review
 
 - [x] Google URL Inspection quota values verified against current Google documentation.
 - [x] Bing worker endpoint checked against current Bing API retirement guidance; JSON/HTTP is retained.
 - [x] Provider acceptance is explicitly separated from indexing evidence.
-- [x] Dedicated non-production provider queue benchmark harness added.
+- [x] Dedicated non-production provider queue benchmark harness added and hardened for isolated concurrent runs/cleanup.
 - [ ] Benchmark run and capacity result.
 - [ ] 1,000,000 URL/day benchmark.
 - [ ] Sustained queue/backpressure benchmark.
