@@ -1,4 +1,4 @@
 import {AdminDataPage} from '../../admin-data-page';
 import {AdminShell} from '../../admin-shell';
 import {CmsEditor} from '../../cms-editor';
-export default function Page(){return <AdminShell><div className="page-head"><div><div className="eyebrow">CMS / CONTENT</div><h1>Blog & SEO</h1><p>Quản lý bài viết, chuyên mục và metadata phục vụ SEO.</p></div></div><CmsEditor type="posts"/><section className="section"><AdminDataPage title="Danh sách bài viết" description="Nội dung blog hiện có." endpoint="cms/posts" columns={['title','slug','status','excerpt','seo_title','meta_description','published_at','updated_at']}/></section></AdminShell>;}
+export default function Page(){return <AdminShell><div className="page-head"><div><div className="eyebrow">CMS / CONTENT</div><h1>Blog & SEO</h1><p>Quản lý bài viết, chuyên mục và metadata phục vụ SEO.</p></div></div><CmsEditor type="posts"/><section className="section"><AdminDataPage title="Danh sách bài viết" description="Nội dung blog hiện có." endpoint="cms/posts" columns={['title','slug','status','excerpt','seo_title','meta_description','published_at','updated_at']} withShell={false}/></section></AdminShell>;}
