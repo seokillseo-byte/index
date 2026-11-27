@@ -1,4 +1,4 @@
-import {IsBoolean,IsIn,IsObject,IsOptional,IsString,IsUrl,IsUUID,Length,MaxLength,Matches} from 'class-validator';
+import {IsBoolean,IsIn,IsObject,IsOptional,IsString,IsUrl,IsUUID,Length,MaxLength,Matches,IsArray,IsDateString} from 'class-validator';
 export class UpdateTenantStatusDto { @IsIn(['active','suspended','closed']) status!:string; }
 export class UpdateOrderStatusDto { @IsIn(['cancelled','rejected','fulfilled']) status!:string; }
 export class SaveCmsDto {
@@ -26,8 +26,8 @@ export class CreateCampaignDto {
  @IsUrl({protocols:['http','https'],require_protocol:true}) destinationUrl!:string;
  @IsInt() @Min(0) budgetMinor!:number;
  @IsString() @Length(3,3) currency!:string;
- @IsOptional() @IsString() startsAt?:string;
- @IsOptional() @IsString() endsAt?:string;
+ @IsOptional() @IsDateString() startsAt?:string;
+ @IsOptional() @IsDateString() endsAt?:string;
 }
 export class CreateCreativeDto {
  @IsUUID() campaignId!:string;
@@ -41,8 +41,9 @@ export class UpdateCreativeStatusDto { @IsIn(['approved','rejected','disabled'])
 export class CreateAdSlotDto {
  @IsString() @Length(2,80) @Matches(/^[a-z0-9-]+$/) code!:string;
  @IsString() @Length(2,120) name!:string;
- @IsIn(['public','dashboard']) surface!:string;
+ @IsIn(['public','customer','admin']) surface!:string;
  @IsString() @Length(2,120) placement!:string;
+ @IsOptional() @IsArray() @IsString({each:true}) allowedFormats?:string[];
  @IsOptional() @IsBoolean() enabled?:boolean;
  @IsOptional() @IsObject() policyConfig?:Record<string,unknown>;
 }
