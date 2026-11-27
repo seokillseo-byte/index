@@ -103,7 +103,7 @@ func claimTasks(ctx context.Context,pool *pgxpool.Pool,tenantID,projectID,worker
     AND (t.status IN ('pending','retrying') OR (t.status='leased' AND (t.lease_expires_at<now() OR t.lease_owner=$3)))
     AND t.scheduled_at<=now() AND t.attempt_count<t.max_attempts
   ORDER BY t.priority DESC,t.scheduled_at
-  FOR UPDATE OF t SKIP LOCKED LIMIT $4
+  LIMIT $4 FOR UPDATE OF t SKIP LOCKED
  )
  UPDATE app.url_processing_tasks t SET status='leased',lease_owner=$3,
   lease_expires_at=now()+interval '2 minutes',attempt_count=t.attempt_count+1,updated_at=now()
