@@ -107,3 +107,28 @@ A discovered backlink is an observed HTML link, not proof that a search engine h
 Configure provider client credentials and exact redirect URIs in `.env.api`. The API also requires a 32-byte hex `INTEGRATION_ENCRYPTION_KEY` for AES-256-GCM token encryption and an `OAUTH_STATE_SECRET` of at least 48 characters. Never commit real credentials.
 
 The OAuth connection alone does not authorize arbitrary third-party backlink submissions. The project must be associated with a verified site/property belonging to the connected account. Provider site selection, refresh-token rotation, property verification, URL Inspection jobs and Bing JSON/HTTP submission jobs are subsequent integration stages.
+
+
+## Provider URL operations
+
+All provider operations require a connected account and a verified property explicitly bound to the project.
+
+- `POST /api/v1/integrations/{connectionId}/google-inspections`
+- `POST /api/v1/integrations/{connectionId}/bing-submissions`
+
+Example body:
+
+```json
+{
+  "projectId": "project-uuid",
+  "siteUrl": "https://example.com/",
+  "urls": [
+    "https://example.com/page-a",
+    "https://example.com/page-b"
+  ]
+}
+```
+
+Google URL Inspection is an inspection operation, not an indexing request. The queue enforces the documented per-property limit of 2,000 inspections/day and 600/minute. Bing URL submissions are limited to 500 URLs per batch and the API reads each site's live DailyQuota and MonthlyQuota before reserving jobs. Both operations accept only URLs covered by the bound verified property.
+
+Jobs are persisted in app.provider_jobs and published through the transactional outbox to the provider.jobs Kafka topic. The provider worker records Google inspection results separately from Bing submission acknowledgements. A Bing acknowledgement means accepted by Bing, not indexed.
