@@ -66,7 +66,7 @@ A response with `accepted: 2` means the URLs entered the Index Assist processing
 ## Current limits and release caveats
 
 - The seeded Free plan allows 500 accepted URLs/day; Growth 25,000/day; Scale 1,000,000/day. Pricing and entitlement changes must be managed through the billing/admin system before commercial launch.
-- Registration now requires email verification before login/session issuance. Verification uses a 30-minute single-use token and transactional email delivery. MFA and account recovery are still not implemented; keep public signup closed until those remaining controls are completed and tested.
+- Registration now requires email verification before login/session issuance. Verification uses a 30-minute single-use token and transactional email delivery. MFA, password recovery and server-side session management are implemented; production signup should still remain closed until end-to-end security testing is completed.
 - Search Console and Bing integrations are not yet connected to this API.
 
 
@@ -142,3 +142,18 @@ Jobs are persisted in app.provider_jobs and published through the transactional 
 - `POST /api/v1/auth/resend-verification` with `{ "email": "..." }` sends a new verification message for an unverified account.
 
 The API uses the Resend REST API for transactional delivery. Configure `RESEND_API_KEY` and `EMAIL_FROM` in `.env.api`; no provider credential is committed to the repository. The verification URL is generated from `APP_BASE_URL`.
+
+## MFA, password recovery and sessions
+
+- POST /api/v1/auth/mfa/setup — authenticated user starts TOTP enrollment; returns the secret and otpauth:// URI. The secret is encrypted at rest.
+- POST /api/v1/auth/mfa/verify with { "code": "123456" } — verifies enrollment, enables MFA and returns one-time recovery codes. Store recovery codes securely; they are hashed at rest and cannot be retrieved later.
+- POST /api/v1/auth/mfa/disable with password + current TOTP code — disables MFA and revokes all active sessions.
+- POST /api/v1/auth/mfa/login with { "challengeToken": "...", "code": "123456" } — completes an MFA-protected login challenge and only then issues a session.
+- POST /api/v1/auth/mfa/recovery with { "challengeToken": "...", "recoveryCode": "..." } — consumes one recovery code for a login challenge.
+- POST /api/v1/auth/password-reset/request with { "email": "..." } — sends a generic password reset response; the reset token expires after 30 minutes.
+- POST /api/v1/auth/password-reset with { "token": "...", "password": "..." } — changes the password and revokes existing sessions.
+- GET /api/v1/auth/sessions — lists the authenticated user's server-side sessions.
+- DELETE /api/v1/auth/sessions/{sessionId} — revokes one session.
+- POST /api/v1/auth/sessions/revoke-all — revokes all sessions except the current access-token session.
+
+MFA uses TOTP compatible with standard authenticator applications. Recovery codes are single-use. Password-reset and MFA challenge tokens are stored only as SHA-256 hashes. MFA secrets are encrypted with the existing AES-256-GCM integration key.
