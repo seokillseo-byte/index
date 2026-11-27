@@ -9,9 +9,9 @@
 
 ## First boot
 
-1. Clone the repository and copy `.env.example` to `.env`.
+1. Clone the repository and copy `.env.example` to `.env`, `.env.api.example` to `.env.api`, `.env.worker.example` to `.env.worker`, and `.env.crawler.example` to `.env.crawler`.
 2. Generate independent secrets, e.g. `openssl rand -hex 32`, for the PostgreSQL bootstrap password, runtime DB password, relay DB password, Redis, ClickHouse, MinIO and JWT signing secret. Set the same runtime password in `APP_DB_PASSWORD` and the password portion of `DATABASE_URL`.
-3. Keep `MIGRATION_DATABASE_URL` restricted to the migration operator; the API must use `index_assist_runtime`; the outbox relay must use `index_assist_relay`.
+3. Keep `MIGRATION_DATABASE_URL` only in the host-side `.env` file; the API and crawler env files contain only `index_assist_runtime`, while the relay env file contains only `index_assist_relay`. Do not mount the root `.env` into app containers.
 4. Start the infrastructure from the repository root:
 
    ```bash
