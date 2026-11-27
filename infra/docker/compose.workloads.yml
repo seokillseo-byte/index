@@ -12,6 +12,21 @@ services:
     depends_on:
       postgres: { condition: service_healthy }
     networks: [index-assist-infrastructure_data]
+  crawler:
+    build:
+      context: ../..
+      dockerfile: services/crawler/Dockerfile
+    restart: unless-stopped
+    env_file: ../../.env
+    environment:
+      KAFKA_BROKERS: redpanda:9092
+      KAFKA_TOPIC: url.ingestion
+      KAFKA_GROUP_ID: index-assist-crawler-v1
+      PORT: 8080
+    depends_on:
+      postgres: { condition: service_healthy }
+      redpanda-init: { condition: service_completed_successfully }
+    networks: [index-assist-infrastructure_data]
   outbox-relay:
     build:
       context: ../..
