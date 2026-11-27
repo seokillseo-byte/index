@@ -277,7 +277,7 @@ export class IntegrationsService{
    const existing=await client.query("SELECT idempotency_key FROM app.provider_jobs WHERE tenant_id=$1 AND idempotency_key=ANY($2::text[])",[principal.tenantId,keys]);
    const seen=new Set(existing.rows.map((row:any)=>row.idempotency_key));
    const pending=urls.filter((url,index)=>!seen.has(keys[index]));
-   const counts=await client.query("SELECT count(*) FILTER(WHERE created_at >= $4)::int daily,count(*) FILTER(WHERE created_at >= $5)::int minute FROM app.provider_jobs WHERE tenant_id=$1 AND connection_id=$2 AND site_url=$3 AND provider='google_search_console' AND action='inspect' AND status<>'cancelled'",[principal.tenantId,connectionId,siteUrl,dayStart,minuteStart]);
+   const counts=await client.query("SELECT count(*) FILTER(WHERE created_at >= $4)::int daily,count(*) FILTER(WHERE created_at >= $5)::int minute FROM app.provider_jobs WHERE tenant_id=$1 AND site_url=$3 AND provider='google_search_console' AND action='inspect' AND status<>'cancelled'",[principal.tenantId,connectionId,siteUrl,dayStart,minuteStart]);
    const daily=counts.rows[0].daily,minute=counts.rows[0].minute;
    if(daily+pending.length>dailyLimit||minute+pending.length>minuteLimit)throw new HttpException({message:'Google Search Console inspection quota would be exceeded',dailyLimit,dailyUsed:daily,perMinuteLimit:minuteLimit,minuteUsed:minute},HttpStatus.TOO_MANY_REQUESTS);
    const queued=await this.insertProviderJobs(client,principal,input.projectId,connectionId,'google_search_console','inspect',siteUrl,urls,keys);
