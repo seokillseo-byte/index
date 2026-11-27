@@ -20,6 +20,7 @@ export class IngestionService{
   return this.db.withTransaction(async client=>{
    const project=await client.query("SELECT id FROM app.projects WHERE tenant_id=$1 AND id=$2 AND status='active'",[principal.tenantId,input.projectId]);
    if(!project.rowCount)throw new ForbiddenException('Project not found or unavailable in this workspace');
+   await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[principal.tenantId+':'+idempotencyKey]);
    const previous=await client.query("SELECT id,total_submitted,accepted_count,duplicate_count,rejected_count,status FROM app.ingestion_batches WHERE tenant_id=$1 AND idempotency_key=$2",[principal.tenantId,idempotencyKey]);
    if(previous.rows[0])return {...previous.rows[0],replayed:true};
    await client.query("INSERT INTO app.ingestion_batches(id,tenant_id,project_id,source,idempotency_key,total_submitted,created_by) VALUES($1,$2,$3,'api',$4,$5,$6)",[batchId,principal.tenantId,input.projectId,idempotencyKey,input.urls.length,principal.userId]);
