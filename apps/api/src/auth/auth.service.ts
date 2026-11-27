@@ -265,5 +265,20 @@ export class AuthService{
   return {accessToken,refreshToken:newToken,tokenType:'Bearer',expiresIn:Number(this.config.get<string>('ACCESS_TOKEN_TTL_SECONDS')??900),workspace:{id:result.tenant_id,name:result.tenant_name}};
  }
 
+ async listSessions(userId:string){
+  const result=await this.db.query<{id:string;tenant_id:string;created_at:Date;last_seen_at:Date;expires_at:Date;revoked_at:Date|null;ip_address:string|null;user_agent:string|null}>("SELECT id,tenant_id,created_at,last_seen_at,expires_at,revoked_at,ip_address::text,user_agent FROM app.user_sessions WHERE user_id=$1 ORDER BY created_at DESC",[userId]);
+  return result.rows.map(row=>({id:row.id,tenantId:row.tenant_id,createdAt:row.created_at,lastSeenAt:row.last_seen_at,expiresAt:row.expires_at,revokedAt:row.revoked_at,ipAddress:row.ip_address,userAgent:row.user_agent,active:!row.revoked_at&&new Date(row.expires_at).getTime()>Date.now()}));
+ }
+ async revokeSession(userId:string,sessionId:string){
+  const result=await this.db.query("UPDATE app.user_sessions SET revoked_at=now() WHERE id=$1 AND user_id=$2 AND revoked_at IS NULL RETURNING id",[sessionId,userId]);
+  if(!result.rowCount)throw new UnauthorizedException('Session not found or already revoked');
+  return {success:true,sessionId};
+ }
+ async revokeAllSessions(userId:string,exceptSessionId?:string){
+  const result=exceptSessionId
+   ? await this.db.query("UPDATE app.user_sessions SET revoked_at=now() WHERE user_id=$1 AND id<>$2 AND revoked_at IS NULL",[userId,exceptSessionId])
+   : await this.db.query("UPDATE app.user_sessions SET revoked_at=now() WHERE user_id=$1 AND revoked_at IS NULL",[userId]);
+  return {success:true,revokedCount:result.rowCount??0};
+ }
  async logout(userId:string,sessionId:string){await this.db.query('UPDATE app.user_sessions SET revoked_at=now() WHERE id=$1 AND user_id=$2 AND revoked_at IS NULL',[sessionId,userId]);return {success:true};}
 }
