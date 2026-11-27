@@ -43,3 +43,6 @@ This is a single-VPS baseline, not an HA deployment. Before public customer traf
 
 
 The provider worker also requires the same INTEGRATION_ENCRYPTION_KEY and Google/Bing OAuth client credentials as the API, copied into .env.provider-worker. Configure exact provider callback URLs before enabling customer connections. The worker consumes the provider.jobs Kafka topic created by the infrastructure compose stack.
+
+
+After registering the first trusted operator account, set PLATFORM_ADMIN_EMAIL and PLATFORM_ADMIN_ROLE in the host-side .env file and run `bash infra/postgres/bootstrap-platform-admin.sh` using the migration-owner connection. See docs/admin/platform-administration.md. Do not expose the admin hostname publicly until MFA/WebAuthn and account recovery controls are enabled.
