@@ -10,6 +10,7 @@ import (
  "log"
   "net/http"
  "net/url"
+ "crypto/sha256"
  "net"
  "os"
  "os/signal"
@@ -235,11 +236,128 @@ func saveResult(ctx context.Context,pool *pgxpool.Pool,tenantID,projectID,worker
   if _,err=tx.Exec(ctx,"UPDATE app.url_processing_tasks SET status=$3,lease_owner=NULL,lease_expires_at=NULL,last_error=NULL,updated_at=now() WHERE id=$1 AND tenant_id=$2 AND lease_owner=$4",item.ID,tenantID,taskStatus,workerID);err!=nil{return err}
  }
  if _,err=tx.Exec(ctx,"UPDATE app.urls SET status=$3,last_checked_at=now(),updated_at=now() WHERE id=$1 AND tenant_id=$2",item.URLID,tenantID,status);err!=nil{return err}
+ if !retry&&status=="eligible"&&strings.Contains(strings.ToLower(result.ContentType),"text/html"){
+  htmlKey:="html-analysis:"+item.URLID
+  _,err=tx.Exec(ctx,"INSERT INTO app.url_processing_tasks(tenant_id,url_id,task_type,status,priority,idempotency_key) VALUES($1,$2,'html_analysis','pending',4,$3) ON CONFLICT(idempotency_key) DO NOTHING",tenantID,item.URLID,htmlKey)
+  if err!=nil{return err}
+  _,err=tx.Exec(ctx,"INSERT INTO app.outbox_events(tenant_id,aggregate_type,aggregate_id,event_type,topic,partition_key,payload,idempotency_key) VALUES($1,'url_task',$2,'url.batch.accepted','url.ingestion',$3,$4::jsonb,$5) ON CONFLICT(idempotency_key) DO NOTHING",tenantID,item.URLID,tenantID+':'+projectID,string(mustJSON(map[string]string{"tenantId":tenantID,"projectId":projectID})),htmlKey)
+  if err!=nil{return err}
+ }
  if retry&&taskStatus=="retrying"{
   _,err=tx.Exec(ctx,"INSERT INTO app.outbox_events(tenant_id,aggregate_type,aggregate_id,event_type,topic,partition_key,payload,idempotency_key,next_attempt_at) VALUES($1,'url_task',$2,'url.batch.accepted','url.ingestion',$3,$4::jsonb,$5,now()+(($6::text || ' seconds')::interval + interval '5 seconds')) ON CONFLICT(idempotency_key) DO NOTHING",tenantID,item.ID,tenantID+':'+projectID,string(mustJSON(map[string]string{"tenantId":tenantID,"projectId":projectID})),fmt.Sprintf("retry-task:%s:%d",item.ID,item.Attempts),retryDelay)
   if err!=nil{return err}
  }
  return tx.Commit(ctx)
+}
+
+
+type discoveredLink struct { TargetURL string; Anchor string; Rel []string; LinkType string }
+
+func canonicalURL(raw string)(string,error){
+ u,err:=url.Parse(strings.TrimSpace(raw));if err!=nil{return "",err}
+ if u.Scheme!="http"&&u.Scheme!="https"{return "",errors.New("unsupported link scheme")}
+ if u.Hostname()==""||u.User!=nil{return "",errors.New("invalid link URL")}
+ u.Scheme=strings.ToLower(u.Scheme);u.Host=strings.ToLower(u.Host)
+ if (u.Scheme=="https"&&u.Port()=="443")||(u.Scheme=="http"&&u.Port()=="80"){u.Host=u.Hostname()}
+ u.Fragment="";return u.String(),nil
+}
+
+func analyzeAndSaveHTML(ctx context.Context,pool *pgxpool.Pool,tenantID,projectID,workerID string,item task)error{
+ tx,err:=pool.Begin(ctx);if err!=nil{return err}
+ if _,err=tx.Exec(ctx,"SELECT set_config('app.tenant_id',$1,true)",tenantID);err!=nil{tx.Rollback(ctx);return err}
+ var owned bool;var targetURL string
+ err=tx.QueryRow(ctx,"SELECT EXISTS(SELECT 1 FROM app.url_processing_tasks WHERE id=$1 AND tenant_id=$2 AND status='leased' AND lease_owner=$3),COALESCE((SELECT target_url FROM app.projects WHERE tenant_id=$2 AND id=$4),'')",item.ID,tenantID,workerID,projectID).Scan(&owned,&targetURL)
+ if err!=nil{tx.Rollback(ctx);return err}
+ if !owned{return tx.Commit(ctx)}
+ if targetURL==""{
+  _,err=tx.Exec(ctx,"UPDATE app.url_processing_tasks SET status='completed',lease_owner=NULL,lease_expires_at=NULL,updated_at=now() WHERE id=$1 AND tenant_id=$2 AND lease_owner=$3",item.ID,tenantID,workerID)
+  if err!=nil{tx.Rollback(ctx);return err};return tx.Commit(ctx)
+ }
+ if err=tx.Commit(ctx);err!=nil{return err}
+ targetCanonical,err:=canonicalURL(targetURL);if err!=nil{return err}
+ parsed,err:=safefetch.ValidateURL(item.URL);if err!=nil{return err}
+ allowed,err:=robotsAllows(ctx,safefetch.SafeClient(20*time.Second),parsed);if err!=nil{return err};if !allowed{return markHTMLTask(ctx,pool,tenantID,workerID,item,"blocked","disallowed by robots.txt")}
+ client:=safefetch.SafeClient(20*time.Second);current:=parsed
+ var body []byte;finalURL:=item.URL;statusCode:=0
+ for hop:=0;hop<=5;hop++{
+  req,reqErr:=http.NewRequestWithContext(ctx,http.MethodGet,current.String(),nil);if reqErr!=nil{return reqErr}
+  req.Header.Set("User-Agent","IndexAssistBot/1.0 (+https://index-assist.io.vn/)")
+  req.Header.Set("Range","bytes=0-2097151")
+  resp,fetchErr:=client.Do(req);if fetchErr!=nil{return fetchErr}
+  if resp.StatusCode>=300&&resp.StatusCode<400{
+   location:=resp.Header.Get("Location");resp.Body.Close();if location==""{return errors.New("HTML redirect without Location")}
+   next,parseErr:=current.Parse(location);if parseErr!=nil{return parseErr}
+   if _,validateErr:=safefetch.ValidateURL(next.String());validateErr!=nil{return validateErr}
+   current=next;continue
+  }
+  statusCode=resp.StatusCode;finalURL=current.String()
+  if statusCode<200||statusCode>=300{resp.Body.Close();return markHTMLTask(ctx,pool,tenantID,workerID,item,"retrying",fmt.Sprintf("HTML fetch returned HTTP %d",statusCode))}
+  if !strings.Contains(strings.ToLower(resp.Header.Get("Content-Type")),"text/html"){resp.Body.Close();return markHTMLTask(ctx,pool,tenantID,workerID,item,"completed","non-HTML content")}
+  body,err=io.ReadAll(io.LimitReader(resp.Body,2*1024*1024+1));resp.Body.Close();if err!=nil{return err}
+  if len(body)>2*1024*1024{body=body[:2*1024*1024]}
+  break
+ }
+ if statusCode==0{return errors.New("HTML redirect limit exceeded")}
+ links,err:=extractBacklinks(body,finalURL,targetCanonical);if err!=nil{return err}
+ save,err:=pool.Begin(ctx);if err!=nil{return err};defer save.Rollback(ctx)
+ if _,err=save.Exec(ctx,"SELECT set_config('app.tenant_id',$1,true)",tenantID);err!=nil{return err}
+ var stillOwned bool
+ if err=save.QueryRow(ctx,"SELECT EXISTS(SELECT 1 FROM app.url_processing_tasks WHERE id=$1 AND tenant_id=$2 AND status='leased' AND lease_owner=$3)",item.ID,tenantID,workerID).Scan(&stillOwned);err!=nil{return err}
+ if !stillOwned{return save.Commit(ctx)}
+ for _,link:=range links{
+  hash:=sha256.Sum256([]byte(link.TargetURL))
+  _,err=save.Exec(ctx, "INSERT INTO app.backlink_discoveries(tenant_id,project_id,source_url_id,target_url,target_url_hash,anchor_text,rel_attributes,link_type) VALUES($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT(tenant_id,source_url_id,target_url_hash,anchor_text) DO UPDATE SET rel_attributes=EXCLUDED.rel_attributes,link_type=EXCLUDED.link_type,last_seen_at=now(),occurrence_count=app.backlink_discoveries.occurrence_count+1",tenantID,projectID,item.URLID,link.TargetURL,hash[:],link.Anchor,link.Rel,link.LinkType)
+  if err!=nil{return err}
+ }
+ result:=mustJSON(map[string]any{"targetUrl":targetCanonical,"sourceUrl":finalURL,"backlinksFound":len(links),"httpStatus":statusCode,"contentBytes":len(body)})
+ if _,err=save.Exec(ctx,"INSERT INTO app.url_observations(tenant_id,url_id,kind,source,result,confidence) VALUES($1,$2,'backlink','index-assist-html-analyzer',$3::jsonb,'observed')",tenantID,item.URLID,string(result));err!=nil{return err}
+ if _,err=save.Exec(ctx,"UPDATE app.url_processing_tasks SET status='completed',lease_owner=NULL,lease_expires_at=NULL,last_error=NULL,updated_at=now() WHERE id=$1 AND tenant_id=$2 AND lease_owner=$3",item.ID,tenantID,workerID);err!=nil{return err}
+ return save.Commit(ctx)
+}
+
+func extractBacklinks(body []byte,baseURL,targetCanonical string)([]discoveredLink,error){
+ z:=html.NewTokenizer(strings.NewReader(string(body)))
+ var links []discoveredLink;inAnchor:=false;anchor:="";href:="";rel:=[]string{}
+ for{
+  tt:=z.Next()
+  switch tt{
+  case html.ErrorToken:
+   if z.Err()!=io.EOF{return nil,z.Err()};return links,nil
+  case html.StartTagToken,html.SelfClosingTagToken:
+   name,hasAttr:=z.TagName()
+   if string(name)=="a"{
+    inAnchor=true;anchor="";href="";rel=nil
+    for hasAttr{k,v,more:=z.TagAttr();key:=strings.ToLower(string(k));value:=string(v);if key=="href"{href=value};if key=="rel"{for _,part:=range strings.Fields(strings.ToLower(value)){rel=append(rel,part)}};hasAttr=more}
+    if tt==html.SelfClosingTagToken{inAnchor=false}
+   }
+  case html.TextToken:
+   if inAnchor{anchor+=string(z.Text());if len(anchor)>512{anchor=anchor[:512]}}
+  case html.EndTagToken:
+   name,_:=z.TagName()
+   if string(name)=="a"&&inAnchor{
+    inAnchor=false
+    if href!=""{
+     base,err:=url.Parse(baseURL);if err==nil{ref,parseErr:=url.Parse(strings.TrimSpace(href));if parseErr==nil{resolved:=base.ResolveReference(ref);canonical,canonErr:=canonicalURL(resolved.String());if canonErr==nil&&canonical==targetCanonical{
+      kind:="follow";hasNoFollow:=false;for _,v:=range rel{if v=="nofollow"{hasNoFollow=true};if v=="sponsored"{kind="sponsored"};if v=="ugc"{kind="ugc"}}
+      if hasNoFollow&&kind=="follow"{kind="nofollow"};links=append(links,discoveredLink{TargetURL:canonical,Anchor:strings.TrimSpace(anchor),Rel:rel,LinkType:kind})
+     }}}
+    }
+   }
+  }
+ }
+}
+
+func markHTMLTask(ctx context.Context,pool *pgxpool.Pool,tenantID,workerID string,item task,status,message string)error{
+ tx,err:=pool.Begin(ctx);if err!=nil{return err};defer tx.Rollback(ctx)
+ if _,err=tx.Exec(ctx,"SELECT set_config('app.tenant_id',$1,true)",tenantID);err!=nil{return err}
+ if status=="retrying"&&item.Attempts<8{
+  delay:=minInt(3600,1<<minInt(item.Attempts,10))
+  _,err=tx.Exec(ctx,"UPDATE app.url_processing_tasks SET status='retrying',scheduled_at=now()+($4::text || ' seconds')::interval,lease_owner=NULL,lease_expires_at=NULL,last_error=$5,updated_at=now() WHERE id=$1 AND tenant_id=$2 AND lease_owner=$3",item.ID,tenantID,workerID,delay,message)
+ }else{
+  finalStatus:=status;if status=="retrying"{finalStatus="dead_letter"}
+  _,err=tx.Exec(ctx,"UPDATE app.url_processing_tasks SET status=$4,lease_owner=NULL,lease_expires_at=NULL,last_error=$5,updated_at=now() WHERE id=$1 AND tenant_id=$2 AND lease_owner=$3",item.ID,tenantID,workerID,finalStatus,message)
+ }
+ if err!=nil{return err};return tx.Commit(ctx)
 }
 
 func hostMutex(host string)*sync.Mutex{h:=fnv.New32a();_,_=h.Write([]byte(strings.ToLower(host)));return &hostLocks[h.Sum32()%uint32(len(hostLocks))]}
