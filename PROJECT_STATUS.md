@@ -4,26 +4,27 @@ Updated: 2026-11-28
 
 ## Current implementation state
 
-- Production target: SaaS, multi-tenant, Google + Bing provider integrations.
-- Target VPS capacity: 32 vCPU / 64 GB RAM / 2 TB NVMe / 1 Gbps.
+- Production target: multi-tenant SaaS with Google + Bing provider integrations.
+- Target VPS capacity: 32 vCPU / 64 GB RAM / 2 TB NVMe / 1 Gbps; this is a target, not a measured capacity result.
 - Current repository baseline: `main` at `568e00af228c64249f5da6e4ec22f29e6cbe10be`.
 - Active implementation branch: `feature/provider-job-engine`.
-- Active branch head: `d56fe784a1ae3b9da4d942c1f6964deceb06fbab`.
-- Review PR: #6, open and ready for review; intentionally not merged.
+- Review PR: #6 remains open and unmerged.
+- The branch has diverged from `main`; do not merge/rebase automatically. Review the one-commit base divergence deliberately before integration.
 
-## Authentication hardening completed in this checkpoint
+## Authentication implementation completed
 
-- Email verification token storage and single-use 30-minute expiry.
-- Transactional verification email delivery through Resend REST API.
-- Registration no longer issues access/refresh sessions before email verification.
+- Email verification tokens are single-use and expire after 30 minutes.
+- Registration sends verification email through Resend and does not issue sessions before verification.
 - Login and refresh reject unverified accounts.
 - Verification and resend endpoints are rate-limited.
 - TOTP MFA enrollment, verification and MFA-gated login are implemented.
-- One-time MFA recovery codes are generated and stored only as hashes.
-- Password recovery uses single-use 30-minute reset tokens and revokes existing sessions after reset.
+- MFA recovery codes are one-time and stored as SHA-256 hashes.
+- Password recovery uses single-use 30-minute tokens and revokes existing sessions after reset.
 - Server-side session listing, individual revocation and revoke-all controls are implemented.
 
-## Completed before this checkpoint
+**Validation caveat:** the authentication implementation has not yet been validated by a successful CI run or focused auth security test suite. Do not mark it production-ready until those checks pass.
+
+## Provider engine implemented
 
 - Tenant-aware project and backlink verification modules.
 - Google Search Console and Bing Webmaster OAuth integrations.
@@ -34,36 +35,38 @@ Updated: 2026-11-28
 - Google URL Inspection queue with property-scoped daily/minute reservation controls.
 - Bing URL submission queue with live DailyQuota/MonthlyQuota checks.
 - Retry/backoff, dead-letter handling, lease recovery and batch draining.
-- Provider job history API.
-- Attempt timestamp tracking and provider-job indexes.
+- Provider job history API, attempt timestamp tracking and provider-job indexes.
 - Runtime tenant RLS/provider-job claim and quota SQL checks.
 
-## Latest verified checkpoint
+## Benchmark harness checkpoint
 
-The current branch head is `d56fe784a1ae3b9da4d942c1f6964deceb06fbab` and includes the authentication hardening checkpoint plus MFA challenge hardening.
+- Added a non-production PostgreSQL queue benchmark harness.
+- Fixed its worker lease owner, isolated concurrent runs by unique idempotency prefix, validated numeric limits, and made cleanup run-scoped in a `finally` block.
+- Reports seed duration separately from queue-drain throughput.
+- This harness measures only PostgreSQL queue claim/update performance; it does not call Google/Bing and does not establish end-to-end provider throughput.
+- The benchmark has **not** yet been executed against a dedicated non-production database.
 
-Previous GitHub Actions run `46047692879` completed successfully for the provider-engine checkpoint. A new CI run for the current authentication changes is still required before this checkpoint can be marked validated.
+## CI and release validation
 
-## Production-readiness review findings
-
-- Google URL Inspection limits are correctly aligned with Google's documented per-site limits of 2,000 QPD and 600 QPM.
-- Bing's current JSON/HTTP API path remains the supported REST path; Microsoft's August 31, 2026 retirement applies to legacy SOAP/POX endpoints. The worker currently uses JSON/HTTP.
+- Previous CI run `46047692879` passed for an earlier provider-engine checkpoint only.
+- No workflow run is currently visible for the latest authentication/benchmark changes. Current branch validation is therefore pending.
+- Google URL Inspection reservation values are capped at 2,000/day and 600/minute per site.
+- Bing submissions are bounded by live provider DailyQuota/MonthlyQuota.
 - Provider acceptance/inspection evidence must not be presented as proof of indexing.
-- The remaining high-value engineering gates are authentication completion (MFA/recovery/session management) and capacity validation: benchmark queue throughput, database claim/update throughput, provider pacing, sustained backpressure and recovery behavior before claiming 1,000,000 URLs/day.
 
 ## Release gates still open
 
-- Production VPS deployment.
-- Production HTTPS/DNS validation.
-- Real Google/Bing customer connections.
-- End-to-end provider job test against real provider accounts.
-- 1,000,000 URL/day benchmark.
-- Sustained queue/backpressure benchmark.
+- CI/typecheck/build and tests for the current branch head.
+- Focused auth security tests: TOTP brute force/replay, recovery-code replay, reset/verification token replay, tenant/session isolation.
+- Execute queue benchmark on non-production hardware and record PostgreSQL CPU/IO/connection saturation.
+- Sustained queue/backpressure and failure/recovery benchmarks.
+- Validate 1,000,000 URLs/day only after measured end-to-end capacity; no such result exists yet.
+- Real Google/Bing customer connections and end-to-end provider tests.
 - Backup/restore drill.
-- Security review.
-- Production observability/alerting review.
+- Production observability/alerting and security review.
+- Production VPS deployment and HTTPS/DNS validation.
 - HA/failover remains outside the single-VPS baseline.
 
 ## Immediate next step
 
-Run CI/typecheck/tests for the authentication checkpoint. If green, perform a focused auth security review and then run the dedicated non-production provider throughput benchmark. Do not use production data or credentials, and do not merge or deploy as part of benchmark work.
+Get CI running and green for the current branch. Fix any compile, migration or test failures first; then add/run focused authentication security tests. After those gates, execute the non-production queue benchmark and use measured results to size worker/database capacity. Do not use production credentials/data, merge into `main`, or deploy as part of this work.
