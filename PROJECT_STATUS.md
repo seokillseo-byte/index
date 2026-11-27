@@ -8,7 +8,7 @@ Updated: 2026-11-28
 - Target VPS capacity: 32 vCPU / 64 GB RAM / 2 TB NVMe / 1 Gbps.
 - Current repository baseline: `main` at `568e00af228c64249f5da6e4ec22f29e6cbe10be`.
 - Active implementation branch: `feature/provider-job-engine`.
-- Active branch head: `a6dd8c8e5fd9796a8ffcf4e102397071c5a9d420`.
+- Active branch head: `32b8b4b3aeddaf8ac55e7a3ab3800a6bafd4b1d2`.
 - Review PR: #6, open and ready for review; intentionally not merged.
 
 ## Authentication hardening completed in this checkpoint
@@ -18,6 +18,10 @@ Updated: 2026-11-28
 - Registration no longer issues access/refresh sessions before email verification.
 - Login and refresh reject unverified accounts.
 - Verification and resend endpoints are rate-limited.
+- TOTP MFA enrollment, verification and MFA-gated login are implemented.
+- One-time MFA recovery codes are generated and stored only as hashes.
+- Password recovery uses single-use 30-minute reset tokens and revokes existing sessions after reset.
+- Server-side session listing, individual revocation and revoke-all controls are implemented.
 
 ## Completed before this checkpoint
 
@@ -36,13 +40,9 @@ Updated: 2026-11-28
 
 ## Latest verified checkpoint
 
-Commit `d995f6556901b8c48221dc62c446f09d48c0557f` is the current branch head and includes the release bookkeeping documents.
+The current branch head is `32b8b4b3aeddaf8ac55e7a3ab3800a6bafd4b1d2` and includes the authentication hardening checkpoint.
 
-GitHub Actions run `46047692879` completed successfully:
-- Node typecheck/build: passed.
-- Provider worker syntax check: passed.
-- Go crawler race tests/vet: passed.
-- PostgreSQL migrations and runtime RLS/provider-job/quota checks: passed.
+Previous GitHub Actions run `46047692879` completed successfully for the provider-engine checkpoint. A new CI run for the current authentication changes is still required before this checkpoint can be marked validated.
 
 ## Production-readiness review findings
 
@@ -66,4 +66,4 @@ GitHub Actions run `46047692879` completed successfully:
 
 ## Immediate next step
 
-Continue authentication hardening with MFA and password recovery, then run the dedicated non-production provider throughput benchmark. Do not use production data or credentials, and do not merge or deploy as part of benchmark work.
+Run CI/typecheck/tests for the authentication checkpoint. If green, perform a focused auth security review and then run the dedicated non-production provider throughput benchmark. Do not use production data or credentials, and do not merge or deploy as part of benchmark work.
