@@ -128,7 +128,7 @@ async function processGoogle(payload,jobs,credential){
     await client.query("INSERT INTO app.url_observations(tenant_id,url_id,kind,source,result,confidence) SELECT $1,u.id,'index','google-search-console-url-inspection',$4::jsonb,'verified' FROM app.urls u WHERE u.tenant_id=$1 AND u.project_id=$2 AND u.normalized_url=$3",[payload.tenantId,payload.projectId,job.url,JSON.stringify(result)]);
    });
   }catch(error){await scheduleRetry(payload.tenantId,payload,job,error,true);}
-  await delay(125);
+  const configuredRate=Number(process.env.GOOGLE_INSPECTION_PER_MINUTE_LIMIT||600);const safeRate=Number.isFinite(configuredRate)?Math.min(600,Math.max(1,configuredRate)):600;await delay(Math.max(125,Math.ceil(60000/safeRate)));
  }
 }
 
