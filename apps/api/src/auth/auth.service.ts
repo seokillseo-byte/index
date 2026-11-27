@@ -15,7 +15,7 @@ export class AuthService{
  private async createSession(userId:string,tenantId:string,role:string){
   const sessionId=randomUUID(),refreshToken=randomBytes(48).toString('base64url');
   const days=Number(this.config.get<string>('REFRESH_TOKEN_TTL_DAYS')??30);
-  await this.db.query("INSERT INTO app.user_sessions(id,user_id,refresh_token_hash,expires_at) VALUES($1,$2,$3,now()+($4::text || ' days')::interval)",[sessionId,userId,this.hashToken(refreshToken),days]);
+  await this.db.query("INSERT INTO app.user_sessions(id,user_id,tenant_id,refresh_token_hash,expires_at) VALUES($1,$2,$3,$4,now()+($5::text || ' days')::interval)",[sessionId,userId,tenantId,this.hashToken(refreshToken),days]);
   const accessToken=await this.jwt.signAsync({sub:userId,sid:sessionId,tid:tenantId,role});
   return {accessToken,refreshToken,tokenType:'Bearer',expiresIn:Number(this.config.get<string>('ACCESS_TOKEN_TTL_SECONDS')??900)};
  }
@@ -59,14 +59,14 @@ export class AuthService{
  async refresh(refreshToken:string){
   const oldHash=this.hashToken(refreshToken),newToken=randomBytes(48).toString('base64url'),newSessionId=randomUUID();
   const result=await this.db.withTransaction(async client=>{
-   const found=await client.query<{id:string;user_id:string}>('SELECT id,user_id FROM app.user_sessions WHERE refresh_token_hash=$1 AND revoked_at IS NULL AND expires_at>now() FOR UPDATE',[oldHash]);
+   const found=await client.query<{id:string;user_id:string;tenant_id:string}>('SELECT id,user_id,tenant_id FROM app.user_sessions WHERE refresh_token_hash=$1 AND revoked_at IS NULL AND expires_at>now() FOR UPDATE',[oldHash]);
    const session=found.rows[0];if(!session)throw new UnauthorizedException('Invalid or expired refresh token');
-   await client.query("SELECT set_config('app.auth_user_id',$1,true)",[session.user_id]);
-   const m=await client.query<Membership>("SELECT tm.tenant_id,t.name tenant_name,r.code role_code FROM app.tenant_members tm JOIN app.tenants t ON t.id=tm.tenant_id JOIN app.roles r ON r.id=tm.role_id WHERE tm.user_id=$1 AND tm.status='active' AND t.status='active' ORDER BY tm.joined_at ASC LIMIT 1",[session.user_id]);
+   await client.query("SELECT set_config('app.tenant_id',$1,true)",[session.tenant_id]);
+   const m=await client.query<Membership>("SELECT tm.tenant_id,t.name tenant_name,r.code role_code FROM app.tenant_members tm JOIN app.tenants t ON t.id=tm.tenant_id JOIN app.roles r ON r.id=tm.role_id JOIN app.users u ON u.id=tm.user_id WHERE tm.tenant_id=$1 AND tm.user_id=$2 AND tm.status='active' AND t.status='active' AND u.status='active'",[session.tenant_id,session.user_id]);
    if(!m.rows[0])throw new UnauthorizedException('No active workspace membership');
    await client.query('UPDATE app.user_sessions SET revoked_at=now() WHERE id=$1',[session.id]);
    const days=Number(this.config.get<string>('REFRESH_TOKEN_TTL_DAYS')??30);
-   await client.query("INSERT INTO app.user_sessions(id,user_id,refresh_token_hash,expires_at) VALUES($1,$2,$3,now()+($4::text || ' days')::interval)",[newSessionId,session.user_id,this.hashToken(newToken),days]);
+   await client.query("INSERT INTO app.user_sessions(id,user_id,refresh_token_hash,expires_at) VALUES($1,$2,$3,$4,now()+($5::text || ' days')::interval)",[newSessionId,session.user_id,session.tenant_id,this.hashToken(newToken),days]);
    return {userId:session.user_id,...m.rows[0]};
   });
   const accessToken=await this.jwt.signAsync({sub:result.userId,sid:newSessionId,tid:result.tenant_id,role:result.role_code});
