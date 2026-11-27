@@ -1,6 +1,6 @@
 import pg from 'pg';
 import {Kafka} from 'kafkajs';
-import {createDecipheriv,createCipheriv,randomBytes,randomUUID} from 'node:crypto';
+import {createDecipheriv,createCipheriv,randomBytes,randomUUID,createHash} from 'node:crypto';
 
 const {Pool}=pg;
 const required=['PROVIDER_DATABASE_URL','KAFKA_BROKERS','INTEGRATION_ENCRYPTION_KEY'];
@@ -66,7 +66,8 @@ async function claimBatch(payload){
    const active=await client.query("SELECT min(lease_expires_at) expiry FROM app.provider_jobs WHERE tenant_id=$1 AND project_id=$2 AND connection_id=$3 AND site_url=$4 AND status='leased' AND lease_expires_at>now()",[payload.tenantId,payload.projectId,payload.connectionId,payload.siteUrl]);
    if(active.rows[0]?.expiry){
     const expiry=new Date(active.rows[0].expiry);
-    const eventKey='provider-lease-recover:'+payload.connectionId+':'+Math.floor(expiry.getTime()/60000);
+    const siteKey=createHash('sha256').update(payload.siteUrl).digest('hex');
+    const eventKey='provider-lease-recover:'+payload.connectionId+':'+siteKey+':'+Math.floor(expiry.getTime()/60000);
     await client.query("INSERT INTO app.outbox_events(tenant_id,aggregate_type,aggregate_id,event_type,topic,partition_key,payload,idempotency_key,next_attempt_at) VALUES($1,'provider_batch',$2,'provider.jobs.retry','provider.jobs',$3,$4::jsonb,$5,$6) ON CONFLICT(idempotency_key) DO NOTHING",[payload.tenantId,payload.projectId,payload.tenantId+':'+payload.projectId+':'+payload.connectionId,JSON.stringify(payload),eventKey,new Date(expiry.getTime()+5000)]);
    }
   }
@@ -156,7 +157,10 @@ await consumer.subscribe({topic,fromBeginning:false});
 console.log('Index Assist provider worker started');
 await consumer.run({autoCommit:false,eachMessage:async({topic,partition,message})=>{
  let event;try{event=JSON.parse(message.value.toString('utf8'));}catch(error){console.error('Invalid provider event',String(error));await consumer.commitOffsets([{topic,partition,offset:(BigInt(message.offset)+1n).toString()}]);return;}
- await processEvent(event);
- await consumer.commitOffsets([{topic,partition,offset:(BigInt(message.offset)+1n).toString()}]);
+ while(!stopping){
+  try{await processEvent(event);break;}
+  catch(error){console.error('Provider event processing failed; retrying without committing offset',String(error));await delay(2000);}
+ }
+ if(!stopping)await consumer.commitOffsets([{topic,partition,offset:(BigInt(message.offset)+1n).toString()}]);
 }});
 while(!stopping)await delay(1000);
