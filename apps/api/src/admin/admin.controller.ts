@@ -2,7 +2,7 @@ import {Body,Controller,Get,Param,ParseIntPipe,ParseUUIDPipe,Patch,Post,Query,Re
 import {ApiBearerAuth,ApiOperation,ApiTags} from '@nestjs/swagger';
 import {Request} from 'express';
 import {AdminService} from './admin.service';
-import {SaveCmsDto,UpdateAdSlotDto,UpdateCampaignStatusDto,UpdateInquiryStatusDto,UpdateOrderStatusDto,UpdateTenantStatusDto} from './admin.dto';
+import {CreateAdSlotDto,CreateAdvertiserDto,CreateCampaignDto,CreateCreativeDto,SaveCmsDto,UpdateAdSlotDto,UpdateAdvertiserStatusDto,UpdateCampaignStatusDto,UpdateCreativeStatusDto,UpdateInquiryStatusDto,UpdateOrderStatusDto,UpdateTenantStatusDto} from './admin.dto';
 import {PlatformAdminGuard,PlatformRoles} from './platform-admin.guard';
 
 @ApiTags('Platform administration')
@@ -26,6 +26,16 @@ export class AdminController{
  @Post('cms/pages') @PlatformRoles('super_admin','admin','content_editor') savePage(@Req() req:Request,@Body() dto:SaveCmsDto){return this.admin.saveCms(this.actor(req),'page',dto,this.ip(req));}
  @Get('cms/posts') @PlatformRoles('super_admin','admin','content_editor') posts(@Req() req:Request){return this.admin.cmsList(this.actor(req),'post');}
  @Post('cms/posts') @PlatformRoles('super_admin','admin','content_editor') savePost(@Req() req:Request,@Body() dto:SaveCmsDto){return this.admin.saveCms(this.actor(req),'post',dto,this.ip(req));}
+
+ @Get('ads/advertisers') @PlatformRoles('super_admin','admin','ad_manager') advertisers(@Req() req:Request){return this.admin.advertisers(this.actor(req));}
+ @Post('ads/advertisers') @PlatformRoles('super_admin','admin','ad_manager') createAdvertiser(@Req() req:Request,@Body() dto:CreateAdvertiserDto){return this.admin.createAdvertiser(this.actor(req),dto,this.ip(req));}
+ @Patch('ads/advertisers/:id/status') @PlatformRoles('super_admin','admin','ad_manager') updateAdvertiser(@Req() req:Request,@Param('id',new ParseUUIDPipe()) id:string,@Body() dto:UpdateAdvertiserStatusDto){return this.admin.updateAdvertiserStatus(this.actor(req),id,dto.status,this.ip(req));}
+ @Post('ads/inquiries/:id/convert') @PlatformRoles('super_admin','admin','ad_manager') convertInquiry(@Req() req:Request,@Param('id',new ParseUUIDPipe()) id:string){return this.admin.convertInquiry(this.actor(req),id,this.ip(req));}
+ @Post('ads/campaigns') @PlatformRoles('super_admin','admin','ad_manager') createCampaign(@Req() req:Request,@Body() dto:CreateCampaignDto){return this.admin.createCampaign(this.actor(req),dto,this.ip(req));}
+ @Get('ads/creatives') @PlatformRoles('super_admin','admin','ad_manager') creatives(@Req() req:Request){return this.admin.creatives(this.actor(req));}
+ @Post('ads/creatives') @PlatformRoles('super_admin','admin','ad_manager') createCreative(@Req() req:Request,@Body() dto:CreateCreativeDto){return this.admin.createCreative(this.actor(req),dto,this.ip(req));}
+ @Patch('ads/creatives/:id/status') @PlatformRoles('super_admin','admin','ad_manager') updateCreative(@Req() req:Request,@Param('id',new ParseUUIDPipe()) id:string,@Body() dto:UpdateCreativeStatusDto){return this.admin.updateCreativeStatus(this.actor(req),id,dto.status,this.ip(req));}
+ @Post('ads/slots') @PlatformRoles('super_admin','admin','ad_manager') createSlot(@Req() req:Request,@Body() dto:CreateAdSlotDto){return this.admin.createAdSlot(this.actor(req),dto,this.ip(req));}
  @Get('ads/campaigns') @PlatformRoles('super_admin','admin','ad_manager') campaigns(@Req() req:Request){return this.admin.campaigns(this.actor(req));}
  @Patch('ads/campaigns/:id/status') @PlatformRoles('super_admin','admin','ad_manager') updateCampaign(@Req() req:Request,@Param('id',new ParseUUIDPipe()) id:string,@Body() dto:UpdateCampaignStatusDto){return this.admin.updateCampaignStatus(this.actor(req),id,dto.status,this.ip(req));}
  @Get('ads/inquiries') @PlatformRoles('super_admin','admin','ad_manager') inquiries(@Req() req:Request){return this.admin.inquiries(this.actor(req));}
