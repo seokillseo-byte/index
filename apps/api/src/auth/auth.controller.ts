@@ -1,4 +1,4 @@
-import {Body,Controller,HttpCode,HttpStatus,Post,Req} from '@nestjs/common';
+import {Body,Controller,Delete,HttpCode,HttpStatus,Param,Post,Get,Req} from '@nestjs/common';
 import {ApiBearerAuth,ApiOperation,ApiTags} from '@nestjs/swagger';
 import {Request} from 'express';
 import {Throttle} from '@nestjs/throttler';
@@ -34,6 +34,12 @@ export class AuthController{
  disableMfa(@Req() req:Request,@Body() dto:MfaDisableDto){return this.auth.disableMfa(req.principal!.userId,dto.password,dto.code);}
  @Public() @Post('refresh') @HttpCode(HttpStatus.OK)
  refresh(@Body() dto:RefreshDto){return this.auth.refresh(dto.refreshToken);}
+ @Get('sessions') @ApiBearerAuth()
+ listSessions(@Req() req:Request){return this.auth.listSessions(req.principal!.userId);}
+ @Delete('sessions/:sessionId') @HttpCode(HttpStatus.OK) @ApiBearerAuth()
+ revokeSession(@Req() req:Request,@Param('sessionId') sessionId:string){return this.auth.revokeSession(req.principal!.userId,sessionId);}
+ @Post('sessions/revoke-all') @HttpCode(HttpStatus.OK) @ApiBearerAuth()
+ revokeAllSessions(@Req() req:Request){return this.auth.revokeAllSessions(req.principal!.userId,req.principal!.sessionId);}
  @Post('logout') @HttpCode(HttpStatus.OK) @ApiBearerAuth()
  logout(@Req() req:Request){return this.auth.logout(req.principal!.userId,req.principal!.sessionId);}
 }
