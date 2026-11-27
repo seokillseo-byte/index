@@ -107,6 +107,7 @@ func processBatch(ctx context.Context,pool *pgxpool.Pool,tenantID,projectID stri
 func claimTasks(ctx context.Context,pool *pgxpool.Pool,tenantID,projectID,workerID string,limit int)([]task,error){
  tx,err:=pool.Begin(ctx);if err!=nil{return nil,err};defer tx.Rollback(ctx)
  if _,err=tx.Exec(ctx,"SELECT set_config('app.tenant_id',$1,true)",tenantID);err!=nil{return nil,err}
+ if _,err=tx.Exec(ctx,"UPDATE app.url_processing_tasks t SET status='dead_letter',lease_owner=NULL,lease_expires_at=NULL,last_error=COALESCE(last_error,'lease expired at maximum attempts'),updated_at=now() FROM app.urls u WHERE t.tenant_id=$1 AND u.tenant_id=t.tenant_id AND u.id=t.url_id AND u.project_id=$2 AND t.task_type='http_check' AND t.status='leased' AND t.lease_expires_at<now() AND t.attempt_count>=t.max_attempts",tenantID,projectID);err!=nil{return nil,err}
  rows,err:=tx.Query(ctx,`WITH due AS (
   SELECT t.id FROM app.url_processing_tasks t JOIN app.urls u ON u.tenant_id=t.tenant_id AND u.id=t.url_id
   WHERE t.tenant_id=$1 AND u.project_id=$2 AND t.task_type='http_check'
@@ -116,7 +117,7 @@ func claimTasks(ctx context.Context,pool *pgxpool.Pool,tenantID,projectID,worker
   LIMIT $4 FOR UPDATE OF t SKIP LOCKED
  )
  UPDATE app.url_processing_tasks t SET status='leased',lease_owner=$3,
-  lease_expires_at=now()+interval '10 minutes',attempt_count=t.attempt_count+1,updated_at=now()
+  lease_expires_at=now()+interval '30 minutes',attempt_count=CASE WHEN t.status='leased' AND t.lease_owner=$3 AND t.lease_expires_at>now() THEN t.attempt_count ELSE t.attempt_count+1 END,updated_at=now()
  FROM due d,app.urls u
  WHERE t.id=d.id AND u.tenant_id=t.tenant_id AND u.id=t.url_id AND u.project_id=$2
  RETURNING t.id::text,t.url_id::text,u.normalized_url,t.attempt_count`,tenantID,projectID,workerID,limit)
@@ -194,6 +195,9 @@ func parseRobots(body,path string)bool{
 func saveResult(ctx context.Context,pool *pgxpool.Pool,tenantID,projectID,workerID string,item task,result fetchResult)error{
  tx,err:=pool.Begin(ctx);if err!=nil{return err};defer tx.Rollback(ctx)
  if _,err=tx.Exec(ctx,"SELECT set_config('app.tenant_id',$1,true)",tenantID);err!=nil{return err}
+ var owned bool
+ if err=tx.QueryRow(ctx,"SELECT EXISTS(SELECT 1 FROM app.url_processing_tasks WHERE id=$1 AND tenant_id=$2 AND status='leased' AND lease_owner=$3)",item.ID,tenantID,workerID).Scan(&owned);err!=nil{return err}
+ if !owned{return tx.Commit(ctx)}
  payload,_:=json.Marshal(result)
  if _,err=tx.Exec(ctx,"INSERT INTO app.url_observations(tenant_id,url_id,kind,source,result,confidence) VALUES($1,$2,'http','index-assist-crawler',$3::jsonb,'observed')",tenantID,item.URLID,string(payload));err!=nil{return err}
  status:="eligible";taskStatus:="completed";retry:=false
