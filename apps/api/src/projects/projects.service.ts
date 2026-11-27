@@ -6,7 +6,7 @@ type Principal={userId:string;tenantId:string};
 export class ProjectsService{
  constructor(private readonly db:DatabaseService){}
  private async requirePermission(principal:Principal,permission:string){
-  const r=await this.db.query("SELECT 1 FROM app.tenant_members tm JOIN app.role_permissions rp ON rp.role_id=tm.role_id JOIN app.permissions p ON p.id=rp.permission_id WHERE tm.tenant_id=$1 AND tm.user_id=$2 AND tm.status='active' AND p.code=$3",[principal.tenantId,principal.userId,permission]);
+  const r=await this.db.withTransaction(client=>client.query("SELECT 1 FROM app.tenant_members tm JOIN app.role_permissions rp ON rp.role_id=tm.role_id JOIN app.permissions p ON p.id=rp.permission_id WHERE tm.tenant_id=$1 AND tm.user_id=$2 AND tm.status='active' AND p.code=$3",[principal.tenantId,principal.userId,permission]),principal.tenantId);
   if(!r.rowCount)throw new ForbiddenException('Insufficient workspace permission');
  }
  async list(principal:Principal){
