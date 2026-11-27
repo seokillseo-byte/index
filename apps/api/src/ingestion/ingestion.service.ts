@@ -18,6 +18,8 @@ export class IngestionService{
   for(const raw of input.urls){try{const item=normalizeUrl(raw);valid++;normalized.set(item.url,item);}catch{rejected++;}}
   const items=[...normalized.values()],batchId=randomUUID();
   return this.db.withTransaction(async client=>{
+   const permission=await client.query("SELECT 1 FROM app.tenant_members tm JOIN app.role_permissions rp ON rp.role_id=tm.role_id JOIN app.permissions p ON p.id=rp.permission_id WHERE tm.tenant_id=$1 AND tm.user_id=$2 AND tm.status='active' AND p.code='url.manage'",[principal.tenantId,principal.userId]);
+   if(!permission.rowCount)throw new ForbiddenException('The current workspace role cannot import URLs');
    const project=await client.query("SELECT id FROM app.projects WHERE tenant_id=$1 AND id=$2 AND status='active'",[principal.tenantId,input.projectId]);
    if(!project.rowCount)throw new ForbiddenException('Project not found or unavailable in this workspace');
    await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[principal.tenantId+':'+idempotencyKey]);
