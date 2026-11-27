@@ -145,7 +145,7 @@ async function processEvent(event){
  const jobs=await claimBatch(payload);if(!jobs.length)return;
  let credential;
  try{credential=await getCredential(payload.tenantId,payload.connectionId,payload.provider);credential=await refreshAccessToken(payload.tenantId,payload.connectionId,payload.provider,credential);}
- catch(error){for(const job of jobs)await scheduleRetry(payload.tenantId,payload,job,error,false);await markConnectionError(payload.tenantId,payload.connectionId,String(error));await scheduleNextBatch(payload);return;}
+ catch(error){const message=String(error);const permanent=/(no longer active|credentials are missing|authorization expired|credentials are not configured|HTTP (400|401|403))/.test(message);for(const job of jobs)await scheduleRetry(payload.tenantId,payload,job,error,!permanent);if(permanent)await markConnectionError(payload.tenantId,payload.connectionId,message);else console.error('Transient provider credential error',message);await scheduleNextBatch(payload);return;}
  if(payload.provider==='google_search_console')await processGoogle(payload,jobs,credential);
  else await processBing(payload,jobs,credential);
  await scheduleNextBatch(payload);
