@@ -1,6 +1,6 @@
 import {BadRequestException,ForbiddenException,Injectable,NotFoundException} from '@nestjs/common';
 import {randomUUID} from 'node:crypto';
-import {PoolClient} from 'pg';
+import type {PoolClient} from 'pg';
 import {DatabaseService} from '../database/database.module';
 type Principal={userId:string;tenantId:string};
 @Injectable()
