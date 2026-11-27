@@ -8,7 +8,7 @@ Updated: 2026-11-28
 - Target VPS capacity: 32 vCPU / 64 GB RAM / 2 TB NVMe / 1 Gbps.
 - Current repository baseline: `main` at `568e00af228c64249f5da6e4ec22f29e6cbe10be`.
 - Active implementation branch: `feature/provider-job-engine`.
-- Active branch head: `6d83416a9ff488e45a0e1d9a6dc41f73e5aaa142`.
+- Active branch head: `a6dd8c8e5fd9796a8ffcf4e102397071c5a9d420`.
 - Review PR: #6, open and ready for review; intentionally not merged.
 
 ## Authentication hardening completed in this checkpoint
