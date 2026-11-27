@@ -1,7 +1,8 @@
 import {Controller,Get,ServiceUnavailableException} from '@nestjs/common';
 import {ApiOperation,ApiTags} from '@nestjs/swagger';
 import {DatabaseService} from '../database/database.module';
-@ApiTags('health') @Controller('health')
+import {Public} from '../auth/auth.constants';
+@Public() @ApiTags('health') @Controller('health')
 export class HealthController{
  constructor(private readonly db:DatabaseService){}
  @Get('live') @ApiOperation({summary:'Process liveness probe'}) live(){return {status:'ok'} as const;}
