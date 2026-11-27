@@ -1,5 +1,6 @@
 import {IsEmail,IsIn,IsOptional,IsString,IsUrl,IsInt,Min,Max,Length,MaxLength,IsUUID} from 'class-validator';
 export class PublicAdEventDto {
+ @IsUUID() eventKey!:string;
  @IsUUID() campaignId!:string;
  @IsUUID() creativeId!:string;
  @IsUUID() slotId!:string;
