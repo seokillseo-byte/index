@@ -1,4 +1,4 @@
-import {BadRequestException,ForbiddenException,Injectable} from '@nestjs/common';
+import {BadRequestException,ForbiddenException,Injectable,TooManyRequestsException} from '@nestjs/common';
 import {createHash,randomUUID} from 'node:crypto';
 import {DatabaseService} from '../database/database.module';
 type Principal={userId:string;tenantId:string};
@@ -14,8 +14,8 @@ export class IngestionService{
  constructor(private readonly db:DatabaseService){}
  async ingest(principal:Principal,input:{projectId:string;tier:number;urls:string[]},idempotencyKey:string){
   if(!/^[A-Za-z0-9._:-]{8,128}$/.test(idempotencyKey))throw new BadRequestException('A valid Idempotency-Key header is required');
-  const normalized=new Map<string,{url:string;hostname:string;hash:Buffer}>();let rejected=0;
-  for(const raw of input.urls){try{const item=normalizeUrl(raw);normalized.set(item.url,item);}catch{rejected++;}}
+  const normalized=new Map<string,{url:string;hostname:string;hash:Buffer}>();let rejected=0,valid=0;
+  for(const raw of input.urls){try{const item=normalizeUrl(raw);valid++;normalized.set(item.url,item);}catch{rejected++;}}
   const items=[...normalized.values()],batchId=randomUUID();
   return this.db.withTransaction(async client=>{
    const project=await client.query("SELECT id FROM app.projects WHERE tenant_id=$1 AND id=$2 AND status='active'",[principal.tenantId,input.projectId]);
@@ -33,7 +33,10 @@ export class IngestionService{
     "ON CONFLICT(idempotency_key) DO NOTHING RETURNING id) SELECT id FROM added"
    ].join(' ');
    const inserted=await client.query<{id:string}>(sql,[principal.tenantId,input.projectId,items.map(x=>x.url),items.map(x=>x.hash),items.map(x=>x.hostname),input.tier]);
-   const accepted=inserted.rowCount??0,duplicates=items.length-accepted;
+   const accepted=inserted.rowCount??0,duplicates=valid-accepted;
+   const quota=await client.query<{daily_url_quota:string;used:string}>(\"SELECT p.daily_url_quota::text,COALESCE(u.accepted_urls,0)::text used FROM app.subscriptions s JOIN app.plans p ON p.id=s.plan_id LEFT JOIN app.tenant_usage_daily u ON u.tenant_id=s.tenant_id AND u.usage_date=current_date WHERE s.tenant_id=$1 AND s.status IN ('active','trialing') AND s.current_period_end>now() ORDER BY s.created_at DESC LIMIT 1\",[principal.tenantId]);
+   if(!quota.rows[0])throw new ForbiddenException('No active subscription for this workspace');
+   if(Number(quota.rows[0].used)+accepted>Number(quota.rows[0].daily_url_quota))throw new TooManyRequestsException({message:'Daily URL quota exceeded',dailyLimit:Number(quota.rows[0].daily_url_quota),usedToday:Number(quota.rows[0].used)});
    await client.query("UPDATE app.ingestion_batches SET accepted_count=$2,duplicate_count=$3,rejected_count=$4,status=CASE WHEN $4>0 THEN 'partial' ELSE 'accepted' END WHERE id=$1",[batchId,accepted,duplicates,rejected]);
    await client.query("INSERT INTO app.outbox_events(tenant_id,aggregate_type,aggregate_id,event_type,topic,partition_key,payload,idempotency_key) VALUES($1,'ingestion_batch',$2,'url.batch.accepted','url.ingestion',$1::text,$3::jsonb,$4) ON CONFLICT(idempotency_key) DO NOTHING",[principal.tenantId,batchId,JSON.stringify({batchId,projectId:input.projectId,tier:input.tier,acceptedCount:accepted}),"url-batch:"+batchId]);
    await client.query('INSERT INTO app.tenant_usage_daily(tenant_id,usage_date,accepted_urls) VALUES($1,current_date,$2) ON CONFLICT(tenant_id,usage_date) DO UPDATE SET accepted_urls=app.tenant_usage_daily.accepted_urls+EXCLUDED.accepted_urls,updated_at=now()',[principal.tenantId,accepted]);
