@@ -326,7 +326,7 @@ func extractBacklinks(body []byte,baseURL,targetCanonical string)([]discoveredLi
   case html.StartTagToken,html.SelfClosingTagToken:
    name,hasAttr:=z.TagName()
    if string(name)=="a"{
-    inAnchor=true;anchor="";href="";rel=nil
+    inAnchor=true;anchor="";href="";rel=make([]string,0)
     for hasAttr{k,v,more:=z.TagAttr();key:=strings.ToLower(string(k));value:=string(v);if key=="href"{href=value};if key=="rel"{for _,part:=range strings.Fields(strings.ToLower(value)){rel=append(rel,part)}};hasAttr=more}
     if tt==html.SelfClosingTagToken{inAnchor=false}
    }
