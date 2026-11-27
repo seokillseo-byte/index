@@ -16,16 +16,6 @@ CREATE INDEX email_verification_tokens_active_idx
   ON app.email_verification_tokens(token_hash, expires_at)
   WHERE used_at IS NULL;
 
-ALTER TABLE app.email_verification_tokens ENABLE ROW LEVEL SECURITY;
-ALTER TABLE app.email_verification_tokens FORCE ROW LEVEL SECURITY;
-
-CREATE POLICY email_verification_tokens_user_policy
-  ON app.email_verification_tokens
-  USING (
-    user_id = current_setting('app.auth_user_id', true)::uuid
-  )
-  WITH CHECK (
-    user_id = current_setting('app.auth_user_id', true)::uuid
-  );
-
+-- Verification tokens are authentication artifacts, not tenant-owned business data.
+-- Access is restricted by the high-entropy token hash and the API runtime role.
 COMMIT;
