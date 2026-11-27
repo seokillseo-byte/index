@@ -11,7 +11,6 @@ import (
   "net/http"
  "net/url"
  "crypto/sha256"
- "net"
  "os"
  "os/signal"
  "strings"
@@ -102,7 +101,7 @@ func processBatch(ctx context.Context,pool *pgxpool.Pool,tenantID,projectID stri
      result:=inspect(ctx,item.URL)
      taskErr=saveResult(ctx,pool,tenantID,projectID,workerID,item,result)
     }
-    if taskErr!=nil{errCh<-taskErr}
+    if taskErr!=nil{if item.Type=="html_analysis"{if releaseErr:=markHTMLTask(ctx,pool,tenantID,projectID,workerID,item,"retrying",taskErr.Error());releaseErr!=nil{errCh<-releaseErr}}else{errCh<-taskErr}}
    }()
   }
   wg.Wait()
@@ -135,7 +134,7 @@ func claimTasks(ctx context.Context,pool *pgxpool.Pool,tenantID,projectID,worker
  if err:=rows.Err();err!=nil{return nil,err}
  if len(out)==0{
   var activeLease bool
-  if err:=tx.QueryRow(ctx,"SELECT EXISTS(SELECT 1 FROM app.url_processing_tasks t JOIN app.urls u ON u.tenant_id=t.tenant_id AND u.id=t.url_id WHERE t.tenant_id=$1 AND u.project_id=$2 AND t.task_type='http_check' AND t.status='leased' AND t.lease_expires_at>now())",tenantID,projectID).Scan(&activeLease);err!=nil{return nil,err}
+  if err:=tx.QueryRow(ctx,"SELECT EXISTS(SELECT 1 FROM app.url_processing_tasks t JOIN app.urls u ON u.tenant_id=t.tenant_id AND u.id=t.url_id WHERE t.tenant_id=$1 AND u.project_id=$2 AND t.task_type IN ('http_check','html_analysis') AND t.status='leased' AND t.lease_expires_at>now())",tenantID,projectID).Scan(&activeLease);err!=nil{return nil,err}
   if activeLease{return nil,errors.New("tasks are leased by another crawler replica")}
  }
  if err:=tx.Commit(ctx);err!=nil{return nil,err}
@@ -276,7 +275,7 @@ func analyzeAndSaveHTML(ctx context.Context,pool *pgxpool.Pool,tenantID,projectI
  if err=tx.Commit(ctx);err!=nil{return err}
  targetCanonical,err:=canonicalURL(targetURL);if err!=nil{return err}
  parsed,err:=safefetch.ValidateURL(item.URL);if err!=nil{return err}
- allowed,err:=robotsAllows(ctx,safefetch.SafeClient(20*time.Second),parsed);if err!=nil{return err};if !allowed{return markHTMLTask(ctx,pool,tenantID,workerID,item,"blocked","disallowed by robots.txt")}
+ allowed,err:=robotsAllows(ctx,safefetch.SafeClient(20*time.Second),parsed);if err!=nil{return err};if !allowed{return markHTMLTask(ctx,pool,tenantID,projectID,workerID,item,"completed","disallowed by robots.txt")}
  client:=safefetch.SafeClient(20*time.Second);current:=parsed
  var body []byte;finalURL:=item.URL;statusCode:=0
  for hop:=0;hop<=5;hop++{
@@ -291,8 +290,8 @@ func analyzeAndSaveHTML(ctx context.Context,pool *pgxpool.Pool,tenantID,projectI
    current=next;continue
   }
   statusCode=resp.StatusCode;finalURL=current.String()
-  if statusCode<200||statusCode>=300{resp.Body.Close();return markHTMLTask(ctx,pool,tenantID,workerID,item,"retrying",fmt.Sprintf("HTML fetch returned HTTP %d",statusCode))}
-  if !strings.Contains(strings.ToLower(resp.Header.Get("Content-Type")),"text/html"){resp.Body.Close();return markHTMLTask(ctx,pool,tenantID,workerID,item,"completed","non-HTML content")}
+  if statusCode<200||statusCode>=300{resp.Body.Close();return markHTMLTask(ctx,pool,tenantID,projectID,workerID,item,"retrying",fmt.Sprintf("HTML fetch returned HTTP %d",statusCode))}
+  if !strings.Contains(strings.ToLower(resp.Header.Get("Content-Type")),"text/html"){resp.Body.Close();return markHTMLTask(ctx,pool,tenantID,projectID,workerID,item,"completed","non-HTML content")}
   body,err=io.ReadAll(io.LimitReader(resp.Body,2*1024*1024+1));resp.Body.Close();if err!=nil{return err}
   if len(body)>2*1024*1024{body=body[:2*1024*1024]}
   break
@@ -347,7 +346,7 @@ func extractBacklinks(body []byte,baseURL,targetCanonical string)([]discoveredLi
  }
 }
 
-func markHTMLTask(ctx context.Context,pool *pgxpool.Pool,tenantID,workerID string,item task,status,message string)error{
+func markHTMLTask(ctx context.Context,pool *pgxpool.Pool,tenantID,projectID,workerID string,item task,status,message string)error{
  tx,err:=pool.Begin(ctx);if err!=nil{return err};defer tx.Rollback(ctx)
  if _,err=tx.Exec(ctx,"SELECT set_config('app.tenant_id',$1,true)",tenantID);err!=nil{return err}
  if status=="retrying"&&item.Attempts<8{
@@ -357,7 +356,13 @@ func markHTMLTask(ctx context.Context,pool *pgxpool.Pool,tenantID,workerID strin
   finalStatus:=status;if status=="retrying"{finalStatus="dead_letter"}
   _,err=tx.Exec(ctx,"UPDATE app.url_processing_tasks SET status=$4,lease_owner=NULL,lease_expires_at=NULL,last_error=$5,updated_at=now() WHERE id=$1 AND tenant_id=$2 AND lease_owner=$3",item.ID,tenantID,workerID,finalStatus,message)
  }
- if err!=nil{return err};return tx.Commit(ctx)
+ if err!=nil{return err}
+ if status=="retrying"&&item.Attempts<8{
+  delay:=minInt(3600,1<<minInt(item.Attempts,10))
+  _,err=tx.Exec(ctx,"INSERT INTO app.outbox_events(tenant_id,aggregate_type,aggregate_id,event_type,topic,partition_key,payload,idempotency_key,next_attempt_at) VALUES($1,'url_task',$2,'url.batch.accepted','url.ingestion',$3,$4::jsonb,$5,now()+(($6::text || ' seconds')::interval + interval '5 seconds')) ON CONFLICT(idempotency_key) DO NOTHING",tenantID,item.ID,tenantID+':'+projectID,string(mustJSON(map[string]string{"tenantId":tenantID,"projectId":projectID})),fmt.Sprintf("retry-html:%s:%d",item.ID,item.Attempts),delay)
+  if err!=nil{return err}
+ }
+ return tx.Commit(ctx)
 }
 
 func hostMutex(host string)*sync.Mutex{h:=fnv.New32a();_,_=h.Write([]byte(strings.ToLower(host)));return &hostLocks[h.Sum32()%uint32(len(hostLocks))]}
