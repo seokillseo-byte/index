@@ -1,0 +1,1 @@
+export default function CustomerEntry(){return <main style={{fontFamily:'system-ui',padding:48,maxWidth:760,margin:'auto'}}><p>INDEX ASSIST · WORKSPACE</p><h1>Your SEO workspace</h1><p>The tenant dashboard will be enabled after verified session handling, membership authorization, quota enforcement, and row-level tenant isolation are connected end to end.</p></main>}
