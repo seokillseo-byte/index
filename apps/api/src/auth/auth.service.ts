@@ -55,6 +55,7 @@ export class AuthService{
 
  private async createAuthToken(userId:string,purpose:'password_reset'|'mfa_login'|'mfa_recovery',expiresIn:string):Promise<string>{
   const token=randomBytes(32).toString('base64url');
+  if(purpose==='password_reset'||purpose==='mfa_login') await this.db.query("DELETE FROM app.auth_tokens WHERE user_id=$1 AND purpose=$2 AND consumed_at IS NULL",[userId,purpose]);
   await this.db.query("INSERT INTO app.auth_tokens(user_id,purpose,token_hash,expires_at) VALUES($1,$2,$3,now()+$4::interval)",[userId,purpose,this.hashToken(token),expiresIn]);
   return token;
  }
@@ -177,6 +178,9 @@ export class AuthService{
  }
 
  async verifyMfa(userId:string,code:string){
+  const state=await this.db.query<{mfa_enabled:boolean}>("SELECT mfa_enabled FROM app.users WHERE id=$1 AND status='active'",[userId]);
+  if(!state.rowCount)throw new UnauthorizedException('User account is unavailable');
+  if(state.rows[0].mfa_enabled)throw new ConflictException('MFA is already enabled');
   const row=await this.db.query<{secret_ciphertext:Buffer;secret_iv:Buffer;secret_auth_tag:Buffer}>("SELECT secret_ciphertext,secret_iv,secret_auth_tag FROM app.mfa_credentials WHERE user_id=$1",[userId]);
   if(!row.rowCount)throw new BadRequestException('MFA enrollment has not been started');
   if(!this.verifyTotp(this.decryptSecret(row.rows[0]),code))throw new UnauthorizedException('Invalid MFA code');
