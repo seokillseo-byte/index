@@ -32,8 +32,9 @@ export class AuthService{
   try{
    const created=await this.db.withTransaction(async client=>{
     const user=await client.query<{id:string}>('INSERT INTO app.users(email,password_hash,display_name) VALUES($1,$2,$3) RETURNING id',[input.email.toLowerCase(),passwordHash,input.displayName]);
-    const tenant=await client.query<{id:string;name:string}>('INSERT INTO app.tenants(name,slug) VALUES($1,$2) RETURNING id,name',[input.workspaceName,slug]);
-    await client.query("SELECT set_config('app.tenant_id',$1,true)",[tenant.rows[0].id]);
+    const tenantId=randomUUID();
+    await client.query("SELECT set_config('app.tenant_id',$1,true)",[tenantId]);
+    const tenant=await client.query<{id:string;name:string}>('INSERT INTO app.tenants(id,name,slug) VALUES($1,$2,$3) RETURNING id,name',[tenantId,input.workspaceName,slug]);
     const owner=await client.query<{id:string}>("SELECT id FROM app.roles WHERE code='owner'");
     if(!owner.rowCount)throw new Error('Database role seed missing: owner');
     await client.query("INSERT INTO app.tenant_members(tenant_id,user_id,role_id,status,joined_at) VALUES($1,$2,$3,'active',now())",[tenant.rows[0].id,user.rows[0].id,owner.rows[0].id]);
