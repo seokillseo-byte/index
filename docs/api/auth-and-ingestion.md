@@ -99,6 +99,9 @@ A discovered backlink is an observed HTML link, not proof that a search engine h
 - `POST /api/v1/integrations/bing_webmaster/connect` with `{"projectId":"..." }` — returns a Bing Webmaster OAuth authorization URL.
 - `GET /api/v1/integrations/{provider}/callback` — provider callback. The callback state is signed, single-use, tenant-bound and expires after ten minutes.
 - `GET /api/v1/integrations` — list connections in the authenticated workspace.
+- `GET /api/v1/integrations/{connectionId}/sites` — list provider properties available to the connected account.
+- `POST /api/v1/integrations/{connectionId}/sites` with `projectId` and `siteUrl` — bind a provider property to a project after checking domain/path coverage and provider permissions.
+- `POST /api/v1/integrations/bing_webmaster/api-key` with `projectId` and `apiKey` — connect Bing using its account API key as a fallback to OAuth.
 - `DELETE /api/v1/integrations/{connectionId}` — revoke the connection and delete its stored encrypted token payload.
 
 Configure provider client credentials and exact redirect URIs in `.env.api`. The API also requires a 32-byte hex `INTEGRATION_ENCRYPTION_KEY` for AES-256-GCM token encryption and an `OAUTH_STATE_SECRET` of at least 48 characters. Never commit real credentials.
