@@ -109,7 +109,7 @@ async function processGoogle(payload,jobs,credential){
 async function processBing(payload,jobs,credential){
  if(!jobs.length)return;
  try{
-  const endpoint=new URL('https://www.bing.com/webmaster/api.svc/json/SubmitUrlBatch');
+  const endpoint=new URL('https://ssl.bing.com/webmaster/api.svc/json/SubmitUrlBatch');
   endpoint.searchParams.set('siteUrl',jobs[0].site_url);
   const headers={'content-type':'application/json','accept':'application/json'};
   if(credential.apiKey)endpoint.searchParams.set('apikey',credential.apiKey);else headers.authorization='Bearer '+credential.accessToken;
