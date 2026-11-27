@@ -1,0 +1,2 @@
+import {AdminDataPage} from '../../admin-data-page';
+export default function Page(){return <AdminDataPage title="Nhà quảng cáo" description="Tiếp nhận và xử lý yêu cầu hợp tác quảng cáo." endpoint="ads/inquiries" columns={['company_name','contact_name','email','website_url','requested_budget_minor','status','created_at']}/>;}
