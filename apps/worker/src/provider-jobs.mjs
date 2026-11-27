@@ -102,6 +102,7 @@ async function processGoogle(payload,jobs,credential){
     await client.query("INSERT INTO app.url_observations(tenant_id,url_id,kind,source,result,confidence) SELECT $1,u.id,'index','google-search-console-url-inspection',$4::jsonb,'verified' FROM app.urls u WHERE u.tenant_id=$1 AND u.project_id=$2 AND u.normalized_url=$3",[payload.tenantId,payload.projectId,job.url,JSON.stringify(result)]);
    });
   }catch(error){await scheduleRetry(payload.tenantId,payload,job,error,true);}
+  await delay(125);
  }
 }
 async function processBing(payload,jobs,credential){
