@@ -1,0 +1,4 @@
+import type { Metadata } from 'next';
+export const metadata: Metadata = { title: 'Pricing', description: 'Index Assist plans and usage limits.' };
+const plans=[['Starter','For independent SEO operators','Defined URL and project allowance'],['Growth','For agencies managing multiple clients','Higher throughput and team workspaces'],['Scale','For large SEO operations','Custom quotas, API access and support']];
+export default function PricingPage(){return <section className="content-page"><div className="eyebrow">Simple, usage-aware plans</div><h1>Choose a workspace that scales.</h1><p className="muted">Final prices and quotas will be configured in the Admin billing console before launch.</p><div className="price-grid">{plans.map(([name,desc,detail])=><article className="price-card" key={name}><h2>{name}</h2><p className="muted">{desc}</p><p>{detail}</p></article>)}</div></section>}
