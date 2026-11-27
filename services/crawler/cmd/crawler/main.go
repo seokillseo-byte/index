@@ -23,7 +23,7 @@ import (
 type envelope struct {
  ID string `json:"id"`
  Type string `json:"type"`
- Payload struct { ProjectID string `json:"projectId"` } `json:"payload"`
+ Payload struct { TenantID string `json:"tenantId"`; ProjectID string `json:"projectId"` } `json:"payload"`
 }
 type task struct { ID string; URLID string; URL string; Attempts int }
 type fetchResult struct { StatusCode int `json:"statusCode"`; FinalURL string `json:"finalUrl"`; ContentType string `json:"contentType"`; Server string `json:"server"`; RobotsAllowed bool `json:"robotsAllowed"`; Redirects int `json:"redirects"`; Error string `json:"error,omitempty"` }
@@ -50,18 +50,18 @@ func main() {
  for {
   msg, err := reader.FetchMessage(ctx)
   if err != nil { if ctx.Err()!=nil { return }; log.Printf("fetch message: %v",err); time.Sleep(time.Second); continue }
-  tenantID := string(msg.Key)
   var event envelope
-  if err := json.Unmarshal(msg.Value,&event); err != nil { log.Printf("invalid event payload: %v",err); continue }
-  if event.Type != "url.batch.accepted" || tenantID == "" || event.Payload.ProjectID == "" {
+  if err := json.Unmarshal(msg.Value,&event); err != nil { log.Printf("invalid event payload: %v",err); if commitErr:=reader.CommitMessages(ctx,msg);commitErr!=nil{log.Printf("commit malformed event: %v",commitErr)}; continue }
+  if event.Type != "url.batch.accepted" || event.Payload.TenantID == "" || event.Payload.ProjectID == "" {
    log.Printf("skip unsupported or incomplete event %s",event.ID)
    if err := reader.CommitMessages(ctx,msg); err != nil { log.Printf("commit skipped event: %v",err) }
    continue
   }
-  if err := processBatch(ctx,pool,tenantID,event.Payload.ProjectID); err != nil {
-   log.Printf("batch %s failed; message will be retried: %v",event.ID,err)
-   time.Sleep(2*time.Second)
-   continue
+  for {
+   err=processBatch(ctx,pool,event.Payload.TenantID,event.Payload.ProjectID)
+   if err==nil{break}
+   log.Printf("batch %s processing failed; retrying same event: %v",event.ID,err)
+   select{case <-ctx.Done():return;case <-time.After(2*time.Second):}
   }
   if err := reader.CommitMessages(ctx,msg); err != nil { log.Printf("commit event %s: %v",event.ID,err) }
  }
@@ -84,7 +84,7 @@ func processBatch(ctx context.Context,pool *pgxpool.Pool,tenantID,projectID stri
     select{case sem<-struct{}{}:case <-ctx.Done():errCh<-ctx.Err();return}
     defer func(){<-sem}()
     result:=inspect(ctx,item.URL)
-    if err:=saveResult(ctx,pool,tenantID,workerID,item,result);err!=nil{errCh<-err}
+    if err:=saveResult(ctx,pool,tenantID,projectID,workerID,item,result);err!=nil{errCh<-err}
    }()
   }
   wg.Wait()
@@ -97,12 +97,12 @@ func claimTasks(ctx context.Context,pool *pgxpool.Pool,tenantID,projectID,worker
  tx,err:=pool.Begin(ctx);if err!=nil{return nil,err};defer tx.Rollback(ctx)
  if _,err=tx.Exec(ctx,"SELECT set_config('app.tenant_id',$1,true)",tenantID);err!=nil{return nil,err}
  rows,err:=tx.Query(ctx,`WITH due AS (
-  SELECT id FROM app.url_processing_tasks
-  WHERE tenant_id=$1 AND task_type='http_check'
-    AND (status IN ('pending','retrying') OR (status='leased' AND lease_expires_at<now()))
-    AND scheduled_at<=now() AND attempt_count<max_attempts
-  ORDER BY priority DESC,scheduled_at
-  FOR UPDATE SKIP LOCKED LIMIT $4
+  SELECT t.id FROM app.url_processing_tasks t JOIN app.urls u ON u.tenant_id=t.tenant_id AND u.id=t.url_id
+  WHERE t.tenant_id=$1 AND u.project_id=$2 AND t.task_type='http_check'
+    AND (status IN ('pending','retrying') OR (status='leased' AND (lease_expires_at<now() OR lease_owner=$3)))
+    AND t.scheduled_at<=now() AND t.attempt_count<t.max_attempts
+  ORDER BY t.priority DESC,t.scheduled_at
+  FOR UPDATE OF t SKIP LOCKED LIMIT $4
  )
  UPDATE app.url_processing_tasks t SET status='leased',lease_owner=$3,
   lease_expires_at=now()+interval '2 minutes',attempt_count=t.attempt_count+1,updated_at=now()
@@ -186,26 +186,31 @@ func parseRobots(body,path string)bool{
  return allowed
 }
 
-func saveResult(ctx context.Context,pool *pgxpool.Pool,tenantID,workerID string,item task,result fetchResult)error{
+func saveResult(ctx context.Context,pool *pgxpool.Pool,tenantID,projectID,workerID string,item task,result fetchResult)error{
  tx,err:=pool.Begin(ctx);if err!=nil{return err};defer tx.Rollback(ctx)
  if _,err=tx.Exec(ctx,"SELECT set_config('app.tenant_id',$1,true)",tenantID);err!=nil{return err}
  payload,_:=json.Marshal(result)
  if _,err=tx.Exec(ctx,"INSERT INTO app.url_observations(tenant_id,url_id,kind,source,result,confidence) VALUES($1,$2,'http','index-assist-crawler',$3::jsonb,'observed')",tenantID,item.URLID,string(payload));err!=nil{return err}
  status:="eligible";taskStatus:="completed";retry:=false
- if !result.RobotsAllowed||result.StatusCode>=400&&result.StatusCode<500&&result.StatusCode!=429{status="blocked"}
- if result.Error!=""||result.StatusCode==429||result.StatusCode>=500||result.StatusCode==0{
-  status="error";retry=true
- }
+ if !result.RobotsAllowed&&result.Error=="disallowed by robots.txt"{status="blocked"}
+ if result.StatusCode>=400&&result.StatusCode<500&&result.StatusCode!=429{status="blocked"}
+ if result.Error!=""&&result.Error!="disallowed by robots.txt"||result.StatusCode==429||result.StatusCode>=500||result.StatusCode==0{status="error";retry=true}
  if retry{
   if item.Attempts>=8{taskStatus="dead_letter"}else{taskStatus="retrying"}
-  if _,err=tx.Exec(ctx,"UPDATE app.url_processing_tasks SET status=$3,lease_owner=NULL,lease_expires_at=NULL,scheduled_at=now()+($4::text || ' seconds')::interval,last_error=$5,updated_at=now() WHERE id=$1 AND tenant_id=$2 AND lease_owner=$6",item.ID,tenantID,taskStatus,minInt(3600,1<<minInt(item.Attempts,10)),result.Error,workerID);err!=nil{return err}
+  retryDelay:=minInt(3600,1<<minInt(item.Attempts,10))
+  if _,err=tx.Exec(ctx,"UPDATE app.url_processing_tasks SET status=$3,lease_owner=NULL,lease_expires_at=NULL,scheduled_at=now()+($4::text || ' seconds')::interval,last_error=$5,updated_at=now() WHERE id=$1 AND tenant_id=$2 AND lease_owner=$6",item.ID,tenantID,taskStatus,retryDelay,result.Error,workerID);err!=nil{return err}
  }else{
   if _,err=tx.Exec(ctx,"UPDATE app.url_processing_tasks SET status=$3,lease_owner=NULL,lease_expires_at=NULL,last_error=NULL,updated_at=now() WHERE id=$1 AND tenant_id=$2 AND lease_owner=$4",item.ID,tenantID,taskStatus,workerID);err!=nil{return err}
  }
  if _,err=tx.Exec(ctx,"UPDATE app.urls SET status=$3,last_checked_at=now(),updated_at=now() WHERE id=$1 AND tenant_id=$2",item.URLID,tenantID,status);err!=nil{return err}
+ if retry&&taskStatus=="retrying"{
+  _,err=tx.Exec(ctx,"INSERT INTO app.outbox_events(tenant_id,aggregate_type,aggregate_id,event_type,topic,partition_key,payload,idempotency_key,next_attempt_at) VALUES($1,'url_task',$2,'url.batch.accepted','url.ingestion',$3,$4::jsonb,$5,now()+($6::text || ' seconds')::interval) ON CONFLICT(idempotency_key) DO NOTHING",tenantID,item.ID,tenantID+':'+projectID,string(mustJSON(map[string]string{"tenantId":tenantID,"projectId":projectID})),fmt.Sprintf("retry-task:%s:%d",item.ID,item.Attempts),retryDelay)
+  if err!=nil{return err}
+ }
  return tx.Commit(ctx)
 }
 
+func mustJSON(v any)[]byte{b,_:=json.Marshal(v);return b}
 func minInt(a,b int)int{if a<b{return a};return b}
 func env(k,def string)string{if v:=os.Getenv(k);v!=""{return v};return def}
 
