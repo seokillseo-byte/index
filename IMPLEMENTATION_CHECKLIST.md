@@ -7,9 +7,11 @@
 - [x] Registration sends transactional verification email and does not issue sessions before verification.
 - [x] Login and refresh require a verified email address.
 - [x] Verification and resend endpoints are rate-limited.
-- [ ] MFA.
-- [ ] Password recovery.
-- [ ] Device/session management.
+- [x] TOTP MFA enrollment and login challenge.
+- [x] Single-use MFA recovery codes hashed at rest.
+- [x] Password recovery with single-use 30-minute reset tokens.
+- [x] Password reset revokes existing sessions.
+- [x] Server-side session listing and revocation endpoints.
 
 
 ## Provider Job Engine
