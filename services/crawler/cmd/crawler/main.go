@@ -175,20 +175,37 @@ func inspect(ctx context.Context,raw string)fetchResult{
 }
 
 func robotsAllows(ctx context.Context,client *http.Client,target *url.URL)(bool,error){
- robotsURL:=*target;robotsURL.Path="/robots.txt";robotsURL.RawQuery="";robotsURL.Fragment=""
- req,err:=http.NewRequestWithContext(ctx,http.MethodGet,robotsURL.String(),nil);if err!=nil{return false,err}
- req.Header.Set("User-Agent","IndexAssistBot/1.0 (+https://index-assist.io.vn/)")
- resp,err:=client.Do(req);if err!=nil{return false,err};defer resp.Body.Close()
- if resp.StatusCode==http.StatusNotFound{return true,nil}
- if resp.StatusCode<200||resp.StatusCode>=300{return false,fmt.Errorf("robots.txt returned HTTP %d",resp.StatusCode)}
- body,err:=io.ReadAll(io.LimitReader(resp.Body,256*1024));if err!=nil{return false,err}
- return parseRobots(string(body),target.EscapedPath()),nil
+ current:=*target
+ for hop:=0;hop<=5;hop++{
+  robotsURL:=current
+  robotsURL.Path="/robots.txt";robotsURL.RawQuery="";robotsURL.Fragment=""
+  req,err:=http.NewRequestWithContext(ctx,http.MethodGet,robotsURL.String(),nil);if err!=nil{return false,err}
+  req.Header.Set("User-Agent","IndexAssistBot/1.0 (+https://index-assist.io.vn/)")
+  resp,err:=client.Do(req);if err!=nil{return false,err}
+  if resp.StatusCode>=300&&resp.StatusCode<400{
+   location:=resp.Header.Get("Location");resp.Body.Close()
+   if location==""{return false,errors.New("robots redirect has no Location")}
+   next,parseErr:=robotsURL.Parse(location);if parseErr!=nil{return false,parseErr}
+   if _,validateErr:=safefetch.ValidateURL(next.String());validateErr!=nil{return false,validateErr}
+   current=*next;continue
+  }
+  if resp.StatusCode==http.StatusNotFound||resp.StatusCode==http.StatusGone{resp.Body.Close();return true,nil}
+  if resp.StatusCode==http.StatusUnauthorized||resp.StatusCode==http.StatusForbidden{resp.Body.Close();return false,nil}
+  if resp.StatusCode==http.StatusTooManyRequests||resp.StatusCode>=500{status:=resp.StatusCode;resp.Body.Close();return false,fmt.Errorf("robots.txt returned HTTP %d",status)}
+  if resp.StatusCode>=400&&resp.StatusCode<500{resp.Body.Close();return true,nil}
+  if resp.StatusCode<200||resp.StatusCode>=300{status:=resp.StatusCode;resp.Body.Close();return false,fmt.Errorf("robots.txt returned HTTP %d",status)}
+  body,readErr:=io.ReadAll(io.LimitReader(resp.Body,256*1024));resp.Body.Close()
+  if readErr!=nil{return false,readErr}
+  return parseRobots(string(body),target.EscapedPath()),nil
+ }
+ return false,errors.New("robots redirect limit exceeded")
 }
 
 func parseRobots(body,path string)bool{
  data,err:=robotstxt.FromBytes([]byte(body))
  if err!=nil{return false}
  group:=data.FindGroup("IndexAssistBot")
+ if group==nil{return false}
  return group.Test(path)
 }
 
