@@ -126,6 +126,25 @@ services:
       postgres: { condition: service_healthy }
       redpanda-init: { condition: service_completed_successfully }
     networks: [index-assist-infrastructure_data]
+
+  proxy:
+    image: caddy:2.9-alpine
+    restart: unless-stopped
+    env_file: ../../.env.proxy
+    ports: ["80:80","443:443","443:443/udp"]
+    volumes:
+      - ../proxy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      web: { condition: service_healthy }
+      customer: { condition: service_healthy }
+      admin: { condition: service_healthy }
+      api: { condition: service_healthy }
+    networks: [index-assist-infrastructure_data]
+volumes:
+  caddy_data:
+  caddy_config:
 networks:
   index-assist-infrastructure_data:
     external: true
