@@ -66,7 +66,7 @@ A response with `accepted: 2` means the URLs entered the Index Assist processing
 ## Current limits and release caveats
 
 - The seeded Free plan allows 500 accepted URLs/day; Growth 25,000/day; Scale 1,000,000/day. Pricing and entitlement changes must be managed through the billing/admin system before commercial launch.
-- The public registration flow currently lacks email verification, MFA and account recovery. Keep public signup closed until those modules and their delivery providers are completed and tested.
+- Registration now requires email verification before login/session issuance. Verification uses a 30-minute single-use token and transactional email delivery. MFA and account recovery are still not implemented; keep public signup closed until those remaining controls are completed and tested.
 - Search Console and Bing integrations are not yet connected to this API.
 
 
@@ -133,3 +133,12 @@ Example body:
 Google URL Inspection is an inspection operation, not an indexing request. The queue enforces the documented per-property limit of 2,000 inspections/day and 600/minute. Bing URL submissions are limited to 500 URLs per batch and the API reads each site's live DailyQuota and MonthlyQuota before reserving jobs. Both operations accept only URLs covered by the bound verified property.
 
 Jobs are persisted in app.provider_jobs and published through the transactional outbox to the provider.jobs Kafka topic. The provider worker records Google inspection results separately from Bing submission acknowledgements. A Bing acknowledgement means accepted by Bing, not indexed.
+
+
+## Email verification
+
+- `POST /api/v1/auth/register` creates the workspace and sends a verification email; it does not issue access/refresh tokens until the email is verified.
+- `POST /api/v1/auth/verify-email` with `{ "token": "..." }` marks the address verified. Tokens are single-use and expire after 30 minutes.
+- `POST /api/v1/auth/resend-verification` with `{ "email": "..." }` sends a new verification message for an unverified account.
+
+The API uses the Resend REST API for transactional delivery. Configure `RESEND_API_KEY` and `EMAIL_FROM` in `.env.api`; no provider credential is committed to the repository. The verification URL is generated from `APP_BASE_URL`.
