@@ -11,7 +11,7 @@ FROM node:22-alpine AS runner
 ENV NODE_ENV=production
 WORKDIR /app
 COPY apps/api/package.json ./package.json
-RUN npm install --omit=dev --ignore-scripts
+RUN npm install --omit=dev
 COPY --from=build /workspace/apps/api/dist ./dist
 USER node
 EXPOSE 4000
