@@ -17,6 +17,8 @@ Updated: 2026-11-28
 - Registration sends verification email through Resend and does not issue sessions before verification.
 - Login and refresh reject unverified accounts.
 - Verification and resend endpoints are rate-limited.
+- MFA login/recovery and enrollment/disable endpoints have explicit rate limits.
+- DTO validators use valid Unicode-property and six-digit TOTP patterns.
 - TOTP MFA enrollment, verification and MFA-gated login are implemented.
 - MFA recovery codes are one-time and stored as SHA-256 hashes.
 - Password recovery uses single-use 30-minute tokens and revokes existing sessions after reset.
