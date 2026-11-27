@@ -1,5 +1,11 @@
 ## 2026-11-28
 
+### Authentication challenge hardening
+
+- Added a persistent failed-attempt counter to auth tokens and invalidate MFA login challenges after five invalid TOTP attempts.
+- Password-reset success responses no longer disclose the internal user ID.
+- Added migration `0019_mfa_challenge_attempt_limits.sql`.
+
 ### Authentication validation hardening
 
 - Corrected Unicode property and six-digit TOTP validation patterns in DTO validators.
