@@ -5,6 +5,7 @@ import (
  "encoding/json"
  "errors"
   "fmt"
+ "hash/fnv"
  "io"
  "log"
   "net/http"
@@ -28,6 +29,8 @@ type envelope struct {
  Payload struct { TenantID string `json:"tenantId"`; ProjectID string `json:"projectId"` } `json:"payload"`
 }
 type task struct { ID string; URLID string; URL string; Attempts int }
+var hostLocks [256]sync.Mutex
+
 type fetchResult struct { StatusCode int `json:"statusCode"`; FinalURL string `json:"finalUrl"`; ContentType string `json:"contentType"`; Server string `json:"server"`; RobotsAllowed bool `json:"robotsAllowed"`; Redirects int `json:"redirects"`; Error string `json:"error,omitempty"` }
 
 func main() {
@@ -86,6 +89,11 @@ func processBatch(ctx context.Context,pool *pgxpool.Pool,tenantID,projectID stri
     defer wg.Done()
     select{case sem<-struct{}{}:case <-ctx.Done():errCh<-ctx.Err();return}
     defer func(){<-sem}()
+    parsedURL,parseErr:=url.Parse(item.URL)
+    if parseErr!=nil{errCh<-parseErr;return}
+    lock:=hostMutex(parsedURL.Hostname())
+    lock.Lock()
+    defer lock.Unlock()
     result:=inspect(ctx,item.URL)
     if err:=saveResult(ctx,pool,tenantID,projectID,workerID,item,result);err!=nil{errCh<-err}
    }()
@@ -207,6 +215,7 @@ func saveResult(ctx context.Context,pool *pgxpool.Pool,tenantID,projectID,worker
  return tx.Commit(ctx)
 }
 
+func hostMutex(host string)*sync.Mutex{h:=fnv.New32a();_,_=h.Write([]byte(strings.ToLower(host)));return &hostLocks[h.Sum32()%uint32(len(hostLocks))]}
 func mustJSON(v any)[]byte{b,_:=json.Marshal(v);return b}
 func minInt(a,b int)int{if a<b{return a};return b}
 func env(k,def string)string{if v:=os.Getenv(k);v!=""{return v};return def}
