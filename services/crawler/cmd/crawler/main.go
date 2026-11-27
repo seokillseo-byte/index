@@ -257,7 +257,7 @@ func canonicalURL(raw string)(string,error){
  if u.Scheme!="http"&&u.Scheme!="https"{return "",errors.New("unsupported link scheme")}
  if u.Hostname()==""||u.User!=nil{return "",errors.New("invalid link URL")}
  u.Scheme=strings.ToLower(u.Scheme);u.Host=strings.ToLower(u.Host)
- if (u.Scheme=="https"&&u.Port()=="443")||(u.Scheme=="http"&&u.Port()=="80"){u.Host=u.Hostname()}
+ if (u.Scheme=="https"&&u.Port()=="443")||(u.Scheme=="http"&&u.Port()=="80"){if strings.Contains(u.Hostname(),":"){u.Host="["+u.Hostname()+"]"}else{u.Host=u.Hostname()}}
  u.Fragment="";return u.String(),nil
 }
 
