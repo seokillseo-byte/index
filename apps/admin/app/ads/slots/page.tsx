@@ -1,0 +1,2 @@
+import {AdminDataPage} from '../../admin-data-page';
+export default function Page(){return <AdminDataPage title="Vị trí quảng cáo" description="Quản lý inventory và bật/tắt từng placement." endpoint="ads/slots" columns={['code','name','surface','placement','allowed_formats','enabled']}/>;}
