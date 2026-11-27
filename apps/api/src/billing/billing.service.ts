@@ -5,7 +5,7 @@ type Principal={userId:string;tenantId:string};
 export class BillingService{
  constructor(private readonly db:DatabaseService){}
  private async assertRead(client:any,p:Principal){
-  const r=await client.query("SELECT 1 FROM app.tenant_members tm JOIN app.role_permissions rp ON rp.role_id=tm.role_id JOIN app.permissions p ON p.id=rp.permission_id WHERE tm.tenant_id=$1 AND tm.user_id=$2 AND tm.status='active' AND p.code='billing.read'",[p.tenantId,p.userId]);
+  const r=await client.query("SELECT 1 FROM app.tenant_members tm JOIN app.role_permissions rp ON rp.role_id=tm.role_id JOIN app.permissions p ON p.id=rp.permission_id WHERE tm.tenant_id=$1 AND tm.user_id=$2 AND tm.status='active' AND p.code='billing.manage'",[p.tenantId,p.userId]);
   if(!r.rowCount)throw new ForbiddenException('Billing read permission required');
  }
  async summary(p:Principal){
