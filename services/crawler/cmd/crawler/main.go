@@ -3,6 +3,7 @@ package main
 import (
  "context"
  "encoding/json"
+ "errors"
   "fmt"
  "io"
  "log"
@@ -99,7 +100,7 @@ func claimTasks(ctx context.Context,pool *pgxpool.Pool,tenantID,projectID,worker
  rows,err:=tx.Query(ctx,`WITH due AS (
   SELECT t.id FROM app.url_processing_tasks t JOIN app.urls u ON u.tenant_id=t.tenant_id AND u.id=t.url_id
   WHERE t.tenant_id=$1 AND u.project_id=$2 AND t.task_type='http_check'
-    AND (status IN ('pending','retrying') OR (status='leased' AND (lease_expires_at<now() OR lease_owner=$3)))
+    AND (t.status IN ('pending','retrying') OR (t.status='leased' AND (t.lease_expires_at<now() OR t.lease_owner=$3)))
     AND t.scheduled_at<=now() AND t.attempt_count<t.max_attempts
   ORDER BY t.priority DESC,t.scheduled_at
   FOR UPDATE OF t SKIP LOCKED LIMIT $4
@@ -114,6 +115,11 @@ func claimTasks(ctx context.Context,pool *pgxpool.Pool,tenantID,projectID,worker
  var out []task
  for rows.Next(){var t task;if err:=rows.Scan(&t.ID,&t.URLID,&t.URL,&t.Attempts);err!=nil{return nil,err};out=append(out,t)}
  if err:=rows.Err();err!=nil{return nil,err}
+ if len(out)==0{
+  var activeLease bool
+  if err:=tx.QueryRow(ctx,"SELECT EXISTS(SELECT 1 FROM app.url_processing_tasks t JOIN app.urls u ON u.tenant_id=t.tenant_id AND u.id=t.url_id WHERE t.tenant_id=$1 AND u.project_id=$2 AND t.task_type='http_check' AND t.status='leased' AND t.lease_expires_at>now())",tenantID,projectID).Scan(&activeLease);err!=nil{return nil,err}
+  if activeLease{return nil,errors.New("tasks are leased by another crawler replica")}
+ }
  if err:=tx.Commit(ctx);err!=nil{return nil,err}
  return out,nil
 }
