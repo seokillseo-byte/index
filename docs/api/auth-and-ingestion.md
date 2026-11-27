@@ -1,0 +1,70 @@
+# Authentication and URL ingestion API
+
+Base path: `/api/v1`.
+
+## Register a workspace
+
+`POST /auth/register`
+
+```json
+{
+  "email": "operator@example.com",
+  "password": "replace-with-a-unique-12-plus-character-password",
+  "displayName": "SEO Operator",
+  "workspaceName": "Example SEO Workspace"
+}
+```
+
+Registration creates a user, an owner membership, a Free plan subscription and a starter project. The response includes short-lived bearer and rotating refresh tokens plus the starter project ID.
+
+## Sign in
+
+`POST /auth/login`
+
+```json
+{
+  "email": "operator@example.com",
+  "password": "replace-with-a-unique-12-plus-character-password"
+}
+```
+
+## Refresh a session
+
+`POST /auth/refresh`
+
+```json
+{ "refreshToken": "the-opaque-refresh-token" }
+```
+
+A successful refresh revokes the previous refresh token and returns a replacement. Refresh sessions are bound to one tenant; a revoked membership invalidates the session on subsequent authenticated requests.
+
+## Ingest URLs
+
+`POST /ingestion/urls`
+
+Headers:
+- `Authorization: Bearer <accessToken>`
+- `Idempotency-Key: <unique-client-generated-key>`
+
+Body:
+
+```json
+{
+  "projectId": "the-project-id-returned-at-registration",
+  "tier": 1,
+  "urls": [
+    "https://example.org/article-a",
+    "https://example.net/resource-b"
+  ]
+}
+```
+
+The API accepts up to 5,000 URL strings per request, normalizes HTTP(S) URLs, deduplicates within the project, stores HTTP-check tasks, reserves daily quota atomically, and writes a transactional outbox event. The outbox relay publishes the event to Kafka; crawler consumers then claim tenant-scoped tasks.
+
+A response with `accepted: 2` means the URLs entered the Index Assist processing queue. It does not mean Google or Bing has crawled or indexed them. HTTP eligibility, robots policy, search-engine submission acknowledgements, crawl observations and verified index status are separate signals.
+
+## Current limits and release caveats
+
+- The seeded Free plan allows 500 accepted URLs/day; Growth 25,000/day; Scale 1,000,000/day. Pricing and entitlement changes must be managed through the billing/admin system before commercial launch.
+- The public registration flow currently lacks email verification, MFA and account recovery. Keep public signup closed until those modules and their delivery providers are completed and tested.
+- Search Console and Bing integrations are not yet connected to this API.
