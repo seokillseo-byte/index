@@ -20,11 +20,10 @@ services:
     restart: unless-stopped
     env_file: ../../.env
     environment:
-      DATABASE_URL: ${DATABASE_URL}
       KAFKA_BROKERS: redpanda:9092
     depends_on:
       postgres: { condition: service_healthy }
-      redpanda: { condition: service_started }
+      redpanda-init: { condition: service_completed_successfully }
     networks: [index-assist-infrastructure_data]
 networks:
   index-assist-infrastructure_data:
