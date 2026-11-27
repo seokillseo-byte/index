@@ -2,9 +2,10 @@
 
 ## Provision the first platform administrator
 
-1. Register a normal Index Assist account through POST /api/v1/auth/register.
-2. Set PLATFORM_ADMIN_EMAIL and PLATFORM_ADMIN_ROLE=super_admin in the host-side .env file.
-3. After migrations are applied, run:
+1. Temporarily set PUBLIC_SIGNUP_ENABLED=true in `.env.api`, restart the API, and register the trusted operator account through the customer registration page or POST /api/v1/auth/register.
+2. Immediately set PUBLIC_SIGNUP_ENABLED=false and restart the API. Public signup remains closed until email verification is implemented.
+3. Set PLATFORM_ADMIN_EMAIL and PLATFORM_ADMIN_ROLE=super_admin in the host-side `.env` file.
+4. After migrations are applied, run:
 
 ```bash
 set -a
