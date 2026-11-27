@@ -273,7 +273,7 @@ export class IntegrationsService{
   const keys=urls.map(url=>'gsc-inspect:'+connectionId+':'+createHash('sha256').update(siteUrl+'|'+url).digest('hex')+':'+dayStart.toISOString().slice(0,10));
   return this.db.withTransaction(async client=>{
    await this.assertProviderSite(client,principal,connectionId,input.projectId,'google_search_console',siteUrl);
-   await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[principal.tenantId+':'+connectionId+':'+siteUrl+':'+dayStart.toISOString().slice(0,10)]);
+   await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[principal.tenantId+':'+siteUrl+':'+dayStart.toISOString().slice(0,10)]);
    const existing=await client.query("SELECT idempotency_key FROM app.provider_jobs WHERE tenant_id=$1 AND idempotency_key=ANY($2::text[])",[principal.tenantId,keys]);
    const seen=new Set(existing.rows.map((row:any)=>row.idempotency_key));
    const pending=urls.filter((url,index)=>!seen.has(keys[index]));
