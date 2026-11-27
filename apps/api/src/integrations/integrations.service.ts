@@ -248,7 +248,9 @@ export class IntegrationsService{
  private async insertProviderJobs(client:any,principal:Principal,projectId:string,connectionId:string,provider:Provider,action:'inspect'|'submit_url',siteUrl:string,urls:string[],idempotencyKeys:string[]){
   const existing=await client.query("SELECT idempotency_key FROM app.provider_jobs WHERE tenant_id=$1 AND idempotency_key=ANY($2::text[])",[principal.tenantId,idempotencyKeys]);
   const seen=new Set(existing.rows.map((row:any)=>row.idempotency_key));
-  const pending=urls.map((url,index)=>({url,key:idempotencyKeys[index]})).filter(item=>!seen.has(item.key));
+  const active=await client.query("SELECT url FROM app.provider_jobs WHERE tenant_id=$1 AND connection_id=$2 AND site_url=$3 AND provider=$4 AND action=$5 AND status IN ('queued','leased','retrying') AND url=ANY($6::text[])",[principal.tenantId,connectionId,siteUrl,provider,action,urls]);
+  const activeUrls=new Set(active.rows.map((row:any)=>row.url));
+  const pending=urls.map((url,index)=>({url,key:idempotencyKeys[index]})).filter(item=>!seen.has(item.key)&&!activeUrls.has(item.url));
   for(const item of pending){
    await client.query("INSERT INTO app.provider_jobs(tenant_id,project_id,connection_id,provider,action,status,url,site_url,idempotency_key) VALUES($1,$2,$3,$4,$5,'queued',$6,$7,$8) ON CONFLICT(tenant_id,idempotency_key) DO NOTHING",[principal.tenantId,projectId,connectionId,provider,action,item.url,siteUrl,item.key]);
   }
@@ -276,7 +278,9 @@ export class IntegrationsService{
    await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[principal.tenantId+':'+siteUrl+':'+dayStart.toISOString().slice(0,10)]);
    const existing=await client.query("SELECT idempotency_key FROM app.provider_jobs WHERE tenant_id=$1 AND idempotency_key=ANY($2::text[])",[principal.tenantId,keys]);
    const seen=new Set(existing.rows.map((row:any)=>row.idempotency_key));
-   const pending=urls.filter((url,index)=>!seen.has(keys[index]));
+   const active=await client.query("SELECT url FROM app.provider_jobs WHERE tenant_id=$1 AND connection_id=$2 AND site_url=$3 AND provider='google_search_console' AND action='inspect' AND status IN ('queued','leased','retrying') AND url=ANY($4::text[])",[principal.tenantId,connectionId,siteUrl,urls]);
+   const activeUrls=new Set(active.rows.map((row:any)=>row.url));
+   const pending=urls.filter((url,index)=>!seen.has(keys[index])&&!activeUrls.has(url));
    const counts=await client.query("SELECT count(*) FILTER(WHERE created_at >= $3 OR last_attempt_at >= $3)::int daily,count(*) FILTER(WHERE created_at >= $4 OR last_attempt_at >= $4)::int minute FROM app.provider_jobs WHERE tenant_id=$1 AND site_url=$2 AND provider='google_search_console' AND action='inspect' AND status<>'cancelled'",[principal.tenantId,siteUrl,dayStart,minuteStart]);
    const daily=counts.rows[0].daily,minute=counts.rows[0].minute;
    if(daily+pending.length>dailyLimit||minute+pending.length>minuteLimit)throw new HttpException({message:'Google Search Console inspection quota would be exceeded',dailyLimit,dailyUsed:daily,perMinuteLimit:minuteLimit,minuteUsed:minute},HttpStatus.TOO_MANY_REQUESTS);
@@ -298,7 +302,9 @@ export class IntegrationsService{
    await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[principal.tenantId+':'+connectionId+':'+input.siteUrl+':'+dayStart.toISOString().slice(0,10)]);
    const existing=await client.query("SELECT idempotency_key FROM app.provider_jobs WHERE tenant_id=$1 AND idempotency_key=ANY($2::text[])",[principal.tenantId,keys]);
    const seen=new Set(existing.rows.map((row:any)=>row.idempotency_key));
-   const pending=urls.filter((url,index)=>!seen.has(keys[index]));
+   const active=await client.query("SELECT url FROM app.provider_jobs WHERE tenant_id=$1 AND connection_id=$2 AND site_url=$3 AND provider='bing_webmaster' AND action='submit_url' AND status IN ('queued','leased','retrying') AND url=ANY($4::text[])",[principal.tenantId,connectionId,input.siteUrl,urls]);
+   const activeUrls=new Set(active.rows.map((row:any)=>row.url));
+   const pending=urls.filter((url,index)=>!seen.has(keys[index])&&!activeUrls.has(url));
    const counts=await client.query("SELECT count(*) FILTER(WHERE created_at >= $4 OR last_attempt_at >= $4)::int daily,count(*) FILTER(WHERE created_at >= $5 OR last_attempt_at >= $5)::int monthly FROM app.provider_jobs WHERE tenant_id=$1 AND connection_id=$2 AND site_url=$3 AND provider='bing_webmaster' AND action='submit_url' AND status<>'cancelled'",[principal.tenantId,connectionId,input.siteUrl,dayStart,monthStart]);
    const daily=counts.rows[0].daily,monthly=counts.rows[0].monthly;
    if(daily+pending.length>quota.daily||monthly+pending.length>quota.monthly)throw new HttpException({message:'Bing Webmaster submission quota would be exceeded',dailyLimit:quota.daily,dailyUsed:daily,monthlyLimit:quota.monthly,monthlyUsed:monthly},HttpStatus.TOO_MANY_REQUESTS);
