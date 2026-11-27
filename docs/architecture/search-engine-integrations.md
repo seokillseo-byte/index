@@ -55,12 +55,13 @@ The Bing OAuth guide documents delegated scopes `Webmaster.read` and `Webmaster.
 ### URL submission
 
 - Use the supported JSON/HTTP URL submission operation only after confirming the project URL is part of a site verified in the connected Bing Webmaster account.
-- The public Bing help page documents up to 500 URLs per batch and a 10,000 URL/day per-domain quota; actual quota can vary and must be fetched from the account API before dispatch.
+- Submit no more than 500 URLs per batch. Query the account's `GetUrlSubmissionQuota(siteUrl)` JSON/HTTP operation and enforce both returned `DailyQuota` and `MonthlyQuota`; never hardcode the public 10,000/day figure because account quotas can be lower or vary.
 - Record an HTTP/API acknowledgement as `accepted_by_bing`, never as `indexed`.
 - Bing recommends IndexNow for publisher-controlled URL changes. IndexNow requires the publisher to prove control of the host by publishing the key file; it is not a mechanism for notifying Bing about arbitrary third-party backlink pages.
 
 Official docs:
 - https://www.bing.com/webmasters/help/url-submission-62f2860b
+- https://learn.microsoft.com/en-us/dotnet/api/microsoft.bing.webmaster.api.interfaces.iwebmasterapi.geturlsubmissionquota
 - https://www.bing.com/indexnow
 
 ## Unified data model and workflow

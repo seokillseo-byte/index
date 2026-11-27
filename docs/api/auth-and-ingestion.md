@@ -91,3 +91,19 @@ A response with `accepted: 2` means the URLs entered the Index Assist processing
 Returns discovered source pages, target URLs, anchor text, rel attributes, link classification, first/last observation timestamps and occurrence counts. The Go crawler schedules HTML analysis after a successful HTML health check, fetches a bounded response, revalidates robots policy on redirects and compares resolved anchor destinations to the configured project target URL.
 
 A discovered backlink is an observed HTML link, not proof that a search engine has crawled or indexed the source page. Search-engine index status is reported separately and requires an authorized Google Search Console or Bing Webmaster connection.
+
+
+## Search-engine integrations
+
+- `POST /api/v1/integrations/google_search_console/connect` with `{"projectId":"..." }` — returns a Google OAuth authorization URL.
+- `POST /api/v1/integrations/bing_webmaster/connect` with `{"projectId":"..." }` — returns a Bing Webmaster OAuth authorization URL.
+- `GET /api/v1/integrations/{provider}/callback` — provider callback. The callback state is signed, single-use, tenant-bound and expires after ten minutes.
+- `GET /api/v1/integrations` — list connections in the authenticated workspace.
+- `GET /api/v1/integrations/{connectionId}/sites` — list provider properties available to the connected account.
+- `POST /api/v1/integrations/{connectionId}/sites` with `projectId` and `siteUrl` — bind a provider property to a project after checking domain/path coverage and provider permissions.
+- `POST /api/v1/integrations/bing_webmaster/api-key` with `projectId` and `apiKey` — connect Bing using its account API key as a fallback to OAuth.
+- `DELETE /api/v1/integrations/{connectionId}` — disconnect the connection and delete its locally stored encrypted token payload.
+
+Configure provider client credentials and exact redirect URIs in `.env.api`. The API also requires a 32-byte hex `INTEGRATION_ENCRYPTION_KEY` for AES-256-GCM token encryption and an `OAUTH_STATE_SECRET` of at least 48 characters. Never commit real credentials.
+
+The OAuth connection alone does not authorize arbitrary third-party backlink submissions. The project must be associated with a verified site/property belonging to the connected account. Provider site selection, refresh-token rotation, property verification, URL Inspection jobs and Bing JSON/HTTP submission jobs are subsequent integration stages.
