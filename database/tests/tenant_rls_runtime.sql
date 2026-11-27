@@ -11,6 +11,9 @@ DECLARE
   source_url_id uuid := gen_random_uuid();
   connection_a uuid := gen_random_uuid();
   secret_a uuid := gen_random_uuid();
+  provider_job_id uuid := gen_random_uuid();
+  claimed_job_id uuid;
+  provider_quota_count integer;
   owner_role uuid;
 BEGIN
   INSERT INTO app.users(id,email,display_name) VALUES(v_user_id,('rls-test-'||v_user_id::text||'@example.invalid')::citext,'RLS test');
@@ -28,7 +31,23 @@ BEGIN
   INSERT INTO app.integration_secrets(id,tenant_id,connection_id,ciphertext,iv,auth_tag) VALUES(secret_a,tenant_a,connection_a,decode('01','hex'),decode(repeat('00',12),'hex'),decode(repeat('00',16),'hex'));
   INSERT INTO app.integration_oauth_states(tenant_id,user_id,project_id,provider,state_hash,expires_at) VALUES(tenant_a,v_user_id,project_a,'google_search_console',digest('oauth-state-a','sha256'),now()+interval '5 minutes');
   INSERT INTO app.integration_sites(tenant_id,connection_id,project_id,site_url,permission_level,verification_status) VALUES(tenant_a,connection_a,project_a,'https://target.example/','siteOwner','verified');
-  INSERT INTO app.provider_jobs(tenant_id,project_id,connection_id,provider,action,status,site_url,url,idempotency_key) VALUES(tenant_a,project_a,connection_a,'google_search_console','inspect','queued','https://target.example/','https://target.example/','rls-provider-job-'||replace(v_user_id::text,'-',''));
+  INSERT INTO app.provider_jobs(id,tenant_id,project_id,connection_id,provider,action,status,site_url,url,idempotency_key) VALUES(provider_job_id,tenant_a,project_a,connection_a,'google_search_console','inspect','queued','https://target.example/','https://target.example/','rls-provider-job-'||replace(v_user_id::text,'-',''));
+  WITH due AS (
+    SELECT id FROM app.provider_jobs
+    WHERE tenant_id=tenant_a AND project_id=project_a AND connection_id=connection_a
+      AND provider='google_search_console' AND site_url='https://target.example/' AND action='inspect'
+      AND ((status IN ('queued','retrying') AND scheduled_at<=now()) OR (status='leased' AND lease_expires_at<now()))
+    ORDER BY created_at LIMIT 10 FOR UPDATE SKIP LOCKED
+  )
+  UPDATE app.provider_jobs j SET status='leased',lease_owner='rls-test-worker',
+    lease_expires_at=now()+interval '10 minutes',attempt_count=j.attempt_count+1,updated_at=now()
+  FROM due WHERE j.tenant_id=tenant_a AND j.id=due.id RETURNING j.id INTO claimed_job_id;
+  IF claimed_job_id IS DISTINCT FROM provider_job_id THEN
+    RAISE EXCEPTION 'PROVIDER JOB FAILURE: runtime worker could not claim the queued provider job';
+  END IF;
+  SELECT count(*) FILTER(WHERE created_at >= date_trunc('day',now()) OR last_attempt_at >= date_trunc('day',now()))::int INTO provider_quota_count FROM app.provider_jobs WHERE tenant_id=tenant_a AND site_url='https://target.example/' AND provider='google_search_console' AND action='inspect' AND status<>'cancelled';
+  IF provider_quota_count<1 THEN RAISE EXCEPTION 'PROVIDER QUOTA FAILURE: provider job reservation count is incorrect'; END IF;
+  PERFORM pg_advisory_xact_lock(hashtextextended(tenant_a::text||':https://target.example/:quota-test',0));
   PERFORM set_config('app.tenant_id',tenant_b::text,true);
   IF EXISTS(SELECT 1 FROM app.projects WHERE id=project_a) THEN
     RAISE EXCEPTION 'RLS FAILURE: tenant B can read tenant A project';
