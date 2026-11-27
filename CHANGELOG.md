@@ -12,6 +12,7 @@
 - Kept Bing submissions bounded by live DailyQuota/MonthlyQuota returned by the provider.
 - Confirmed the worker uses Bing's JSON/HTTP API path; the August 31, 2026 retirement notice applies to legacy SOAP/POX endpoints.
 - Reconciled project status/checklist with the current branch head `d995f6556901b8c48221dc62c446f09d48c0557f`.
+- Marked PR #6 ready for review and recorded the release-readiness review.
 - Defined the next engineering gate as a dedicated non-production provider throughput/recovery benchmark.
 
 ### Release note
