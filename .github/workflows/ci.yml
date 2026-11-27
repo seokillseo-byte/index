@@ -3,6 +3,7 @@ on:
   pull_request:
   push:
     branches: [main]
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
@@ -26,5 +27,42 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.23'
-      - run: cd services/crawler && go test ./...
+      - run: cd services/crawler && go mod download
+      - run: cd services/crawler && go test -race ./...
       - run: cd services/crawler && go vet ./...
+  database:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16.6
+        env:
+          POSTGRES_DB: index_assist
+          POSTGRES_USER: index_assist
+          POSTGRES_PASSWORD: postgres-ci-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U index_assist -d index_assist"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bootstrap least-privilege roles
+        env:
+          POSTGRES_USER: index_assist
+          POSTGRES_DB: index_assist
+          APP_DB_PASSWORD: runtime-ci-password
+          RELAY_DB_PASSWORD: relay-ci-password
+          PGPASSWORD: postgres-ci-password
+        run: bash infra/postgres/init/001-runtime-role.sh
+      - name: Apply ordered migrations
+        env:
+          MIGRATION_DATABASE_URL: postgresql://index_assist:postgres-ci-password@127.0.0.1:5432/index_assist
+          PGPASSWORD: postgres-ci-password
+        run: bash infra/postgres/migrate.sh
+      - name: Verify tenant isolation using the runtime role
+        env:
+          MIGRATION_DATABASE_URL: postgresql://index_assist:postgres-ci-password@127.0.0.1:5432/index_assist
+          PGPASSWORD: postgres-ci-password
+        run: psql "$MIGRATION_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/tests/tenant_rls_runtime.sql
