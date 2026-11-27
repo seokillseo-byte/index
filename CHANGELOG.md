@@ -1,5 +1,14 @@
 ## 2026-11-28
 
+### Authentication — MFA, recovery and sessions
+
+- Added encrypted TOTP MFA enrollment and MFA-gated login.
+- Added single-use MFA recovery codes stored only as SHA-256 hashes.
+- Added password-reset request and reset flows with 30-minute single-use tokens.
+- Password reset and MFA disable revoke existing sessions.
+- Added server-side session listing, individual revocation and revoke-all controls.
+- Added migration `0018_auth_mfa_recovery.sql`.
+
 ### Authentication — email verification
 
 - Added single-use email verification tokens with 30-minute expiry.
