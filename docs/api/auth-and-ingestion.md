@@ -115,6 +115,7 @@ All provider operations require a connected account and a verified property expl
 
 - `POST /api/v1/integrations/{connectionId}/google-inspections`
 - `POST /api/v1/integrations/{connectionId}/bing-submissions`
+- `GET /api/v1/integrations/{connectionId}/jobs?projectId={projectId}&page=1&limit=50` — inspect provider job states and results.
 
 Example body:
 
