@@ -139,14 +139,18 @@ export class AuthService{
 
  async completeMfaLogin(challengeToken:string,code:string){
   const result=await this.db.withTransaction(async client=>{
-   const found=await client.query<{id:string;user_id:string}>("SELECT id,user_id FROM app.auth_tokens WHERE token_hash=$1 AND purpose='mfa_login' AND consumed_at IS NULL AND expires_at>now() FOR UPDATE",[this.hashToken(challengeToken)]);
+   const found=await client.query<{id:string;user_id:string;attempt_count:number}>("SELECT id,user_id,attempt_count FROM app.auth_tokens WHERE token_hash=$1 AND purpose='mfa_login' AND consumed_at IS NULL AND expires_at>now() FOR UPDATE",[this.hashToken(challengeToken)]);
    if(!found.rowCount)throw new UnauthorizedException('Invalid or expired MFA challenge');
    const user=await client.query<{id:string;email:string;display_name:string|null;tenant_id:string;tenant_name:string;role_code:string;secret_ciphertext:Buffer;secret_iv:Buffer;secret_auth_tag:Buffer}>("SELECT u.id,u.email,u.display_name,tm.tenant_id,t.name tenant_name,r.code role_code,m.secret_ciphertext,m.secret_iv,m.secret_auth_tag FROM app.users u JOIN app.tenant_members tm ON tm.user_id=u.id AND tm.status='active' JOIN app.tenants t ON t.id=tm.tenant_id AND t.status='active' JOIN app.roles r ON r.id=tm.role_id JOIN app.mfa_credentials m ON m.user_id=u.id WHERE u.id=$1 AND u.status='active' AND u.email_verified_at IS NOT NULL AND u.mfa_enabled=true ORDER BY tm.joined_at ASC LIMIT 1",[found.rows[0].user_id]);
-   if(!user.rowCount)throw new UnauthorizedException('MFA account is unavailable');
-   if(!this.verifyTotp(this.decryptSecret(user.rows[0]),code))throw new UnauthorizedException('Invalid MFA code');
+   if(!user.rowCount){await client.query("UPDATE app.auth_tokens SET consumed_at=now() WHERE id=$1",[found.rows[0].id]);return null;}
+   if(!this.verifyTotp(this.decryptSecret(user.rows[0]),code)){
+    await client.query("UPDATE app.auth_tokens SET attempt_count=attempt_count+1,consumed_at=CASE WHEN attempt_count+1>=5 THEN now() ELSE consumed_at END WHERE id=$1",[found.rows[0].id]);
+    return null;
+   }
    await client.query("UPDATE app.auth_tokens SET consumed_at=now() WHERE id=$1",[found.rows[0].id]);
    return user.rows[0];
   });
+  if(!result)throw new UnauthorizedException('Invalid MFA code or challenge exhausted');
   return {user:{id:result.id,email:result.email,displayName:result.display_name,emailVerified:true,mfaEnabled:true},workspace:{id:result.tenant_id,name:result.tenant_name},...await this.createSession(result.id,result.tenant_id,result.role_code)};
  }
 
@@ -228,7 +232,7 @@ export class AuthService{
    await client.query("UPDATE app.user_sessions SET revoked_at=now() WHERE user_id=$1 AND revoked_at IS NULL",[found.rows[0].user_id]);
    return found.rows[0].user_id;
   });
-  return {success:true,userId:result,sessionsRevoked:true};
+  return {success:true,sessionsRevoked:true};
  }
 
  async verifyEmail(token:string){
