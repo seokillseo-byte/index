@@ -1,0 +1,4 @@
+import Link from 'next/link';
+export function PublicSiteShell({children}:{children:React.ReactNode}){
+ return <><header className="site-header"><Link href="/" className="site-brand">INDEX ASSIST<small>BACKLINK INDEXING PLATFORM</small></Link><nav className="site-nav"><Link href="/features">Tính năng</Link><Link href="/pricing">Bảng giá</Link><Link href="/blog">Blog SEO</Link><Link href="/advertise">Quảng cáo</Link><Link href="https://app.index-assist.io.vn/login" className="site-cta">Đăng nhập</Link></nav></header><main className="site-main">{children}</main><footer className="site-footer"><div className="footer-inner"><div><strong>Index Assist</strong><br/>Backlink indexing workflow platform.</div><div><Link href="/terms">Điều khoản</Link> · <Link href="/privacy">Quyền riêng tư</Link> · <Link href="/contact">Liên hệ</Link></div><div>© {new Date().getFullYear()} Index Assist</div></div></footer></>;
+}
