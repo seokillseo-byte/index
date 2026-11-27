@@ -15,5 +15,5 @@ export async function POST(req:NextRequest){
 }
 export async function DELETE(req:NextRequest){
  if(!sameOrigin(req))return NextResponse.json({message:'Invalid request origin'},{status:403});
- const jar=await cookies();const access=jar.get('ia_access')?.value;if(access){await fetch(api()+'/api/v1/auth/logout',{method:'POST',headers:{authorization:'Bearer '+access},cache:'no-store'}).catch(()=>{});}jar.delete('ia_access');jar.delete('ia_refresh');return NextResponse.json({ok:true});
+ const jar=await cookies();let access=jar.get('ia_access')?.value;const refresh=jar.get('ia_refresh')?.value;if(refresh){const rotated=await fetch(api()+'/api/v1/auth/refresh',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({refreshToken:refresh}),cache:'no-store'}).then(r=>r.ok?r.json():null).catch(()=>null);if(rotated?.accessToken)access=rotated.accessToken;}if(access){await fetch(api()+'/api/v1/auth/logout',{method:'POST',headers:{authorization:'Bearer '+access},cache:'no-store'}).catch(()=>{});}jar.delete('ia_access');jar.delete('ia_refresh');return NextResponse.json({ok:true});
 }
