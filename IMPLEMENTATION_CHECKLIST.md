@@ -32,7 +32,8 @@
 - [x] Google URL Inspection quota values verified against current Google documentation.
 - [x] Bing worker endpoint checked against current Bing API retirement guidance; JSON/HTTP is retained.
 - [x] Provider acceptance is explicitly separated from indexing evidence.
-- [ ] Dedicated provider throughput benchmark harness.
+- [x] Dedicated non-production provider queue benchmark harness added.
+- [ ] Benchmark run and capacity result.
 - [ ] 1,000,000 URL/day benchmark.
 - [ ] Sustained queue/backpressure benchmark.
 - [ ] Recovery/failure benchmark.
