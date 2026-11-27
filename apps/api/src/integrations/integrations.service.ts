@@ -267,8 +267,9 @@ export class IntegrationsService{
   if(urls.some(url=>!this.urlMatchesSite(url,siteUrl)))throw new ForbiddenException('Every inspected URL must belong to the selected verified Search Console property');
   const dayStart=new Date();dayStart.setUTCHours(0,0,0,0);
   const minuteStart=new Date(Date.now()-60_000);
-  const dailyLimit=Math.min(2000,Math.max(1,Number(this.config.get<string>('GOOGLE_INSPECTION_DAILY_LIMIT')??2000)));
-  const minuteLimit=Math.min(600,Math.max(1,Number(this.config.get<string>('GOOGLE_INSPECTION_PER_MINUTE_LIMIT')??600)));
+  const configuredDaily=Number(this.config.get<string>('GOOGLE_INSPECTION_DAILY_LIMIT')??2000),configuredMinute=Number(this.config.get<string>('GOOGLE_INSPECTION_PER_MINUTE_LIMIT')??600);
+  const dailyLimit=Number.isFinite(configuredDaily)?Math.min(2000,Math.max(1,configuredDaily)):2000;
+  const minuteLimit=Number.isFinite(configuredMinute)?Math.min(600,Math.max(1,configuredMinute)):600;
   const keys=urls.map(url=>'gsc-inspect:'+connectionId+':'+createHash('sha256').update(siteUrl+'|'+url).digest('hex')+':'+dayStart.toISOString().slice(0,10));
   return this.db.withTransaction(async client=>{
    await this.assertProviderSite(client,principal,connectionId,input.projectId,'google_search_console',siteUrl);
@@ -284,10 +285,11 @@ export class IntegrationsService{
   },principal.tenantId);
  }
  async queueBingSubmissions(principal:Principal,connectionId:string,input:{projectId:string;siteUrl:string;urls:string[]}){
-  const quota=await this.bingSubmissionQuota(principal,connectionId,input.siteUrl);
   const urls=[...new Set(input.urls.map(url=>this.normalizeProviderUrl(url)))];
   if(urls.length>500)throw new BadRequestException('Bing URL submission supports at most 500 URLs per batch');
   if(urls.some(url=>!this.urlMatchesSite(url,input.siteUrl)))throw new ForbiddenException('Every submitted URL must belong to the selected verified Bing site');
+  await this.db.withTransaction(client=>this.assertProviderSite(client,principal,connectionId,input.projectId,'bing_webmaster',input.siteUrl),principal.tenantId);
+  const quota=await this.bingSubmissionQuota(principal,connectionId,input.siteUrl);
   const now=new Date(),dayStart=new Date(now);dayStart.setUTCHours(0,0,0,0);
   const monthStart=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),1));
   const keys=urls.map(url=>'bing-submit:'+connectionId+':'+createHash('sha256').update(input.siteUrl+'|'+url).digest('hex')+':'+dayStart.toISOString().slice(0,10));
