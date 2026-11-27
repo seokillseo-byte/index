@@ -46,7 +46,7 @@ services:
     depends_on:
       redpanda: { condition: service_started }
     entrypoint: ["/bin/sh","-c"]
-    command: ["until rpk cluster info --brokers redpanda:9092 >/dev/null 2>&1; do sleep 2; done; rpk topic create url.ingestion --brokers redpanda:9092 --partitions 12 --replicas 1 || true"]
+    command: ["until rpk cluster info --brokers redpanda:9092 >/dev/null 2>&1; do sleep 2; done; rpk topic create url.ingestion --brokers redpanda:9092 --partitions 12 --replicas 1 || rpk topic describe url.ingestion --brokers redpanda:9092"]
     networks: [data]
   clickhouse:
     image: clickhouse/clickhouse-server:24.12
