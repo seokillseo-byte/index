@@ -1,0 +1,13 @@
+{
+  "name": "@index-assist/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node src/outbox-relay.mjs"
+  },
+  "dependencies": {
+    "kafkajs": "^2.2.4",
+    "pg": "^8.13.3"
+  }
+}
