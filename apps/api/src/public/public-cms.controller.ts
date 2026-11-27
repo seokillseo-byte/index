@@ -7,6 +7,10 @@ import {Public} from '../auth/auth.constants';
 @Controller('public/cms')
 export class PublicCmsController{
  constructor(private readonly db:DatabaseService){}
+ @Get('pages') @Public() @ApiOperation({summary:'List published CMS pages'})
+ async pages(){
+  return (await this.db.query("SELECT p.id,p.slug,p.title,p.published_at,s.seo_title,s.meta_description FROM app.cms_pages p LEFT JOIN app.seo_metadata s ON s.entity_type='page' AND s.entity_id=p.id WHERE p.status='published' AND p.published_at<=now() ORDER BY p.published_at DESC")).rows;
+ }
  @Get('pages/:slug') @Public() @ApiOperation({summary:'Read a published CMS page'})
  async page(@Param('slug') slug:string){
   const r=await this.db.query("SELECT p.id,p.slug,p.title,p.body,p.published_at,s.seo_title,s.meta_description,s.canonical_url,s.robots_index,s.robots_follow FROM app.cms_pages p LEFT JOIN app.seo_metadata s ON s.entity_type='page' AND s.entity_id=p.id WHERE p.slug=$1 AND p.status='published' AND p.published_at<=now() LIMIT 1",[slug]);
