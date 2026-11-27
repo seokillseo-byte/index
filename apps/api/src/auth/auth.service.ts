@@ -27,6 +27,7 @@ export class AuthService{
   });
  }
  async register(input:{email:string;password:string;displayName:string;workspaceName:string}){
+  if(process.env.PUBLIC_SIGNUP_ENABLED!=='true')throw new ServiceUnavailableException('Public registration is temporarily disabled');
   const passwordHash=await argon2.hash(input.password,{type:argon2.argon2id,memoryCost:19456,timeCost:2,parallelism:1});
   const slug=input.workspaceName.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,48)+'-'+randomBytes(3).toString('hex');
   try{
