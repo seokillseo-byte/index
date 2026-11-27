@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, ServiceUnavailableException } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
 @ApiTags('health')
@@ -11,10 +11,13 @@ export class HealthController {
   }
 
   @Get('ready')
-  @ApiOperation({ summary: 'Readiness probe; expanded as dependencies are wired' })
-  ready(): { status: 'ready'; checks: Record<string, 'pending-integration'> } {
-    // This endpoint intentionally does not claim DB/broker readiness until
-    // their connection providers and timeout-bounded checks are registered.
-    return { status: 'ready', checks: { database: 'pending-integration', broker: 'pending-integration' } };
+  @ApiOperation({ summary: 'Readiness probe; returns 503 until dependencies are wired' })
+  ready(): never {
+    // Never advertise readiness while the database and event broker are not
+    // connected and checked with bounded timeouts.
+    throw new ServiceUnavailableException({
+      status: 'not_ready',
+      checks: { database: 'pending-integration', broker: 'pending-integration' },
+    });
   }
 }
