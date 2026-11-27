@@ -13,4 +13,4 @@ export async function POST(req:NextRequest){
  const jar=await cookies();jar.set('ia_access',data.accessToken,opts(Number(data.expiresIn)||900));jar.set('ia_refresh',data.refreshToken,opts(30*24*60*60));
  return NextResponse.json({user:data.user,workspace:data.workspace},{headers:{'cache-control':'no-store'}});
 }
-export async function DELETE(req:NextRequest){if(!sameOrigin(req))return NextResponse.json({message:'Invalid request origin'},{status:403});const jar=await cookies();jar.delete('ia_access');jar.delete('ia_refresh');return NextResponse.json({ok:true});}
+export async function DELETE(req:NextRequest){if(!sameOrigin(req))return NextResponse.json({message:'Invalid request origin'},{status:403});const jar=await cookies();const access=jar.get('ia_access')?.value;if(access){await fetch(api()+'/api/v1/auth/logout',{method:'POST',headers:{authorization:'Bearer '+access},cache:'no-store'}).catch(()=>{});}jar.delete('ia_access');jar.delete('ia_refresh');return NextResponse.json({ok:true});}
