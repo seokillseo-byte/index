@@ -15,5 +15,5 @@ export async function POST(req:NextRequest){
 }
 export async function DELETE(req:NextRequest){
  if(!sameOrigin(req))return NextResponse.json({message:'Invalid request origin'},{status:403});
- const jar=await cookies();jar.delete('ia_access');jar.delete('ia_refresh');return NextResponse.json({ok:true});
+ const jar=await cookies();const access=jar.get('ia_access')?.value;if(access){await fetch(api()+'/api/v1/auth/logout',{method:'POST',headers:{authorization:'Bearer '+access},cache:'no-store'}).catch(()=>{});}jar.delete('ia_access');jar.delete('ia_refresh');return NextResponse.json({ok:true});
 }
