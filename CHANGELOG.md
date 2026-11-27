@@ -7,6 +7,7 @@
 - Added password-reset request and reset flows with 30-minute single-use tokens.
 - Password reset and MFA disable revoke existing sessions.
 - Added server-side session listing, individual revocation and revoke-all controls.
+- Hardened MFA and password-reset challenge issuance so only one active challenge of each relevant type exists.
 - Added migration `0018_auth_mfa_recovery.sql`.
 
 ### Authentication — email verification
