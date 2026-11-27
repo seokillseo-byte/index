@@ -110,10 +110,47 @@ async function processGoogle(payload,jobs,credential){
   await delay(125);
  }
 }
+
+async function deferProviderJobs(payload,jobs,when,reason){
+ await tenantTransaction(payload.tenantId,async client=>{
+  await client.query("UPDATE app.provider_jobs SET status='retrying',scheduled_at=$4,attempt_count=GREATEST(attempt_count-1,0),lease_owner=NULL,lease_expires_at=NULL,last_error=$5,updated_at=now() WHERE tenant_id=$1 AND id=ANY($2::uuid[]) AND lease_owner=$3",[payload.tenantId,jobs.map(j=>j.id),workerId,when,String(reason).slice(0,1000)]);
+  const siteKey=createHash('sha256').update(payload.siteUrl).digest('hex');
+  const eventKey='provider-quota-defer:'+payload.connectionId+':'+siteKey+':'+when.toISOString();
+  await client.query("INSERT INTO app.outbox_events(tenant_id,aggregate_type,aggregate_id,event_type,topic,partition_key,payload,idempotency_key,next_attempt_at) VALUES($1,'provider_batch',$2,'provider.jobs.retry','provider.jobs',$3,$4::jsonb,$5,$6) ON CONFLICT(idempotency_key) DO NOTHING",[payload.tenantId,payload.projectId,payload.tenantId+':'+payload.projectId+':'+payload.connectionId,JSON.stringify(payload),eventKey,when]);
+ });
+}
+async function getBingQuota(credential,siteUrl){
+ const endpoint=new URL('https://ssl.bing.com/webmaster/api.svc/json/GetUrlSubmissionQuota');
+ endpoint.searchParams.set('siteUrl',siteUrl);if(credential.apiKey)endpoint.searchParams.set('apikey',credential.apiKey);
+ const headers={accept:'application/json'};if(!credential.apiKey)headers.authorization='Bearer '+credential.accessToken;
+ const response=await fetch(endpoint,{headers,signal:AbortSignal.timeout(15000)});
+ const data=await response.json().catch(()=>({}));
+ const daily=Number(data?.d?.DailyQuota),monthly=Number(data?.d?.MonthlyQuota);
+ if(!response.ok||data?.ErrorCode||!Number.isFinite(daily)||!Number.isFinite(monthly)||daily<1||monthly<1)throw new Error('Bing live URL submission quota unavailable');
+ return {daily,monthly};
+}
+async function reserveBingBatch(payload,jobs,credential){
+ const quota=await getBingQuota(credential,jobs[0].site_url);
+ const now=new Date(),dayStart=new Date(now);dayStart.setUTCHours(0,0,0,0);
+ const monthStart=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),1));
+ const usage=await tenantTransaction(payload.tenantId,async client=>{
+  await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[payload.tenantId+':'+payload.connectionId+':'+payload.siteUrl+':'+dayStart.toISOString().slice(0,10)]);
+  const counts=await client.query("SELECT count(*) FILTER(WHERE created_at >= $3 OR last_attempt_at >= $3)::int daily,count(*) FILTER(WHERE created_at >= $4 OR last_attempt_at >= $4)::int monthly FROM app.provider_jobs WHERE tenant_id=$1 AND connection_id=$2 AND site_url=$5 AND provider='bing_webmaster' AND action='submit_url' AND status<>'cancelled'",[payload.tenantId,payload.connectionId,dayStart,monthStart,payload.siteUrl]);
+  const extra=await client.query("SELECT count(*) FILTER(WHERE created_at < $3 AND (last_attempt_at IS NULL OR last_attempt_at < $4))::int daily,count(*) FILTER(WHERE created_at < $5 AND (last_attempt_at IS NULL OR last_attempt_at < $6))::int monthly FROM app.provider_jobs WHERE tenant_id=$1 AND id=ANY($2::uuid[])",[payload.tenantId,jobs.map(j=>j.id),dayStart,dayStart,monthStart,monthStart]);
+  return {daily:counts.rows[0].daily+extra.rows[0].daily,monthly:counts.rows[0].monthly+extra.rows[0].monthly};
+ });
+ if(usage.daily>quota.daily||usage.monthly>quota.monthly){
+  const next=usage.monthly>quota.monthly?new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth()+1,1,0,5)):new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate()+1,0,5));
+  await deferProviderJobs(payload,jobs,next,'Bing provider quota window exhausted; deferred to the next quota window');
+  return false;
+ }
+ await markAttempt(payload.tenantId,jobs.map(j=>j.id));
+ return true;
+}
 async function processBing(payload,jobs,credential){
  if(!jobs.length)return;
  try{
-  await markAttempt(payload.tenantId,jobs.map(job=>job.id));
+  const quotaAvailable=await reserveBingBatch(payload,jobs,credential);if(!quotaAvailable)return;
   const endpoint=new URL('https://ssl.bing.com/webmaster/api.svc/json/SubmitUrlBatch');
   endpoint.searchParams.set('siteUrl',jobs[0].site_url);
   const headers={'content-type':'application/json','accept':'application/json'};
