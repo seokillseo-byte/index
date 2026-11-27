@@ -74,11 +74,9 @@ async function worker(){
  }
 }
 
-let seeded=false;
 try{
  const seedStarted=process.hrtime.bigint();
  const inserted=await seed();
- seeded=true;
  const seedSeconds=Number(process.hrtime.bigint()-seedStarted)/1e9;
  const drainStarted=process.hrtime.bigint();
  const counts=await Promise.all(Array.from({length:concurrency},()=>worker()));
