@@ -10,6 +10,7 @@ import {BacklinksModule} from './backlinks/backlinks.module';
 import {IntegrationsModule} from './integrations/integrations.module';
 import {AdminModule} from './admin/admin.module';
 import {PublicCmsModule} from './public/public.module';
+import {BillingModule} from './billing/billing.module';
 import {HealthController} from './health/health.controller';
-@Module({imports:[ConfigModule.forRoot({isGlobal:true,envFilePath:['.env','../../.env']}),ThrottlerModule.forRoot([{name:'default',ttl:60_000,limit:120}]),DatabaseModule,AuthModule,IngestionModule,ProjectsModule,BacklinksModule,IntegrationsModule,AdminModule,PublicCmsModule],controllers:[HealthController],providers:[{provide:APP_GUARD,useClass:ThrottlerGuard}]})
+@Module({imports:[ConfigModule.forRoot({isGlobal:true,envFilePath:['.env','../../.env']}),ThrottlerModule.forRoot([{name:'default',ttl:60_000,limit:120}]),DatabaseModule,AuthModule,IngestionModule,ProjectsModule,BacklinksModule,IntegrationsModule,AdminModule,PublicCmsModule,BillingModule],controllers:[HealthController],providers:[{provide:APP_GUARD,useClass:ThrottlerGuard}]})
 export class AppModule{}
