@@ -11,8 +11,10 @@ DECLARE
   owner_role uuid;
 BEGIN
   INSERT INTO app.users(id,email,display_name) VALUES(v_user_id,('rls-test-'||v_user_id::text||'@example.invalid')::citext,'RLS test');
-  INSERT INTO app.tenants(id,name,slug) VALUES(tenant_a,'RLS tenant A','rls-a-'||replace(user_id::text,'-',''));
-  INSERT INTO app.tenants(id,name,slug) VALUES(tenant_b,'RLS tenant B','rls-b-'||replace(user_id::text,'-',''));
+  PERFORM set_config('app.tenant_id',tenant_a::text,true);
+  INSERT INTO app.tenants(id,name,slug) VALUES(tenant_a,'RLS tenant A','rls-a-'||replace(v_user_id::text,'-',''));
+  PERFORM set_config('app.tenant_id',tenant_b::text,true);
+  INSERT INTO app.tenants(id,name,slug) VALUES(tenant_b,'RLS tenant B','rls-b-'||replace(v_user_id::text,'-',''));
   SELECT id INTO owner_role FROM app.roles WHERE code='owner';
   PERFORM set_config('app.tenant_id',tenant_a::text,true);
   INSERT INTO app.tenant_members(tenant_id,user_id,role_id,status,joined_at) VALUES(tenant_a,v_user_id,owner_role,'active',now());
