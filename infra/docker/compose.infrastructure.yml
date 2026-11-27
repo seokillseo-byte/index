@@ -1,0 +1,74 @@
+name: index-assist-infrastructure
+services:
+  postgres:
+    image: postgres:16.6
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-index_assist}
+      POSTGRES_USER: ${POSTGRES_USER:-index_assist}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+    command: ["postgres","-c","max_connections=300","-c","shared_buffers=1GB","-c","effective_cache_size=4GB","-c","maintenance_work_mem=512MB","-c","wal_compression=on"]
+    volumes: [postgres_data:/var/lib/postgresql/data]
+    ports: ["127.0.0.1:5432:5432"]
+    healthcheck:
+      test: ["CMD-SHELL","pg_isready -U ${POSTGRES_USER:-index_assist} -d ${POSTGRES_DB:-index_assist}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [data]
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: ["sh","-c","exec redis-server --appendonly yes --requirepass \"$$${REDIS_PASSWORD}\" --maxmemory 2gb --maxmemory-policy allkeys-lru"]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD}
+    volumes: [redis_data:/data]
+    ports: ["127.0.0.1:6379:6379"]
+    healthcheck:
+      test: ["CMD-SHELL","redis-cli -a \"$$${REDIS_PASSWORD}\" ping | grep PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [data]
+  redpanda:
+    image: redpandadata/redpanda:v24.3.7
+    restart: unless-stopped
+    command: ["redpanda","start","--overprovisioned","--smp","2","--memory","2G","--reserve-memory","0M","--node-id","0","--check=false","--kafka-addr","internal://0.0.0.0:9092","--advertise-kafka-addr","internal://redpanda:9092"]
+    volumes: [redpanda_data:/var/lib/redpanda/data]
+    ports: ["127.0.0.1:19092:9092"]
+    networks: [data]
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.12
+    restart: unless-stopped
+    environment:
+      CLICKHOUSE_DB: ${CLICKHOUSE_DB:-index_analytics}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-index_analytics}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:?Set CLICKHOUSE_PASSWORD}
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+    volumes: [clickhouse_data:/var/lib/clickhouse]
+    ports: ["127.0.0.1:8123:8123","127.0.0.1:9009:9000"]
+    healthcheck:
+      test: ["CMD-SHELL","clickhouse-client --user \"$$${CLICKHOUSE_USER}\" --password \"$$${CLICKHOUSE_PASSWORD}\" --query 'SELECT 1'"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    networks: [data]
+  minio:
+    image: minio/minio:RELEASE.2025-02-07T23-21-09Z
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD}
+    volumes: [minio_data:/data]
+    ports: ["127.0.0.1:9100:9000","127.0.0.1:9001:9001"]
+    networks: [data]
+volumes:
+  postgres_data:
+  redis_data:
+  redpanda_data:
+  clickhouse_data:
+  minio_data:
+networks:
+  data:
+    driver: bridge
