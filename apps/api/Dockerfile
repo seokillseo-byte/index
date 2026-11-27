@@ -1,4 +1,4 @@
-FROM node:22-alpine AS build
+FROM node:22-bookworm-slim AS build
 RUN corepack enable
 WORKDIR /workspace
 COPY package.json pnpm-workspace.yaml ./
@@ -7,7 +7,7 @@ RUN pnpm install --filter @index-assist/api... --no-frozen-lockfile
 COPY apps/api apps/api
 RUN pnpm --filter @index-assist/api build
 
-FROM node:22-alpine AS runner
+FROM node:22-bookworm-slim AS runner
 ENV NODE_ENV=production
 WORKDIR /app
 COPY apps/api/package.json ./package.json
