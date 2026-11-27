@@ -67,3 +67,8 @@ jobs:
           MIGRATION_DATABASE_URL: postgresql://index_assist:postgres-ci-password@127.0.0.1:5432/index_assist
           PGPASSWORD: postgres-ci-password
         run: psql "$MIGRATION_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/tests/tenant_rls_runtime.sql
+      - name: Verify platform administrator RLS and audit isolation
+        env:
+          MIGRATION_DATABASE_URL: postgresql://index_assist:postgres-ci-password@127.0.0.1:5432/index_assist
+          PGPASSWORD: postgres-ci-password
+        run: psql "$MIGRATION_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/tests/platform_admin_rls.sql
