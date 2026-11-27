@@ -83,8 +83,8 @@ export class IntegrationsService{
    const found=await client.query<{id:string;user_id:string;project_id:string}>("SELECT id,user_id,project_id FROM app.integration_oauth_states WHERE tenant_id=$1 AND provider=$2 AND state_hash=$3 AND consumed_at IS NULL AND expires_at>now() FOR UPDATE",[tenantId,provider,stateHash]);
    if(!found.rowCount)throw new BadRequestException('OAuth state was already used or has expired');
    const row=found.rows[0];
-   const member=await client.query("SELECT 1 FROM app.tenant_members tm JOIN app.users u ON u.id=tm.user_id JOIN app.tenants t ON t.id=tm.tenant_id WHERE tm.tenant_id=$1 AND tm.user_id=$2 AND tm.status='active' AND u.status='active' AND t.status='active'",[tenantId,row.user_id]);
-   if(!member.rowCount)throw new ForbiddenException('Workspace membership is no longer active');
+   const member=await client.query("SELECT 1 FROM app.tenant_members tm JOIN app.users u ON u.id=tm.user_id JOIN app.tenants t ON t.id=tm.tenant_id JOIN app.role_permissions rp ON rp.role_id=tm.role_id JOIN app.permissions p ON p.id=rp.permission_id WHERE tm.tenant_id=$1 AND tm.user_id=$2 AND tm.status='active' AND u.status='active' AND t.status='active' AND p.code='integration.manage'",[tenantId,row.user_id]);
+   if(!member.rowCount)throw new ForbiddenException('Workspace membership or integration permission is no longer active');
    await client.query("UPDATE app.integration_oauth_states SET consumed_at=now() WHERE id=$1",[row.id]);
    return row;
   },tenantId);
@@ -107,6 +107,8 @@ export class IntegrationsService{
  }
  private async connectionCredential(principal:Principal,connectionId:string){
   return this.db.withTransaction(async client=>{
+   const permission=await client.query("SELECT 1 FROM app.tenant_members tm JOIN app.role_permissions rp ON rp.role_id=tm.role_id JOIN app.permissions p ON p.id=rp.permission_id WHERE tm.tenant_id=$1 AND tm.user_id=$2 AND tm.status='active' AND p.code='integration.manage'",[principal.tenantId,principal.userId]);
+   if(!permission.rowCount)throw new ForbiddenException('Integration management permission required');
    const r=await client.query<{provider:Provider;status:string;id:string}>("SELECT id,provider,status FROM app.integration_connections WHERE tenant_id=$1 AND id=$2",[principal.tenantId,connectionId]);
    if(!r.rowCount||r.rows[0].status!=='connected')throw new NotFoundException('Active integration connection not found');
    const secret=await client.query<{ciphertext:Buffer;iv:Buffer;auth_tag:Buffer}>("SELECT ciphertext,iv,auth_tag FROM app.integration_secrets WHERE tenant_id=$1 AND connection_id=$2",[principal.tenantId,connectionId]);
@@ -175,7 +177,7 @@ export class IntegrationsService{
     try{const property=new URL(siteUrl);matches=target.origin===property.origin&&target.pathname.startsWith(property.pathname);}catch{matches=false;}
    }
    if(!matches)throw new ForbiddenException('The provider property does not cover the project target URL');
-   const allowed=site.verified&&(site.permission==='siteOwner'||site.permission==='siteFullUser'||site.permission==='verified'||site.permission==='unknown');
+   const allowed=site.verified&&(site.permission==='siteOwner'||site.permission==='siteFullUser'||site.permission==='verified');
    const verification=allowed?'verified':'insufficient_permission';
    const r=await client.query("INSERT INTO app.integration_sites(tenant_id,connection_id,project_id,site_url,permission_level,verification_status,last_verified_at) VALUES($1,$2,$3,$4,$5,$6,CASE WHEN $6='verified' THEN now() ELSE NULL END) ON CONFLICT(tenant_id,project_id,connection_id,site_url) DO UPDATE SET permission_level=EXCLUDED.permission_level,verification_status=EXCLUDED.verification_status,last_verified_at=EXCLUDED.last_verified_at,updated_at=now() RETURNING id,site_url,permission_level,verification_status,last_verified_at",[principal.tenantId,connectionId,projectId,siteUrl,site.permission,verification]);
    return r.rows[0];
@@ -183,8 +185,14 @@ export class IntegrationsService{
  }
  async createBingApiKey(principal:Principal,projectId:string,apiKey:string){
   if(!apiKey||apiKey.length<20||apiKey.length>512)throw new BadRequestException('Invalid Bing API key');
+  await this.db.withTransaction(async client=>{
+   const permission=await client.query("SELECT 1 FROM app.tenant_members tm JOIN app.role_permissions rp ON rp.role_id=tm.role_id JOIN app.permissions p ON p.id=rp.permission_id WHERE tm.tenant_id=$1 AND tm.user_id=$2 AND tm.status='active' AND p.code='integration.manage'",[principal.tenantId,principal.userId]);
+   if(!permission.rowCount)throw new ForbiddenException('Integration management permission required');
+   const project=await client.query("SELECT 1 FROM app.projects WHERE tenant_id=$1 AND id=$2",[principal.tenantId,projectId]);
+   if(!project.rowCount)throw new NotFoundException('Project not found');
+  },principal.tenantId);
   const sites=await this.bingSites({apiKey});
-  if(!sites.length)throw new ForbiddenException('The Bing API key has no accessible verified sites');
+  if(!sites.length)throw new ForbiddenException('The Bing API key has no accessible sites');
   const connectionId=randomUUID(),secretId=randomUUID(),encrypted=this.encrypt({apiKey,authMode:'api_key'});
   await this.db.withTransaction(async client=>{
    const permission=await client.query("SELECT 1 FROM app.tenant_members tm JOIN app.role_permissions rp ON rp.role_id=tm.role_id JOIN app.permissions p ON p.id=rp.permission_id WHERE tm.tenant_id=$1 AND tm.user_id=$2 AND tm.status='active' AND p.code='integration.manage'",[principal.tenantId,principal.userId]);
