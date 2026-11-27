@@ -3,21 +3,19 @@ package main
 import (
  "context"
  "encoding/json"
- "errors"
- "fmt"
+  "fmt"
  "io"
  "log"
- "net"
- "net/http"
+  "net/http"
  "net/url"
  "os"
  "os/signal"
  "strings"
+ "sync"
  "syscall"
  "time"
 
- "github.com/jackc/pgx/v5"
- "github.com/jackc/pgx/v5/pgxpool"
+  "github.com/jackc/pgx/v5/pgxpool"
  "github.com/segmentio/kafka-go"
  "github.com/seokillseo-byte/index/services/crawler/internal/safefetch"
 )
@@ -47,6 +45,7 @@ func main() {
   CommitInterval: 0, StartOffset: kafka.FirstOffset,
  })
  defer reader.Close()
+ startHealthServer(ctx,pool)
  log.Printf("crawler consumer started; brokers=%v", brokers)
  for {
   msg, err := reader.FetchMessage(ctx)
@@ -74,10 +73,23 @@ func processBatch(ctx context.Context,pool *pgxpool.Pool,tenantID,projectID stri
   tasks,err:=claimTasks(ctx,pool,tenantID,projectID,workerID,100)
   if err!=nil{return err}
   if len(tasks)==0{return nil}
+  var wg sync.WaitGroup
+  sem:=make(chan struct{},16)
+  errCh:=make(chan error,len(tasks))
   for _,item:=range tasks {
-   result:=inspect(ctx,item.URL)
-   if err:=saveResult(ctx,pool,tenantID,workerID,item,result);err!=nil{return err}
+   item:=item
+   wg.Add(1)
+   go func(){
+    defer wg.Done()
+    select{case sem<-struct{}{}:case <-ctx.Done():errCh<-ctx.Err();return}
+    defer func(){<-sem}()
+    result:=inspect(ctx,item.URL)
+    if err:=saveResult(ctx,pool,tenantID,workerID,item,result);err!=nil{errCh<-err}
+   }()
   }
+  wg.Wait()
+  close(errCh)
+  for err:=range errCh{if err!=nil{return err}}
  }
 }
 
@@ -120,6 +132,15 @@ func inspect(ctx context.Context,raw string)fetchResult{
   req.Header.Set("User-Agent","IndexAssistBot/1.0 (+https://index-assist.io.vn/)")
   resp,err:=client.Do(req)
   if err!=nil{result.Error=err.Error();return result}
+  if resp.StatusCode==http.StatusMethodNotAllowed||resp.StatusCode==http.StatusNotImplemented{
+   resp.Body.Close()
+   fallback,reqErr:=http.NewRequestWithContext(ctx,http.MethodGet,parsed.String(),nil)
+   if reqErr!=nil{result.Error=reqErr.Error();return result}
+   fallback.Header.Set("User-Agent","IndexAssistBot/1.0 (+https://index-assist.io.vn/)")
+   fallback.Header.Set("Range","bytes=0-0")
+   resp,err=client.Do(fallback)
+   if err!=nil{result.Error=err.Error();return result}
+  }
   result.StatusCode=resp.StatusCode
   result.ContentType=resp.Header.Get("Content-Type")
   result.Server=resp.Header.Get("Server")
@@ -187,6 +208,12 @@ func saveResult(ctx context.Context,pool *pgxpool.Pool,tenantID,workerID string,
 
 func minInt(a,b int)int{if a<b{return a};return b}
 func env(k,def string)string{if v:=os.Getenv(k);v!=""{return v};return def}
-var _ = errors.New
-var _ = net.IP{}
-var _ = pgx.ErrNoRows
+
+func startHealthServer(ctx context.Context,pool *pgxpool.Pool){
+ mux:=http.NewServeMux()
+ mux.HandleFunc("GET /health/live",func(w http.ResponseWriter,_ *http.Request){w.Header().Set("Content-Type","application/json");_,_=io.WriteString(w,`{"status":"ok"}`)})
+ mux.HandleFunc("GET /health/ready",func(w http.ResponseWriter,r *http.Request){checkCtx,cancel:=context.WithTimeout(r.Context(),2*time.Second);defer cancel();if err:=pool.Ping(checkCtx);err!=nil{w.WriteHeader(http.StatusServiceUnavailable);_,_=io.WriteString(w,`{"status":"not_ready"}`);return};w.Header().Set("Content-Type","application/json");_,_=io.WriteString(w,`{"status":"ready"}`)})
+ server:=&http.Server{Addr:":"+env("PORT","8080"),Handler:mux,ReadHeaderTimeout:5*time.Second,ReadTimeout:10*time.Second,WriteTimeout:10*time.Second,IdleTimeout:30*time.Second}
+ go func(){if err:=server.ListenAndServe();err!=nil&&err!=http.ErrServerClosed{log.Printf("health server: %v",err)}}()
+ go func(){<-ctx.Done();shutdownCtx,cancel:=context.WithTimeout(context.Background(),5*time.Second);defer cancel();_=server.Shutdown(shutdownCtx)}()
+}
