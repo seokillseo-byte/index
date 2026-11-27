@@ -22,6 +22,7 @@ export class ProjectsService{
   const slugBase=name.normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,48)||'project';
   return this.db.withTransaction(async client=>{
    await this.assertPermission(client,principal,'project.manage');
+   await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[principal.tenantId+':project-limit']);
    const plan=await client.query("SELECT p.max_projects FROM app.subscriptions s JOIN app.plans p ON p.id=s.plan_id WHERE s.tenant_id=$1 AND s.status IN ('active','trialing') AND s.current_period_end>now() ORDER BY s.created_at DESC LIMIT 1",[principal.tenantId]);
    if(!plan.rowCount)throw new ForbiddenException('No active subscription');
    const count=await client.query("SELECT count(*)::int count FROM app.projects WHERE tenant_id=$1",[principal.tenantId]);
