@@ -1,4 +1,4 @@
-import {Body,Controller,Delete,Get,Param,ParseUUIDPipe,Post,Query,Req} from '@nestjs/common';
+import {Body,Controller,Delete,Get,Param,ParseIntPipe,ParseUUIDPipe,Post,Query,Req} from '@nestjs/common';
 import {ApiBearerAuth,ApiOperation,ApiTags} from '@nestjs/swagger';
 import {Request} from 'express';
 import {Public} from '../auth/auth.constants';
@@ -29,6 +29,11 @@ export class IntegrationsController{
  @Post(':id/bing-submissions') @ApiBearerAuth() @ApiOperation({summary:'Queue Bing URL submissions within the connected verified site'})
  submitBing(@Req() req:Request,@Param('id',new ParseUUIDPipe()) id:string,@Body() dto:QueueProviderUrlsDto){
   return this.integrations.queueBingSubmissions({userId:req.principal!.userId,tenantId:req.principal!.tenantId},id,dto);
+ }
+
+ @Get(':id/jobs') @ApiBearerAuth() @ApiOperation({summary:'List provider inspection and submission job results'})
+ jobs(@Req() req:Request,@Param('id',new ParseUUIDPipe()) id:string,@Query('projectId',new ParseUUIDPipe()) projectId:string,@Query('page',new ParseIntPipe({optional:true})) page=1,@Query('limit',new ParseIntPipe({optional:true})) limit=50){
+  return this.integrations.listProviderJobs({userId:req.principal!.userId,tenantId:req.principal!.tenantId},id,projectId,Math.max(1,page),Math.min(100,Math.max(1,limit)));
  }
  @Get() @ApiBearerAuth() @ApiOperation({summary:'List search provider connections in the active workspace'})
  list(@Req() req:Request){return this.integrations.list({userId:req.principal!.userId,tenantId:req.principal!.tenantId});}
