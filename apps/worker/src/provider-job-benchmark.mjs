@@ -7,9 +7,14 @@ const required=['BENCHMARK_DATABASE_URL','BENCHMARK_TENANT_ID','BENCHMARK_PROJEC
 for(const key of required)if(!process.env[key])throw new Error(key+' is required');
 if(process.env.BENCHMARK_CONFIRM_NONPROD!=='YES')throw new Error('Set BENCHMARK_CONFIRM_NONPROD=YES for a dedicated non-production database');
 
-const total=Math.max(1,Number(process.env.BENCHMARK_JOBS||10000));
-const concurrency=Math.max(1,Math.min(64,Number(process.env.BENCHMARK_CONCURRENCY||8)));
-const batchSize=Math.max(1,Math.min(500,Number(process.env.BENCHMARK_BATCH_SIZE||100)));
+function positiveInteger(name,value,fallback,max=Number.MAX_SAFE_INTEGER){
+ const parsed=Number(value??fallback);
+ if(!Number.isSafeInteger(parsed)||parsed<1||parsed>max)throw new Error(name+' must be an integer between 1 and '+max);
+ return parsed;
+}
+const total=positiveInteger('BENCHMARK_JOBS',process.env.BENCHMARK_JOBS,10000);
+const concurrency=positiveInteger('BENCHMARK_CONCURRENCY',process.env.BENCHMARK_CONCURRENCY,8,64);
+const batchSize=positiveInteger('BENCHMARK_BATCH_SIZE',process.env.BENCHMARK_BATCH_SIZE,100,500);
 const pool=new Pool({connectionString:process.env.BENCHMARK_DATABASE_URL,max:concurrency+2,application_name:'index-assist-provider-benchmark'});
 
 const tenantId=process.env.BENCHMARK_TENANT_ID;
@@ -17,7 +22,10 @@ const projectId=process.env.BENCHMARK_PROJECT_ID;
 const connectionId=process.env.BENCHMARK_CONNECTION_ID;
 const siteUrl=process.env.BENCHMARK_SITE_URL;
 const provider=process.env.BENCHMARK_PROVIDER||'bing_webmaster';
+if(!['bing_webmaster','google_search_console'].includes(provider))throw new Error('BENCHMARK_PROVIDER must be bing_webmaster or google_search_console');
 const action=provider==='google_search_console'?'inspect':'submit_url';
+const runId=randomUUID();
+const idempotencyPrefix='benchmark:'+runId+':';
 
 async function tx(fn){
  const client=await pool.connect();
@@ -36,10 +44,10 @@ async function seed(){
   const count=Math.min(batchSize,total-inserted);
   await tx(async client=>{
    for(let i=0;i<count;i++){
-    const url=siteUrl.replace(/\/$/,'')+'/__benchmark__/'+randomUUID();
+    const url=siteUrl.replace(/\\/$/,'')+'/__benchmark__/'+runId+'/'+randomUUID();
     await client.query(
       "INSERT INTO app.provider_jobs(tenant_id,project_id,connection_id,provider,action,url,site_url,idempotency_key,status,scheduled_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,'queued',now())",
-      [tenantId,projectId,connectionId,provider,action,url,siteUrl,'benchmark:'+randomUUID()]
+      [tenantId,projectId,connectionId,provider,action,url,siteUrl,idempotencyPrefix+randomUUID()]
     );
    }
   });
@@ -49,12 +57,13 @@ async function seed(){
 }
 
 async function worker(){
+ const workerId='benchmark-'+randomUUID();
  let processed=0;
  while(true){
   const rows=await tx(async client=>{
    const result=await client.query(
-    "WITH due AS (SELECT id FROM app.provider_jobs WHERE tenant_id=$1 AND project_id=$2 AND connection_id=$3 AND provider=$4 AND site_url=$5 AND action=$6 AND status='queued' ORDER BY created_at LIMIT $7 FOR UPDATE SKIP LOCKED) UPDATE app.provider_jobs j SET status='leased',lease_owner=$8,lease_expires_at=now()+interval '10 minutes',attempt_count=attempt_count+1,updated_at=now() FROM due WHERE j.tenant_id=$1 AND j.id=due.id RETURNING j.id",
-    [tenantId,projectId,connectionId,provider,siteUrl,action,batchSize,workerId]
+    "WITH due AS (SELECT id FROM app.provider_jobs WHERE tenant_id=$1 AND project_id=$2 AND connection_id=$3 AND provider=$4 AND site_url=$5 AND action=$6 AND status='queued' AND idempotency_key LIKE $8 ORDER BY created_at LIMIT $7 FOR UPDATE SKIP LOCKED) UPDATE app.provider_jobs j SET status='leased',lease_owner=$9,lease_expires_at=now()+interval '10 minutes',attempt_count=attempt_count+1,updated_at=now() FROM due WHERE j.tenant_id=$1 AND j.id=due.id RETURNING j.id",
+    [tenantId,projectId,connectionId,provider,siteUrl,action,batchSize,idempotencyPrefix+'%',workerId]
    );
    if(!result.rowCount)return [];
    await client.query("UPDATE app.provider_jobs SET status='completed',lease_owner=NULL,lease_expires_at=NULL,completed_at=now(),updated_at=now() WHERE tenant_id=$1 AND id=ANY($2::uuid[]) AND lease_owner=$3",[tenantId,result.rows.map(x=>x.id),workerId]);
@@ -65,15 +74,25 @@ async function worker(){
  }
 }
 
-const started=process.hrtime.bigint();
-const inserted=await seed();
-const workers=Array.from({length:concurrency},()=>worker());
-const counts=await Promise.all(workers);
-const seconds=Number(process.hrtime.bigint()-started)/1e9;
-const processed=counts.reduce((a,b)=>a+b,0);
-const rate=processed/seconds;
-console.log(JSON.stringify({provider,action,inserted,processed,concurrency,batchSize,durationSeconds:Number(seconds.toFixed(3)),jobsPerSecond:Number(rate.toFixed(2)),jobsPerDay:Number((rate*86400).toFixed(0))},null,2));
-await tx(async client=>{
- await client.query("DELETE FROM app.provider_jobs WHERE tenant_id=$1 AND project_id=$2 AND connection_id=$3 AND site_url=$4 AND idempotency_key LIKE 'benchmark:%'",[tenantId,projectId,connectionId,siteUrl]);
-});
-await pool.end();
+let seeded=false;
+try{
+ const seedStarted=process.hrtime.bigint();
+ const inserted=await seed();
+ seeded=true;
+ const seedSeconds=Number(process.hrtime.bigint()-seedStarted)/1e9;
+ const drainStarted=process.hrtime.bigint();
+ const counts=await Promise.all(Array.from({length:concurrency},()=>worker()));
+ const drainSeconds=Number(process.hrtime.bigint()-drainStarted)/1e9;
+ const processed=counts.reduce((a,b)=>a+b,0);
+ const rate=drainSeconds>0?processed/drainSeconds:0;
+ if(processed!==inserted)throw new Error('Benchmark drained '+processed+' of '+inserted+' seeded jobs');
+ console.log(JSON.stringify({runId,provider,action,inserted,processed,concurrency,batchSize,seedDurationSeconds:Number(seedSeconds.toFixed(3)),queueDrainDurationSeconds:Number(drainSeconds.toFixed(3)),jobsPerSecond:Number(rate.toFixed(2)),estimatedJobsPerDay:Number((rate*86400).toFixed(0))},null,2));
+}finally{
+ try{
+  await tx(async client=>{
+   await client.query("DELETE FROM app.provider_jobs WHERE tenant_id=$1 AND project_id=$2 AND connection_id=$3 AND site_url=$4 AND idempotency_key LIKE $5",[tenantId,projectId,connectionId,siteUrl,idempotencyPrefix+'%']);
+  });
+ }finally{
+  await pool.end();
+ }
+}
