@@ -119,6 +119,66 @@ export class AdminService{
    return r.rows[0];
   });
  }
+
+ async advertisers(actorId:string){
+  return this.db.withAdminTransaction(actorId,async client=>(await client.query("SELECT id,company_name,contact_email,status,created_at FROM app.advertisers ORDER BY created_at DESC LIMIT 300")).rows);
+ }
+ async createAdvertiser(actorId:string,input:{companyName:string;contactEmail:string},ip?:string){
+  return this.db.withAdminTransaction(actorId,async client=>{
+   const r=await client.query("INSERT INTO app.advertisers(company_name,contact_email,status) VALUES($1,$2,'pending') RETURNING id,company_name,contact_email,status,created_at",[input.companyName,input.contactEmail]);
+   await this.audit(client,actorId,'advertiser.created','advertiser',r.rows[0].id,{companyName:input.companyName},ip);return r.rows[0];
+  });
+ }
+ async convertInquiry(actorId:string,id:string,ip?:string){
+  return this.db.withAdminTransaction(actorId,async client=>{
+   const inquiry=await client.query("SELECT id,company_name,email,status FROM app.advertiser_inquiries WHERE id=$1 FOR UPDATE",[id]);
+   if(!inquiry.rowCount)throw new NotFoundException('Advertiser inquiry not found');
+   if(inquiry.rows[0].status==='converted')throw new BadRequestException('Inquiry has already been converted');
+   const advertiser=await client.query("INSERT INTO app.advertisers(company_name,contact_email,status) VALUES($1,$2,'pending') RETURNING id,company_name,contact_email,status",[inquiry.rows[0].company_name,inquiry.rows[0].email]);
+   await client.query("UPDATE app.advertiser_inquiries SET status='converted' WHERE id=$1",[id]);
+   await this.audit(client,actorId,'advertiser_inquiry.converted','advertiser_inquiry',id,{advertiserId:advertiser.rows[0].id},ip);
+   return advertiser.rows[0];
+  });
+ }
+ async createCampaign(actorId:string,input:{advertiserId:string;name:string;destinationUrl:string;budgetMinor:number;currency:string;startsAt?:string;endsAt?:string},ip?:string){
+  return this.db.withAdminTransaction(actorId,async client=>{
+   const advertiser=await client.query("SELECT id,status FROM app.advertisers WHERE id=$1",[input.advertiserId]);
+   if(!advertiser.rowCount)throw new NotFoundException('Advertiser not found');
+   if(advertiser.rows[0].status!=='active')throw new BadRequestException('Advertiser must be active before creating a campaign');
+   if(input.startsAt&&input.endsAt&&new Date(input.endsAt)<=new Date(input.startsAt))throw new BadRequestException('Campaign end date must be after start date');
+   const r=await client.query("INSERT INTO app.ad_campaigns(advertiser_id,name,destination_url,budget_minor,currency,starts_at,ends_at,status) VALUES($1,$2,$3,$4,$5,$6,$7,'draft') RETURNING id,name,status,destination_url,budget_minor,currency,starts_at,ends_at",[input.advertiserId,input.name,input.destinationUrl,input.budgetMinor,input.currency.toUpperCase(),input.startsAt||null,input.endsAt||null]);
+   await this.audit(client,actorId,'ad_campaign.created','ad_campaign',r.rows[0].id,{advertiserId:input.advertiserId},ip);return r.rows[0];
+  });
+ }
+ async creatives(actorId:string){
+  return this.db.withAdminTransaction(actorId,async client=>(await client.query("SELECT cr.id,cr.campaign_id,c.name campaign_name,cr.slot_id,s.code slot_code,cr.headline,cr.asset_key,cr.alt_text,cr.disclosure_label,cr.status,cr.created_at FROM app.ad_creatives cr JOIN app.ad_campaigns c ON c.id=cr.campaign_id JOIN app.ad_slots s ON s.id=cr.slot_id ORDER BY cr.created_at DESC LIMIT 300")).rows);
+ }
+ async createCreative(actorId:string,input:{campaignId:string;slotId:string;headline:string;assetKey:string;altText?:string;disclosureLabel:string},ip?:string){
+  return this.db.withAdminTransaction(actorId,async client=>{
+   const campaign=await client.query("SELECT id,status FROM app.ad_campaigns WHERE id=$1",[input.campaignId]);
+   if(!campaign.rowCount)throw new NotFoundException('Campaign not found');
+   if(!['approved','active','scheduled','paused'].includes(campaign.rows[0].status))throw new BadRequestException('Campaign must be approved before attaching a creative');
+   const slot=await client.query("SELECT id,enabled FROM app.ad_slots WHERE id=$1",[input.slotId]);
+   if(!slot.rowCount)throw new NotFoundException('Ad slot not found');
+   const r=await client.query("INSERT INTO app.ad_creatives(campaign_id,slot_id,headline,asset_key,alt_text,disclosure_label,status) VALUES($1,$2,$3,$4,$5,$6,'pending_review') RETURNING id,campaign_id,slot_id,headline,status",[input.campaignId,input.slotId,input.headline,input.assetKey,input.altText||null,input.disclosureLabel]);
+   await this.audit(client,actorId,'ad_creative.created','ad_creative',r.rows[0].id,{campaignId:input.campaignId,slotId:input.slotId},ip);return r.rows[0];
+  });
+ }
+ async updateCreativeStatus(actorId:string,id:string,status:string,ip?:string){
+  return this.db.withAdminTransaction(actorId,async client=>{
+   const current=await client.query("SELECT cr.id,cr.status,c.status campaign_status,s.enabled slot_enabled FROM app.ad_creatives cr JOIN app.ad_campaigns c ON c.id=cr.campaign_id JOIN app.ad_slots s ON s.id=cr.slot_id WHERE cr.id=$1 FOR UPDATE OF cr",[id]);
+   if(!current.rowCount)throw new NotFoundException('Creative not found');
+   if(status==='approved'&&(!['approved','active','scheduled','paused'].includes(current.rows[0].campaign_status)||!current.rows[0].slot_enabled))throw new BadRequestException('Approve the campaign and enable its slot before approving the creative');
+   const r=await client.query("UPDATE app.ad_creatives SET status=$2 WHERE id=$1 RETURNING id,status",[id,status]);
+   await this.audit(client,actorId,'ad_creative.status.updated','ad_creative',id,{from:current.rows[0].status,to:status},ip);return r.rows[0];
+  });
+ }
+ async createAdSlot(actorId:string,input:{code:string;name:string;surface:string;placement:string;allowedFormats?:string[];enabled?:boolean;policyConfig?:Record<string,unknown>},ip?:string){
+  return this.db.withAdminTransaction(actorId,async client=>{
+   const r=await client.query("INSERT INTO app.ad_slots(code,name,surface,placement,allowed_formats,enabled,policy_config) VALUES($1,$2,$3,$4,$5,$6,$7::jsonb) RETURNING id,code,name,surface,placement,allowed_formats,enabled",[input.code,input.name,input.surface,input.placement,input.allowedFormats||[],input.enabled??false,JSON.stringify(input.policyConfig||{})]);
+   await this.audit(client,actorId,'ad_slot.created','ad_slot',r.rows[0].id,{code:input.code},ip);return r.rows[0];
+  });
+ }
  async auditLogs(actorId:string,page=1,limit=50){
   return this.db.withAdminTransaction(actorId,async client=>{
    const offset=(page-1)*limit;
