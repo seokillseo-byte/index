@@ -38,4 +38,4 @@ The PostgreSQL init script creates the non-superuser runtime role only when the 
 
 ## Release constraints
 
-This is a single-VPS baseline, not an HA deployment. Before public customer traffic, complete email verification, MFA, account recovery, Redis-backed distributed rate limiting, tenant RLS integration tests using the runtime role, authenticated Kafka/TLS and ACLs, crawler consumer implementation, payment webhook idempotency, backup/restore drills, security review and load tests. Do not expose service ports directly to the internet.
+This is a single-VPS baseline, not an HA deployment. Before public customer traffic, complete email verification, MFA, account recovery, Redis-backed distributed rate limiting, tenant RLS integration tests using the runtime role, authenticated Kafka/TLS and ACLs, crawler load/conformance testing, payment webhook idempotency, backup/restore drills, security review and load tests. Do not expose service ports directly to the internet.
