@@ -156,17 +156,21 @@ export class AuthService{
 
  async recoverMfaLogin(challengeToken:string,recoveryCode:string){
   const result=await this.db.withTransaction(async client=>{
-   const challenge=await client.query<{id:string;user_id:string}>("SELECT id,user_id FROM app.auth_tokens WHERE token_hash=$1 AND purpose='mfa_login' AND consumed_at IS NULL AND expires_at>now() FOR UPDATE",[this.hashToken(challengeToken)]);
+   const challenge=await client.query<{id:string;user_id:string;attempt_count:number}>("SELECT id,user_id,attempt_count FROM app.auth_tokens WHERE token_hash=$1 AND purpose='mfa_login' AND consumed_at IS NULL AND expires_at>now() FOR UPDATE",[this.hashToken(challengeToken)]);
    if(!challenge.rowCount)throw new UnauthorizedException('Invalid or expired MFA challenge');
    const codeHash=this.hashToken(recoveryCode.trim().toUpperCase());
    const code=await client.query<{id:string}>("SELECT id FROM app.auth_tokens WHERE user_id=$1 AND purpose='mfa_recovery' AND token_hash=$2 AND consumed_at IS NULL AND expires_at>now() FOR UPDATE",[challenge.rows[0].user_id,codeHash]);
-   if(!code.rowCount)throw new UnauthorizedException('Invalid or already used recovery code');
+   if(!code.rowCount){
+    await client.query("UPDATE app.auth_tokens SET attempt_count=attempt_count+1,consumed_at=CASE WHEN attempt_count+1>=5 THEN now() ELSE consumed_at END WHERE id=$1",[challenge.rows[0].id]);
+    return null;
+   }
    const user=await client.query<{id:string;email:string;display_name:string|null;tenant_id:string;tenant_name:string;role_code:string}>("SELECT u.id,u.email,u.display_name,tm.tenant_id,t.name tenant_name,r.code role_code FROM app.users u JOIN app.tenant_members tm ON tm.user_id=u.id AND tm.status='active' JOIN app.tenants t ON t.id=tm.tenant_id AND t.status='active' JOIN app.roles r ON r.id=tm.role_id WHERE u.id=$1 AND u.status='active' AND u.email_verified_at IS NOT NULL AND u.mfa_enabled=true ORDER BY tm.joined_at ASC LIMIT 1",[challenge.rows[0].user_id]);
-   if(!user.rowCount)throw new UnauthorizedException('MFA account is unavailable');
+   if(!user.rowCount){await client.query("UPDATE app.auth_tokens SET consumed_at=now() WHERE id=$1",[challenge.rows[0].id]);return null;}
    await client.query("UPDATE app.auth_tokens SET consumed_at=now() WHERE id=$1",[code.rows[0].id]);
    await client.query("UPDATE app.auth_tokens SET consumed_at=now() WHERE id=$1",[challenge.rows[0].id]);
    return user.rows[0];
   });
+  if(!result)throw new UnauthorizedException('Invalid recovery code or challenge exhausted');
   return {user:{id:result.id,email:result.email,displayName:result.display_name,emailVerified:true,mfaEnabled:true},workspace:{id:result.tenant_id,name:result.tenant_name},...await this.createSession(result.id,result.tenant_id,result.role_code)};
  }
 
