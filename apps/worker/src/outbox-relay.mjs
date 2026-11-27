@@ -3,9 +3,9 @@ import { randomUUID } from 'node:crypto';
 import { Kafka } from 'kafkajs';
 
 const { Pool } = pg;
-const required = ['DATABASE_URL', 'KAFKA_BROKERS'];
+const required = ['OUTBOX_DATABASE_URL', 'KAFKA_BROKERS'];
 for (const key of required) if (!process.env[key]) throw new Error(key + ' is required');
-const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 8, application_name: 'index-assist-outbox-relay' });
+const pool = new Pool({ connectionString: process.env.OUTBOX_DATABASE_URL, max: 8, application_name: 'index-assist-outbox-relay' });
 const kafka = new Kafka({
   clientId: 'index-assist-outbox-relay',
   brokers: process.env.KAFKA_BROKERS.split(',').map(x => x.trim()),
