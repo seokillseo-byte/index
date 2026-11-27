@@ -30,6 +30,9 @@ BEGIN
     NULL;
   END;
   PERFORM set_config('app.auth_user_id',v_user_id::text,true);
+  IF NOT EXISTS(SELECT 1 FROM app.tenants WHERE id=tenant_a) THEN
+    RAISE EXCEPTION 'RLS FAILURE: authenticated user cannot read own tenant root';
+  END IF;
   IF NOT EXISTS(SELECT 1 FROM app.tenant_members WHERE tenant_id=tenant_a AND user_id=v_user_id) THEN
     RAISE EXCEPTION 'RLS FAILURE: authenticated user cannot read own membership';
   END IF;
