@@ -8,7 +8,7 @@ Updated: 2026-11-28
 - Target VPS capacity: 32 vCPU / 64 GB RAM / 2 TB NVMe / 1 Gbps.
 - Current repository baseline: `main` at `568e00af228c64249f5da6e4ec22f29e6cbe10be`.
 - Active implementation branch: `feature/provider-job-engine`.
-- Active branch head: `7d7b46fb49db02762b9347d729d3e6ea2963249f`.
+- Active branch head: `d56fe784a1ae3b9da4d942c1f6964deceb06fbab`.
 - Review PR: #6, open and ready for review; intentionally not merged.
 
 ## Authentication hardening completed in this checkpoint
@@ -40,7 +40,7 @@ Updated: 2026-11-28
 
 ## Latest verified checkpoint
 
-The current branch head is `7d7b46fb49db02762b9347d729d3e6ea2963249f` and includes the authentication hardening checkpoint plus MFA challenge hardening.
+The current branch head is `d56fe784a1ae3b9da4d942c1f6964deceb06fbab` and includes the authentication hardening checkpoint plus MFA challenge hardening.
 
 Previous GitHub Actions run `46047692879` completed successfully for the provider-engine checkpoint. A new CI run for the current authentication changes is still required before this checkpoint can be marked validated.
 
