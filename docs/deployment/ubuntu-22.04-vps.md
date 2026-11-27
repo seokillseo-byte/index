@@ -12,25 +12,26 @@
 1. Clone the repository and copy `.env.example` to `.env`, `.env.api.example` to `.env.api`, `.env.worker.example` to `.env.worker`, `.env.crawler.example` to `.env.crawler`, and `.env.provider-worker.example` to `.env.provider-worker`.
 2. Generate independent secrets, e.g. `openssl rand -hex 32`, for the PostgreSQL bootstrap password, runtime DB password, relay DB password, Redis, ClickHouse, MinIO, JWT signing secret, OAUTH_STATE_SECRET and INTEGRATION_ENCRYPTION_KEY. Use a separate 32-byte hex encryption key and share that exact value between `.env.api` and `.env.provider-worker`. Set the same runtime password in `APP_DB_PASSWORD` and the password portion of `DATABASE_URL` and `PROVIDER_DATABASE_URL`.
 3. Keep `MIGRATION_DATABASE_URL` only in the host-side `.env` file; the API and crawler env files contain only `index_assist_runtime`, while the relay env file contains only `index_assist_relay`, and the provider-worker env file uses the restricted `index_assist_runtime` role. Do not mount the root `.env` into app containers.
-4. Start the infrastructure from the repository root:
+4. Register OAuth clients with Google and Microsoft/Bing and allow the exact callback URLs configured in `.env.api.example`: `/api/v1/integrations/google_search_console/callback` and `/api/v1/integrations/bing_webmaster/callback`. Use the production HTTPS origin; OAuth connections cannot be tested until DNS and TLS are live.
+5. Start the infrastructure from the repository root:
 
    ```bash
    docker compose --env-file .env -f infra/docker/compose.infrastructure.yml up -d
    ```
 
-5. Apply migrations as the database migration owner:
+6. Apply migrations as the database migration owner:
 
    ```bash
    bash infra/postgres/migrate.sh
    ```
 
-6. Build and start the API, crawler, outbox relay and provider worker:
+7. Build and start the API, crawler, outbox relay and provider worker:
 
    ```bash
    docker compose --env-file .env -f infra/docker/compose.infrastructure.yml -f infra/docker/compose.workloads.yml up -d --build
    ```
 
-7. Check `http://127.0.0.1:4000/api/v1/health/ready` locally and inspect container logs. The health route is unauthenticated; API business routes require a bearer token.
+8. Check `http://127.0.0.1:4000/api/v1/health/ready` locally and inspect container logs. The health route is unauthenticated; API business routes require a bearer token.
 
 ## Important first-install note
 
