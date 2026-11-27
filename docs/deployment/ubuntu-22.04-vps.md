@@ -4,12 +4,12 @@
 
 - Docker Engine and Docker Compose plugin.
 - A firewall allowing inbound 80/443 only; database, Redis, Kafka, ClickHouse and MinIO ports stay on loopback/internal Docker networks.
-- DNS A/AAAA records for `index-assist.io.vn` pointed to the VPS.
+- DNS A/AAAA records for `index-assist.io.vn`, `www`, `app`, `admin` and `api` pointed to the VPS.
 - Target deployment: 32 vCPU, 64 GB RAM, 2 TB NVMe and 1 Gbps network. This is a capacity target for benchmark and tuning, not a verified one-million-URL/day throughput result. A single VPS is not high availability.
 
 ## First boot
 
-1. Clone the repository and copy `.env.example` to `.env`, `.env.api.example` to `.env.api`, `.env.worker.example` to `.env.worker`, `.env.crawler.example` to `.env.crawler`, and `.env.provider-worker.example` to `.env.provider-worker`, and `.env.proxy.example` to `.env.proxy`.
+1. Clone the repository and copy `.env.example` to `.env`, `.env.api.example` to `.env.api`, `.env.worker.example` to `.env.worker`, `.env.crawler.example` to `.env.crawler`, and `.env.provider-worker.example` to `.env.provider-worker`, `.env.proxy.example` to `.env.proxy`.
 2. Generate independent secrets, e.g. `openssl rand -hex 32`, for the PostgreSQL bootstrap password, runtime DB password, relay DB password, Redis, ClickHouse, MinIO, JWT signing secret, OAUTH_STATE_SECRET and INTEGRATION_ENCRYPTION_KEY. Use a separate 32-byte hex encryption key and share that exact value between `.env.api` and `.env.provider-worker`. Set the same runtime password in `APP_DB_PASSWORD` and the password portion of `DATABASE_URL` and `PROVIDER_DATABASE_URL`.
 3. Keep `MIGRATION_DATABASE_URL` only in the host-side `.env` file; the API and crawler env files contain only `index_assist_runtime`, while the relay env file contains only `index_assist_relay`, and the provider-worker env file uses the restricted `index_assist_runtime` role. Do not mount the root `.env` into app containers.
 4. Point DNS A/AAAA records for `index-assist.io.vn`, `www`, `app`, `admin` and `api` to the VPS. Set `ADMIN_ALLOWED_IPS` in `.env.proxy` to space-separated trusted operator IPs/CIDRs; Caddy fails closed if the allowlist is not configured. Register Google and Microsoft/Bing OAuth clients with the exact HTTPS callback URLs configured in `.env.api.example`: `/api/v1/integrations/google_search_console/callback` and `/api/v1/integrations/bing_webmaster/callback`.
