@@ -1,0 +1,2 @@
+import {AdminDataPage} from '../admin-data-page';
+export default function Page(){return <AdminDataPage title="Khách hàng" description="Quản lý tenant, thành viên, gói dịch vụ và mức sử dụng." endpoint="customers" columns={['name','slug','status','plan_name','subscription_status','member_count','project_count','url_count','created_at']}/>;}
