@@ -13,6 +13,7 @@ DECLARE
   secret_a uuid := gen_random_uuid();
   provider_job_id uuid := gen_random_uuid();
   claimed_job_id uuid;
+  provider_quota_count integer;
   owner_role uuid;
 BEGIN
   INSERT INTO app.users(id,email,display_name) VALUES(v_user_id,('rls-test-'||v_user_id::text||'@example.invalid')::citext,'RLS test');
@@ -44,6 +45,9 @@ BEGIN
   IF claimed_job_id IS DISTINCT FROM provider_job_id THEN
     RAISE EXCEPTION 'PROVIDER JOB FAILURE: runtime worker could not claim the queued provider job';
   END IF;
+  SELECT count(*) FILTER(WHERE created_at >= date_trunc('day',now()) OR last_attempt_at >= date_trunc('day',now()))::int INTO provider_quota_count FROM app.provider_jobs WHERE tenant_id=tenant_a AND site_url='https://target.example/' AND provider='google_search_console' AND action='inspect' AND status<>'cancelled';
+  IF provider_quota_count<1 THEN RAISE EXCEPTION 'PROVIDER QUOTA FAILURE: provider job reservation count is incorrect'; END IF;
+  PERFORM pg_advisory_xact_lock(hashtextextended(tenant_a::text||':https://target.example/:quota-test',0));
   PERFORM set_config('app.tenant_id',tenant_b::text,true);
   IF EXISTS(SELECT 1 FROM app.projects WHERE id=project_a) THEN
     RAISE EXCEPTION 'RLS FAILURE: tenant B can read tenant A project';
