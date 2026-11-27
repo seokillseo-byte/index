@@ -27,6 +27,16 @@
 - [x] Provider quota SQL test added.
 - [x] CI passes at latest checkpoint.
 
+## Production-readiness review
+
+- [x] Google URL Inspection quota values verified against current Google documentation.
+- [x] Bing worker endpoint checked against current Bing API retirement guidance; JSON/HTTP is retained.
+- [x] Provider acceptance is explicitly separated from indexing evidence.
+- [ ] Dedicated provider throughput benchmark harness.
+- [ ] 1,000,000 URL/day benchmark.
+- [ ] Sustained queue/backpressure benchmark.
+- [ ] Recovery/failure benchmark.
+
 ## Release validation
 
 - [ ] Production VPS deployment.
@@ -34,12 +44,10 @@
 - [ ] Google OAuth production connection test.
 - [ ] Bing OAuth/API-key production connection test.
 - [ ] End-to-end provider job test against real provider accounts.
-- [ ] 1,000,000 URL/day benchmark.
-- [ ] Sustained queue/backpressure benchmark.
 - [ ] Backup/restore drill.
 - [ ] Security review.
 - [ ] Production observability/alerting review.
 
 ## Scope boundary
 
-This checkpoint does not claim that Google indexes submitted/inspected URLs. Provider acceptance and Google inspection results are stored as evidence only.
+This checkpoint does not claim that Google or Bing indexes submitted URLs. Provider acceptance and Google inspection results are stored as evidence only.
