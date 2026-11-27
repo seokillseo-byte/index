@@ -95,7 +95,7 @@ async function processGoogle(payload,jobs,credential){
  for(const job of jobs){
   try{
    const response=await fetch('https://searchconsole.googleapis.com/v1/urlInspection/index:inspect',{method:'POST',headers:{authorization:'Bearer '+credential.accessToken,'content-type':'application/json',accept:'application/json'},body:JSON.stringify({inspectionUrl:job.url,siteUrl:job.site_url,languageCode:'en-US'}),signal:AbortSignal.timeout(20000)});
-   const text=await response.text();let data;try{data=JSON.parse(text);}catch{data={error:{message:'Invalid Google response'}};}
+   const text=await response.text();let data;try{data=JSON.parse(text);}catch{throw new Error('Google URL Inspection returned invalid JSON');}
    if(!response.ok){await scheduleRetry(payload.tenantId,payload,job,'Google URL Inspection HTTP '+response.status+': '+JSON.stringify(data).slice(0,500),response.status===408||response.status===429||response.status>=500);continue;}
    await tenantTransaction(payload.tenantId,async client=>{
     const result=data.inspectionResult||data;
@@ -114,7 +114,7 @@ async function processBing(payload,jobs,credential){
   const headers={'content-type':'application/json','accept':'application/json'};
   if(credential.apiKey)endpoint.searchParams.set('apikey',credential.apiKey);else headers.authorization='Bearer '+credential.accessToken;
   const response=await fetch(endpoint,{method:'POST',headers,body:JSON.stringify({siteUrl:jobs[0].site_url,urlList:jobs.map(j=>j.url)}),signal:AbortSignal.timeout(20000)});
-  const text=await response.text();let data;try{data=JSON.parse(text);}catch{data={raw:text.slice(0,500)};}
+  const text=await response.text();let data;try{data=JSON.parse(text);}catch{throw new Error('Bing SubmitUrlBatch returned invalid JSON: '+text.slice(0,200));}
   const apiError=Boolean(data?.ErrorCode||data?.d?.ErrorCode);
   if(!response.ok||apiError){
    const retryable=response.status===408||response.status===429||response.status>=500;
