@@ -55,7 +55,7 @@ export class IntegrationsService{
   const response=await fetch(cfg.tokenUrl,{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded','accept':'application/json'},body,signal:AbortSignal.timeout(15_000)});
   const text=await response.text();let data:TokenResponse;
   try{data=JSON.parse(text) as TokenResponse;}catch{throw new ServiceUnavailableException('OAuth provider returned an invalid token response');}
-  if(!response.ok||!data.access_token)throw new BadRequestException({message:'OAuth token exchange failed',provider,status:response.status,details:provider==='google_search_console'?data:text.slice(0,500)});
+  if(!response.ok||!data.access_token)throw new BadRequestException({message:'OAuth token exchange failed',provider,status:response.status});
   return data;
  }
  async connect(principal:Principal,projectId:string,providerValue:string){
@@ -119,7 +119,8 @@ export class IntegrationsService{
  private async refreshCredential(principal:Principal,connectionId:string,provider:Provider,credential:any){
   if(!credential.refreshToken)throw new ForbiddenException('Provider authorization expired; reconnect the account');
   const cfg=this.providerConfig(provider);
-  const body=new URLSearchParams({client_id:cfg.clientId??'',client_secret:cfg.clientSecret??'',refresh_token:credential.refreshToken,grant_type:'refresh_token'});
+  if(!cfg.clientId||!cfg.clientSecret)throw new ServiceUnavailableException('OAuth provider credentials are not configured');
+  const body=new URLSearchParams({client_id:cfg.clientId,client_secret:cfg.clientSecret,refresh_token:credential.refreshToken,grant_type:'refresh_token'});
   const response=await fetch(cfg.tokenUrl,{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded','accept':'application/json'},body,signal:AbortSignal.timeout(15_000)});
   const text=await response.text();let data:TokenResponse;
   try{data=JSON.parse(text) as TokenResponse;}catch{throw new ServiceUnavailableException('Provider token refresh returned invalid JSON');}
