@@ -9,7 +9,10 @@ import { AppModule } from './app.module';
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
   const config = app.get(ConfigService);
-  const port = config.get<number>('PORT', 4000);
+  const port = Number(config.get<string>('PORT') ?? 4000);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error('PORT must be a valid TCP port');
+  }
   const origins = (config.get<string>('CORS_ORIGINS') ?? 'https://index-assist.io.vn')
     .split(',').map((value) => value.trim()).filter(Boolean);
 
