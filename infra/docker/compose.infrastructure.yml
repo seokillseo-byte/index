@@ -40,6 +40,14 @@ services:
     volumes: [redpanda_data:/var/lib/redpanda/data]
     ports: ["127.0.0.1:19092:9092"]
     networks: [data]
+  redpanda-init:
+    image: redpandadata/redpanda:v24.3.7
+    restart: "no"
+    depends_on:
+      redpanda: { condition: service_started }
+    entrypoint: ["/bin/sh","-c"]
+    command: ["until rpk cluster info --brokers redpanda:9092 >/dev/null 2>&1; do sleep 2; done; rpk topic create url.ingestion --brokers redpanda:9092 --partitions 12 --replicas 1 || true"]
+    networks: [data]
   clickhouse:
     image: clickhouse/clickhouse-server:24.12
     restart: unless-stopped
