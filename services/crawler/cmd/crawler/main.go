@@ -210,7 +210,7 @@ func saveResult(ctx context.Context,pool *pgxpool.Pool,tenantID,projectID,worker
  }
  if _,err=tx.Exec(ctx,"UPDATE app.urls SET status=$3,last_checked_at=now(),updated_at=now() WHERE id=$1 AND tenant_id=$2",item.URLID,tenantID,status);err!=nil{return err}
  if retry&&taskStatus=="retrying"{
-  _,err=tx.Exec(ctx,"INSERT INTO app.outbox_events(tenant_id,aggregate_type,aggregate_id,event_type,topic,partition_key,payload,idempotency_key,next_attempt_at) VALUES($1,'url_task',$2,'url.batch.accepted','url.ingestion',$3,$4::jsonb,$5,now()+($6::text || ' seconds')::interval) ON CONFLICT(idempotency_key) DO NOTHING",tenantID,item.ID,tenantID+':'+projectID,string(mustJSON(map[string]string{"tenantId":tenantID,"projectId":projectID})),fmt.Sprintf("retry-task:%s:%d",item.ID,item.Attempts),retryDelay)
+  _,err=tx.Exec(ctx,"INSERT INTO app.outbox_events(tenant_id,aggregate_type,aggregate_id,event_type,topic,partition_key,payload,idempotency_key,next_attempt_at) VALUES($1,'url_task',$2,'url.batch.accepted','url.ingestion',$3,$4::jsonb,$5,now()+(($6::text || ' seconds')::interval + interval '5 seconds')) ON CONFLICT(idempotency_key) DO NOTHING",tenantID,item.ID,tenantID+':'+projectID,string(mustJSON(map[string]string{"tenantId":tenantID,"projectId":projectID})),fmt.Sprintf("retry-task:%s:%d",item.ID,item.Attempts),retryDelay)
   if err!=nil{return err}
  }
  return tx.Commit(ctx)
