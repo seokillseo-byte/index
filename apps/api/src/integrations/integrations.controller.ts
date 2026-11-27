@@ -1,6 +1,6 @@
-import {Body,Controller,Delete,Get,Param,ParseIntPipe,ParseUUIDPipe,Post,Query,Req} from '@nestjs/common';
+import {Body,Controller,Delete,Get,Param,ParseIntPipe,ParseUUIDPipe,Post,Query,Req,Res} from '@nestjs/common';
 import {ApiBearerAuth,ApiOperation,ApiTags} from '@nestjs/swagger';
-import {Request} from 'express';
+import {Request,Response} from 'express';
 import {Public} from '../auth/auth.constants';
 import {AttachIntegrationSiteDto,BingApiKeyDto,ConnectIntegrationDto,QueueProviderUrlsDto} from './integrations.dto';
 import {IntegrationsService} from './integrations.service';
@@ -12,8 +12,16 @@ export class IntegrationsController{
   return this.integrations.connect({userId:req.principal!.userId,tenantId:req.principal!.tenantId},dto.projectId,provider);
  }
  @Public() @Get(':provider/callback') @ApiOperation({summary:'OAuth callback for search provider connection'})
- callback(@Param('provider') provider:string,@Query('code') code:string,@Query('state') state:string){
-  return this.integrations.callback(provider,code,state);
+ async callback(@Param('provider') provider:string,@Query('code') code:string,@Query('state') state:string,@Res() res:Response){
+  const destination=process.env.CUSTOMER_APP_URL||'https://app.index-assist.io.vn';
+  try{
+   const result=await this.integrations.callback(provider,code,state);
+   const url=new URL('/integrations',destination);url.searchParams.set('connected',provider);url.searchParams.set('connectionId',result.connectionId);
+   return res.redirect(302,url.toString());
+  }catch{
+   const url=new URL('/integrations',destination);url.searchParams.set('error','connection_failed');
+   return res.redirect(302,url.toString());
+  }
  }
  @Get(':id/sites') @ApiBearerAuth() @ApiOperation({summary:'List provider sites available to the connected account'})
  sites(@Req() req:Request,@Param('id',new ParseUUIDPipe()) id:string){return this.integrations.listSites({userId:req.principal!.userId,tenantId:req.principal!.tenantId},id);}
