@@ -14,7 +14,7 @@
 - [x] Server-side session listing and revocation endpoints.
 - [x] Rate limits applied to MFA login, recovery, enrollment verification and disable endpoints.
 - [x] Corrected Unicode workspace-name and six-digit TOTP validation regexes.
-- [x] MFA login challenge invalidated after five failed TOTP attempts.
+- [x] MFA login challenge invalidated after five failed TOTP or recovery-code attempts.
 - [x] Password-reset success response does not disclose the user identifier.
 - [ ] Migration 0019 and MFA lockout behavior verified by CI/integration test.
 
