@@ -1,2 +1,2 @@
-import {AdminDataPage} from '../admin-data-page';
-export default function Page(){return <AdminDataPage title="Đơn hàng" description="Theo dõi đơn hàng SaaS và trạng thái thanh toán từ provider." endpoint="orders" columns={['order_number','tenant_name','status','total_minor','currency','payments','created_at']}/>;}
+import {AdminActionDataPage} from '../admin-action-data-page';
+export default function Page(){return <AdminActionDataPage title="Đơn hàng" description="Theo dõi đơn hàng SaaS. Đơn đã thanh toán chỉ được hoàn tất sau xác nhận payment." endpoint="orders" columns={['order_number','tenant_name','status','total_minor','currency','payments','created_at']} actionPath={id=>'orders/'+id+'/status'} actions={[{label:'Hoàn tất',value:'fulfilled'},{label:'Hủy',value:'cancelled'},{label:'Từ chối',value:'rejected'}]}/>;}
