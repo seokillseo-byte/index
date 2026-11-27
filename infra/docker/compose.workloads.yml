@@ -4,7 +4,7 @@ services:
       context: ../..
       dockerfile: apps/api/Dockerfile
     restart: unless-stopped
-    env_file: ../../.env
+    env_file: ../../.env.api
     environment:
       NODE_ENV: production
       PORT: 4000
@@ -17,7 +17,7 @@ services:
       context: ../..
       dockerfile: services/crawler/Dockerfile
     restart: unless-stopped
-    env_file: ../../.env
+    env_file: ../../.env.crawler
     environment:
       KAFKA_BROKERS: redpanda:9092
       KAFKA_TOPIC: url.ingestion
@@ -32,7 +32,7 @@ services:
       context: ../..
       dockerfile: apps/worker/Dockerfile
     restart: unless-stopped
-    env_file: ../../.env
+    env_file: ../../.env.worker
     environment:
       KAFKA_BROKERS: redpanda:9092
     depends_on:
