@@ -9,7 +9,7 @@ Updated: 2026-11-28
 - Current repository baseline: `main` at `568e00af228c64249f5da6e4ec22f29e6cbe10be`.
 - Active implementation branch: `feature/provider-job-engine`.
 - Active branch head: `d995f6556901b8c48221dc62c446f09d48c0557f`.
-- Draft review PR: #6, open and intentionally not merged.
+- Review PR: #6, open and ready for review; intentionally not merged.
 
 ## Completed before this checkpoint
 
