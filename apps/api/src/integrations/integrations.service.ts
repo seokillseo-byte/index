@@ -167,6 +167,8 @@ export class IntegrationsService{
   const sites=await this.listSites(principal,connectionId),site=sites.find((item:any)=>item.siteUrl===siteUrl);
   if(!site)throw new ForbiddenException('The selected property is not available to this connected account');
   return this.db.withTransaction(async client=>{
+   const permission=await client.query("SELECT 1 FROM app.tenant_members tm JOIN app.role_permissions rp ON rp.role_id=tm.role_id JOIN app.permissions p ON p.id=rp.permission_id WHERE tm.tenant_id=$1 AND tm.user_id=$2 AND tm.status='active' AND p.code='integration.manage'",[principal.tenantId,principal.userId]);
+   if(!permission.rowCount)throw new ForbiddenException('Integration management permission required');
    const project=await client.query<{target_url:string|null}>("SELECT target_url FROM app.projects WHERE tenant_id=$1 AND id=$2",[principal.tenantId,projectId]);
    if(!project.rowCount||!project.rows[0].target_url)throw new NotFoundException('Project or target URL not found');
    let target:URL;try{target=new URL(project.rows[0].target_url);}catch{throw new BadRequestException('Project target URL is invalid');}
