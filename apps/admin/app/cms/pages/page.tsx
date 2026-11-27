@@ -1,0 +1,2 @@
+import {AdminDataPage} from '../../admin-data-page';
+export default function Page(){return <AdminDataPage title="CMS Pages" description="Quản lý landing pages, nội dung và SEO metadata." endpoint="cms/pages" columns={['title','slug','status','seo_title','meta_description','published_at','updated_at']}/>;}
