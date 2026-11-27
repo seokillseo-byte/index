@@ -16,6 +16,7 @@ CREATE TABLE app.backlink_discoveries (
  FOREIGN KEY(tenant_id,source_url_id) REFERENCES app.urls(tenant_id,id) ON DELETE CASCADE,
  UNIQUE(tenant_id,source_url_id,target_url_hash,anchor_text)
 );
+CREATE INDEX url_tasks_due_by_type_idx ON app.url_processing_tasks(tenant_id,task_type,priority DESC,scheduled_at) WHERE status IN ('pending','retrying');
 CREATE INDEX backlink_discoveries_project_seen_idx ON app.backlink_discoveries(tenant_id,project_id,last_seen_at DESC);
 CREATE INDEX backlink_discoveries_target_idx ON app.backlink_discoveries(tenant_id,target_url_hash);
 ALTER TABLE app.backlink_discoveries ENABLE ROW LEVEL SECURITY;
