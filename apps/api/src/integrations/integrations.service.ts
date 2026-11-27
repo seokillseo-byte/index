@@ -140,7 +140,7 @@ export class IntegrationsService{
   return credential.accessToken as string;
  }
  private async bingSites(credential:any){
-  const url=new URL('https://www.bing.com/webmaster/api.svc/json/GetUserSites');
+  const url=new URL('https://ssl.bing.com/webmaster/api.svc/json/GetUserSites');
   const headers:Record<string,string>={'accept':'application/json'};
   if(credential.apiKey)url.searchParams.set('apikey',credential.apiKey);
   else headers.authorization='Bearer '+credential.accessToken;
@@ -226,7 +226,7 @@ export class IntegrationsService{
   const {provider,credential}=await this.connectionCredential(principal,connectionId);
   if(provider!=='bing_webmaster')throw new BadRequestException('This operation requires a Bing Webmaster connection');
   if(!credential.apiKey)credential.accessToken=await this.accessToken(principal,connectionId,provider,credential);
-  const endpoint=new URL('https://www.bing.com/webmaster/api.svc/json/GetUrlSubmissionQuota');
+  const endpoint=new URL('https://ssl.bing.com/webmaster/api.svc/json/GetUrlSubmissionQuota');
   endpoint.searchParams.set('siteUrl',siteUrl);if(credential.apiKey)endpoint.searchParams.set('apikey',credential.apiKey);
   const headers:Record<string,string>={'accept':'application/json'};if(!credential.apiKey)headers.authorization='Bearer '+credential.accessToken;
   const response=await fetch(endpoint,{headers,signal:AbortSignal.timeout(15_000)});
