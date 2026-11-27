@@ -66,7 +66,7 @@ export class AuthService{
    if(!m.rows[0])throw new UnauthorizedException('No active workspace membership');
    await client.query('UPDATE app.user_sessions SET revoked_at=now() WHERE id=$1',[session.id]);
    const days=Number(this.config.get<string>('REFRESH_TOKEN_TTL_DAYS')??30);
-   await client.query("INSERT INTO app.user_sessions(id,user_id,refresh_token_hash,expires_at) VALUES($1,$2,$3,$4,now()+($5::text || ' days')::interval)",[newSessionId,session.user_id,session.tenant_id,this.hashToken(newToken),days]);
+   await client.query("INSERT INTO app.user_sessions(id,user_id,tenant_id,refresh_token_hash,expires_at) VALUES($1,$2,$3,$4,now()+($5::text || ' days')::interval)",[newSessionId,session.user_id,session.tenant_id,this.hashToken(newToken),days]);
    return {userId:session.user_id,...m.rows[0]};
   });
   const accessToken=await this.jwt.signAsync({sub:result.userId,sid:newSessionId,tid:result.tenant_id,role:result.role_code});
