@@ -21,6 +21,7 @@ jobs:
       - run: pnpm --recursive --if-present typecheck
       - run: pnpm --recursive --if-present build
       - run: node --check apps/worker/src/provider-jobs.mjs
+      - run: node --check apps/worker/src/provider-job-benchmark.mjs
   crawler:
     runs-on: ubuntu-latest
     steps:
