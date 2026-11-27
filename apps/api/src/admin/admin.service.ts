@@ -140,6 +140,13 @@ export class AdminService{
    return advertiser.rows[0];
   });
  }
+ async updateAdvertiserStatus(actorId:string,id:string,status:string,ip?:string){
+  return this.db.withAdminTransaction(actorId,async client=>{
+   const r=await client.query("UPDATE app.advertisers SET status=$2 WHERE id=$1 RETURNING id,company_name,contact_email,status",[id,status]);
+   if(!r.rowCount)throw new NotFoundException('Advertiser not found');
+   await this.audit(client,actorId,'advertiser.status.updated','advertiser',id,{status},ip);return r.rows[0];
+  });
+ }
  async createCampaign(actorId:string,input:{advertiserId:string;name:string;destinationUrl:string;budgetMinor:number;currency:string;startsAt?:string;endsAt?:string},ip?:string){
   return this.db.withAdminTransaction(actorId,async client=>{
    const advertiser=await client.query("SELECT id,status FROM app.advertisers WHERE id=$1",[input.advertiserId]);
