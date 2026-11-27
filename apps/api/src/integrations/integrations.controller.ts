@@ -23,7 +23,7 @@ export class IntegrationsController{
  bingApiKey(@Req() req:Request,@Body() dto:BingApiKeyDto){return this.integrations.createBingApiKey({userId:req.principal!.userId,tenantId:req.principal!.tenantId},dto.projectId,dto.apiKey);}
  @Get() @ApiBearerAuth() @ApiOperation({summary:'List search provider connections in the active workspace'})
  list(@Req() req:Request){return this.integrations.list({userId:req.principal!.userId,tenantId:req.principal!.tenantId});}
- @Delete(':id') @ApiBearerAuth() @ApiOperation({summary:'Revoke and delete stored provider credentials'})
+ @Delete(':id') @ApiBearerAuth() @ApiOperation({summary:'Disconnect integration and delete locally stored provider credentials'})
  disconnect(@Req() req:Request,@Param('id',new ParseUUIDPipe()) id:string){
   return this.integrations.disconnect({userId:req.principal!.userId,tenantId:req.principal!.tenantId},id);
  }
