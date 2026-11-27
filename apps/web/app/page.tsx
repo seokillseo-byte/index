@@ -1,19 +1,4 @@
 import Link from 'next/link';
-
-const features = [
-  ['Tier-aware backlink management','Organize Tier 1 through Tier N with explicit source-to-target relationships.'],
-  ['Technical crawlability analysis','Inspect HTTP responses, robots directives, canonical signals, and backlink presence.'],
-  ['Evidence-based index monitoring','Keep submission acknowledgements separate from observed crawling and verified index status.'],
-];
-
-export default function HomePage() {
-  return <>
-    <section className="hero">
-      <div className="eyebrow">SEO intelligence platform</div>
-      <h1>Know what search engines can discover.</h1>
-      <p>Index Assist helps SEO teams organize tiered backlinks, diagnose crawlability issues, and monitor search visibility with evidence instead of guesswork.</p>
-      <div className="hero-actions"><Link className="button" href="/register">Create your workspace</Link><Link className="secondary" href="/features">Explore the platform</Link></div>
-    </section>
-    <section className="feature-grid">{features.map(([title,description])=><article className="feature-card" key={title}><h2>{title}</h2><p>{description}</p></article>)}</section>
-  </>;
-}
+import {PublicSiteShell} from './public-site-shell';
+import {PublicAdSlot} from './public-ad-slot';
+export default function Home(){return <PublicSiteShell><section className="hero"><div><div className="eyebrow">BACKLINK INDEXING WORKFLOW</div><h1>Quản lý backlink. Theo dõi crawl. Đo lường index.</h1><p>Index Assist giúp bạn tổ chức URL theo tier, tự động kiểm tra khả năng truy cập, kết nối Google Search Console và Bing Webmaster để theo dõi tín hiệu từ search engine.</p><div className="hero-actions"><Link className="button-primary" href="https://app.index-assist.io.vn/register">Bắt đầu sử dụng</Link><Link className="button-secondary" href="/pricing">Xem bảng giá</Link></div><p className="meta">Không cam kết index. Không gửi yêu cầu trái chính sách. Mọi trạng thái được báo cáo theo dữ liệu thực tế.</p></div><div className="hero-visual"><div className="flow-card"><strong>01 · URL ingestion</strong><span>Chuẩn hóa, deduplicate và đưa URL vào hàng đợi</span></div><div className="flow-card"><strong>02 · Crawl & backlink verification</strong><span>HTTP checks, robots policy và phân tích liên kết</span></div><div className="flow-card"><strong>03 · Search engine providers</strong><span>Google URL Inspection · Bing URL Submission</span></div><div className="flow-card"><strong>04 · Reporting</strong><span>Phân biệt accepted, crawled, discovered và indexed</span></div></div></section><PublicAdSlot code="home-top"/><section className="section"><div className="eyebrow">PLATFORM CAPABILITIES</div><h2>Một workflow cho toàn bộ backlink tiers</h2><p className="section-intro">Tổ chức dữ liệu theo tầng và project, xử lý phân tán, kiểm soát quota và theo dõi kết quả mà không nhầm lẫn giữa gửi yêu cầu với được index.</p><div className="feature-grid"><article className="feature"><h3>Tier 1 → Tier N</h3><p>Gắn URL vào project và tier tương ứng, theo dõi nguồn và đích liên kết.</p></article><article className="feature"><h3>Distributed processing</h3><p>Queue, worker leases, retry và dead-letter giúp vận hành khối lượng URL lớn.</p></article><article className="feature"><h3>Google & Bing</h3><p>Kết nối verified properties, quản lý quota và xem phản hồi từ provider.</p></article></div></section><section className="section"><div className="eyebrow">HOW IT WORKS</div><h2>Minh bạch từ lúc nhận URL đến kết quả</h2><div className="feature-grid"><article className="feature"><h3>Accepted</h3><p>URL được hệ thống tiếp nhận và xếp hàng.</p></article><article className="feature"><h3>Crawl observed</h3><p>Crawler ghi nhận HTTP, robots policy và nội dung quan sát được.</p></article><article className="feature"><h3>Provider / index signal</h3><p>Phản hồi Google/Bing và trạng thái index được báo cáo riêng biệt.</p></article></div></section><section className="section"><h2>Sẵn sàng quản lý backlink có hệ thống?</h2><p className="section-intro">Tạo workspace, thêm project và bắt đầu nhập URL theo quy trình.</p><div className="hero-actions"><Link className="button-primary" href="https://app.index-assist.io.vn/register">Tạo workspace</Link><Link className="button-secondary" href="/contact">Liên hệ tư vấn</Link></div></section></PublicSiteShell>;}
