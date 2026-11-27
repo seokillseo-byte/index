@@ -29,7 +29,7 @@ async function publishBatch() {
     );
     rows = result.rows;
     if (rows.length) {
-      await client.query("UPDATE app.outbox_events SET lease_owner=$1,lease_expires_at=now()+interval '2 minutes' WHERE id=ANY($2::uuid[])", [leaseOwner, rows.map(row => row.id)]);
+      await client.query("UPDATE app.outbox_events SET lease_owner=$1,lease_expires_at=now()+interval '10 minutes' WHERE id=ANY($2::uuid[])", [leaseOwner, rows.map(row => row.id)]);
     }
     await client.query('COMMIT');
   } catch (error) {
