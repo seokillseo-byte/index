@@ -2,12 +2,12 @@
 set -eu
 : "${APP_DB_PASSWORD:?APP_DB_PASSWORD must be set}"
 : "${RELAY_DB_PASSWORD:?RELAY_DB_PASSWORD must be set}"
-psql --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" -v ON_ERROR_STOP=1 -v app_password="$APP_DB_PASSWORD" -v relay_password="$RELAY_DB_PASSWORD" <<'SQL'
+psql --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" -v ON_ERROR_STOP=1 -v app_password="$APP_DB_PASSWORD" -v relay_password="$RELAY_DB_PASSWORD" -v db_name="$POSTGRES_DB" <<'SQL'
 CREATE ROLE index_assist_runtime LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS PASSWORD :'app_password';
 CREATE ROLE index_assist_relay LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS PASSWORD :'relay_password';
 CREATE SCHEMA IF NOT EXISTS app AUTHORIZATION CURRENT_USER;
-GRANT CONNECT ON DATABASE index_assist TO index_assist_runtime;
-GRANT CONNECT ON DATABASE index_assist TO index_assist_relay;
+GRANT CONNECT ON DATABASE :"db_name" TO index_assist_runtime;
+GRANT CONNECT ON DATABASE :"db_name" TO index_assist_relay;
 GRANT USAGE ON SCHEMA app TO index_assist_runtime;
 GRANT USAGE ON SCHEMA app TO index_assist_relay;
 ALTER DEFAULT PRIVILEGES IN SCHEMA app GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO index_assist_runtime;
