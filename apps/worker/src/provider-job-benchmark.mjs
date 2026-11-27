@@ -44,7 +44,7 @@ async function seed(){
   const count=Math.min(batchSize,total-inserted);
   await tx(async client=>{
    for(let i=0;i<count;i++){
-    const url=siteUrl.replace(/\\/$/,'')+'/__benchmark__/'+runId+'/'+randomUUID();
+    const baseUrl=siteUrl.endsWith('/')?siteUrl.slice(0,-1):siteUrl; const url=baseUrl+'/__benchmark__/'+runId+'/'+randomUUID();
     await client.query(
       "INSERT INTO app.provider_jobs(tenant_id,project_id,connection_id,provider,action,url,site_url,idempotency_key,status,scheduled_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,'queued',now())",
       [tenantId,projectId,connectionId,provider,action,url,siteUrl,idempotencyPrefix+randomUUID()]
