@@ -6,14 +6,31 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"strconv"
 	"strings"
 	"time"
 )
 
-// ValidateURL accepts only HTTP(S) URLs with a globally routable destination.
-// DNS is resolved again at connection time by SafeTransport to reduce rebinding risk.
+var blockedPrefixes = mustPrefixes(
+	"0.0.0.0/8", "100.64.0.0/10", "192.0.0.0/24", "192.0.2.0/24",
+	"192.88.99.0/24", "198.18.0.0/15", "198.51.100.0/24",
+	"203.0.113.0/24", "224.0.0.0/4", "240.0.0.0/4",
+	"100::/64", "2001:2::/48", "2001:db8::/32", "2002::/16",
+	"3fff::/20", "64:ff9b:1::/48",
+)
+
+func mustPrefixes(values ...string) []netip.Prefix {
+	prefixes := make([]netip.Prefix, 0, len(values))
+	for _, value := range values {
+		prefixes = append(prefixes, netip.MustParsePrefix(value))
+	}
+	return prefixes
+}
+
+// ValidateURL accepts only HTTP(S) URLs. Destination IP validation is repeated
+// at dial time to mitigate DNS rebinding and redirect-based SSRF.
 func ValidateURL(raw string) (*url.URL, error) {
 	u, err := url.ParseRequestURI(raw)
 	if err != nil { return nil, fmt.Errorf("invalid URL: %w", err) }
@@ -26,23 +43,21 @@ func ValidateURL(raw string) (*url.URL, error) {
 }
 
 func isPublicIP(ip net.IP) bool {
-	if ip == nil { return false }
-	if v4 := ip.To4(); v4 != nil {
-		if v4[0] == 0 || v4[0] == 10 || v4[0] == 127 || v4[0] >= 224 { return false }
-		if v4[0] == 169 && v4[1] == 254 { return false }
-		if v4[0] == 172 && v4[1] >= 16 && v4[1] <= 31 { return false }
-		if v4[0] == 192 && v4[1] == 168 { return false }
-		if v4[0] == 100 && v4[1] >= 64 && v4[1] <= 127 { return false }
-		return true
+	addr, ok := netip.AddrFromSlice(ip)
+	if !ok { return false }
+	addr = addr.Unmap()
+	if !addr.IsGlobalUnicast() || addr.IsPrivate() || addr.IsLoopback() ||
+		addr.IsLinkLocalUnicast() || addr.IsLinkLocalMulticast() || addr.IsMulticast() || addr.IsUnspecified() {
+		return false
 	}
-	if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsMulticast() || ip.IsUnspecified() { return false }
-	// Reject IPv4-mapped IPv6 after conversion above; reject documentation and benchmarking ranges.
-	if ip.IsInterfaceLocalMulticast() { return false }
+	for _, prefix := range blockedPrefixes {
+		if prefix.Contains(addr) { return false }
+	}
 	return true
 }
 
-// SafeTransport pins each connection to a freshly resolved public IP. Redirects
-// must be disabled by callers and each Location revalidated with ValidateURL.
+// SafeTransport pins each connection to a freshly resolved public IP. Callers
+// must manually follow redirects and re-run ValidateURL for every Location.
 func SafeTransport(timeout time.Duration) *http.Transport {
 	dialer := &net.Dialer{Timeout: timeout, KeepAlive: 30 * time.Second}
 	return &http.Transport{
@@ -50,14 +65,16 @@ func SafeTransport(timeout time.Duration) *http.Transport {
 		DialContext: func(ctx context.Context, network, address string) (net.Conn, error) {
 			host, port, err := net.SplitHostPort(address)
 			if err != nil { return nil, err }
-			if port == "" { if strings.EqualFold(network, "tcp") { port = "80" } else { port = "443" } }
+			if port == "" { return nil, errors.New("destination port is required") }
 			if _, err := strconv.Atoi(port); err != nil { return nil, errors.New("invalid destination port") }
 			ips, err := net.DefaultResolver.LookupIPAddr(ctx, host)
 			if err != nil { return nil, err }
 			if len(ips) == 0 { return nil, errors.New("hostname has no addresses") }
-			var lastErr error
 			for _, candidate := range ips {
 				if !isPublicIP(candidate.IP) { return nil, errors.New("hostname resolves to a non-public IP") }
+			}
+			var lastErr error
+			for _, candidate := range ips {
 				conn, dialErr := dialer.DialContext(ctx, "tcp", net.JoinHostPort(candidate.IP.String(), port))
 				if dialErr == nil { return conn, nil }
 				lastErr = dialErr
@@ -72,7 +89,7 @@ func SafeTransport(timeout time.Duration) *http.Transport {
 	}
 }
 
-// SafeClient disables automatic redirects so each hop can be validated explicitly.
+// SafeClient disables automatic redirects so every hop can be revalidated.
 func SafeClient(timeout time.Duration) *http.Client {
 	return &http.Client{
 		Transport: SafeTransport(timeout),
