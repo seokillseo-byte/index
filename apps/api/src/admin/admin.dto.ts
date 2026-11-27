@@ -47,3 +47,5 @@ export class CreateAdSlotDto {
  @IsOptional() @IsBoolean() enabled?:boolean;
  @IsOptional() @IsObject() policyConfig?:Record<string,unknown>;
 }
+
+export class UpdateAdvertiserStatusDto { @IsIn(['active','suspended','closed']) status!:string; }
