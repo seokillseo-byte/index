@@ -124,3 +124,9 @@ Next: provision actual non-production certificates and secret files, bring up th
 - Extended secure provisioner mock rejection coverage to include missing Kafka CA, missing Admin API CA and an empty Admin API CA file.
 - These are source-level regression cases wired into the Node CI job; execution on the current branch head is not confirmed by the available workflow/status lookup.
 - Live broker TLS/SCRAM/ACL, credential/CA handshake, restart/recovery and cold-copy volume migration remain unverified release gates.
+
+
+## 2026-11-29 — Complete empty-CA rejection coverage
+- Added an explicit mock case for an empty Kafka CA file, alongside the missing Kafka CA, missing Admin API CA and empty Admin API CA cases.
+- Secure provisioner mock coverage now checks missing, empty and unreadable CA inputs; all invalid-input cases are followed by resource-count assertions to detect unintended topic/user/ACL mutation.
+- These are CI-wired regression tests only. CI execution on the current branch head and live Redpanda validation remain unconfirmed.
