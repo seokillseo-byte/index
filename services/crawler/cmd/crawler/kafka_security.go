@@ -19,6 +19,9 @@ func kafkaDialerFromEnv() (*kafka.Dialer,error) {
  mechanism:=strings.ToLower(os.Getenv("KAFKA_SASL_MECHANISM"))
  caFile:=os.Getenv("KAFKA_TLS_CA_FILE")
  hasSASL:=username!=""||password!=""||mechanism!=""
+ if os.Getenv("NODE_ENV")=="production"&&!hasSASL {
+  return nil,fmt.Errorf("production Kafka clients require TLS and SCRAM-SHA-512 authentication")
+ }
  if hasSASL {
   if username==""||password==""||mechanism!="scram-sha-512"||caFile=="" {
    return nil,fmt.Errorf("Kafka SCRAM-SHA-512 requires username, password and KAFKA_TLS_CA_FILE")
