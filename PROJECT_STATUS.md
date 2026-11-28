@@ -151,3 +151,9 @@ Next: provision actual non-production certificates and secret files, bring up th
 - Extended secure merged-Compose regression checks to cover all six Redpanda broker secret mounts (CA, broker/admin certificates and private keys, bootstrap password), their exact in-container targets, and expected file modes.
 - Extended the checks to verify restrictive modes for all five secrets mounted into the one-shot provisioner and host-file declarations for all nine secure-overlay secrets. Mode parsing normalizes YAML integer/octal representations before comparison.
 - This is static configuration test coverage only. CI execution and live broker/container readability remain unconfirmed.
+
+
+## 2026-11-29 — Secure broker startup and healthcheck assertions
+- Extended the secure merged-Compose regression test to inspect broker startup guards for readable CA/certificate/key material, bootstrap password minimum length and colon rejection; it also asserts the broker healthcheck authenticates with the Admin SCRAM identity and verifies Admin API TLS using the mounted CA.
+- Corrected provisioner secret-mode normalization to handle YAML octal/integer representations consistently with broker secret-mode checks. This was identified by static source inspection; no local Compose/test execution is claimed.
+- CI execution on the latest commit and live container/broker behavior remain unverified.
