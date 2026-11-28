@@ -12,5 +12,5 @@ checksum="$RESTORE_DUMP_FILE.sha256"
 (cd "$(dirname "$RESTORE_DUMP_FILE")" && sha256sum -c "$(basename "$checksum")")
 pg_restore --list "$RESTORE_DUMP_FILE" >/dev/null
 # No --clean or --create: conflicts fail instead of deleting target objects.
-pg_restore --exit-on-error --no-owner --no-acl --dbname "$RESTORE_DATABASE_URL" "$RESTORE_DUMP_FILE"
+pg_restore --no-password --exit-on-error --no-owner --no-acl --dbname "$RESTORE_DATABASE_URL" "$RESTORE_DUMP_FILE"
 echo "Restore completed; run migrations, role setup and post-restore validation."
