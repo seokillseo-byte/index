@@ -1,11 +1,11 @@
 # Index Assist — Observability and alerting review
 
 Updated: 2026-11-28
-Branch reviewed: `feature/provider-job-engine` after Redis and Kafka client-security changes (fresh CI pending)
+Branch reviewed: `feature/provider-job-engine` after Redis recovery and Redpanda security-template updates
 
 ## Scope
 
-CI checkpoint update: run #184 passed on `1a9be1d87fa541866777475f28d0a6c3fe682bb4`; this does not provide live metrics, alert delivery evidence, or production monitoring.
+CI #286 passed on `da76342e9d0e295e565c45e3e541778f59565f5d`; this verifies repository tests only and does not provide live metrics, alert delivery evidence, or production monitoring. The multi-recipient backup change added afterward is awaiting CI.
 
 Static review of repository configuration and application/worker health/logging surfaces. No running VPS, metrics backend, alert receiver or production logs were available. This is a gap assessment, not a live observability validation.
 
@@ -14,7 +14,7 @@ Static review of repository configuration and application/worker health/logging 
 - API has a readiness endpoint used by the Compose health check; it now reports not-ready when PostgreSQL or shared Redis is unavailable.
 - Crawler has a readiness endpoint used by its Compose health check.
 - API and workers emit process logs; provider worker records provider/queue errors to standard output/error.
-- API rate-limited requests depend on shared Redis; the current adapter fails closed with HTTP 503 when Redis is unavailable. Redis availability/error-rate and memory-pressure alerting (the service uses `noeviction`) plus deployed multi-instance outage drills remain outstanding. The repository now includes a Redis integration test with two independent storage instances; CI validation is pending. Kafka client TLS/SCRAM support and ACL rollout guidance are now present, but the active broker remains plaintext until non-production provisioning and negative ACL tests pass.
+- API rate-limited requests depend on shared Redis; the adapter fails closed with HTTP 503 when Redis is unavailable and reconnects with bounded backoff. CI #276/#277/#286 passed the two-client integration and reconnect/recovery tests. Redis availability/error-rate and memory-pressure alerting (the service uses `noeviction`) plus deployed multi-instance outage drills remain outstanding. Kafka client TLS/SCRAM support is CI-verified, but the active broker remains end-of-support v24.3.7 and plaintext; broker TLS/SASL, Admin API bootstrap protection, authenticated topic initialization and negative ACL tests remain outstanding.
 - Provider queue state and attempt/error fields are persisted in PostgreSQL.
 - Benchmark harness reports queue-path throughput/latency, PostgreSQL counter deltas and connection snapshots.
 - No metrics scraper, dashboard, distributed tracing collector, log aggregation configuration, alert rules or notification integration was found in the repository tree.
