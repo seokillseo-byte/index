@@ -10,7 +10,7 @@ Updated: 2026-11-28
 - Active implementation branch: `feature/provider-job-engine`.
 - Latest verified CI checkpoint remains `1a9be1d87fa541866777475f28d0a6c3fe682bb4`; subsequent Redis and Kafka client-security changes are committed on this branch and await fresh CI. The storage client is lifecycle-managed, readiness checks PostgreSQL and Redis, and Compose avoids interpolating the Redis password into command arguments.
 - Review PR #6 remains open and unmerged.
-- GitHub reports the branch diverged from main: 271 commits ahead and one behind at the latest GitHub comparison; PR mergeable=false. One main-only commit overlaps provider-engine files. Do not rebase or merge automatically; review the effective diff before integration.
+- GitHub reports the branch remains diverged from main by one main-only commit that overlaps provider-engine files; PR mergeable=false. Ahead count changes as this long-running feature branch receives incremental commits. Do not rebase or merge automatically; review the effective diff before integration.
 - No local working-tree status is available in this workflow; this status reflects GitHub branch/PR data only.
 
 ## Authentication and tenant isolation
