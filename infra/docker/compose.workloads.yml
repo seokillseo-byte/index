@@ -25,6 +25,7 @@ services:
     restart: unless-stopped
     env_file: ../../.env.crawler
     environment:
+      NODE_ENV: production
       KAFKA_BROKERS: redpanda:9092
       KAFKA_TOPIC: url.ingestion
       KAFKA_GROUP_ID: index-assist-crawler-v1
@@ -34,6 +35,8 @@ services:
       interval: 15s
       timeout: 5s
       retries: 5
+    volumes:
+      - ../../secrets/kafka/ca.crt:/run/secrets/kafka/ca.crt:ro
     depends_on:
       postgres: { condition: service_healthy }
       redpanda-init: { condition: service_completed_successfully }
@@ -45,7 +48,10 @@ services:
     restart: unless-stopped
     env_file: ../../.env.worker
     environment:
+      NODE_ENV: production
       KAFKA_BROKERS: redpanda:9092
+    volumes:
+      - ../../secrets/kafka/ca.crt:/run/secrets/kafka/ca.crt:ro
     depends_on:
       postgres: { condition: service_healthy }
       redpanda-init: { condition: service_completed_successfully }
@@ -59,9 +65,12 @@ services:
     restart: unless-stopped
     env_file: ../../.env.provider-worker
     environment:
+      NODE_ENV: production
       KAFKA_BROKERS: redpanda:9092
       PROVIDER_KAFKA_TOPIC: provider.jobs
       PROVIDER_KAFKA_GROUP_ID: index-assist-provider-v1
+    volumes:
+      - ../../secrets/kafka/ca.crt:/run/secrets/kafka/ca.crt:ro
     depends_on:
       postgres: { condition: service_healthy }
       redpanda-init: { condition: service_completed_successfully }
