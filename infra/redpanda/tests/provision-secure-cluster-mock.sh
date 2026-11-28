@@ -124,8 +124,18 @@ printf 'index-assist-outbox\n' >> "$MOCK_USERS"
 : > "$TMP/empty-service.pass"
 grep -Fxv 'index-assist-outbox' "$MOCK_USERS" > "$TMP/users.without.outbox"
 mv "$TMP/users.without.outbox" "$MOCK_USERS"
-expect_rejected 'empty service password file' env OUTBOX_PASSWORD_FILE="$TMP/empty-service.pass"
+expect_rejected 'empty outbox service password file' env OUTBOX_PASSWORD_FILE="$TMP/empty-service.pass"
 printf 'index-assist-outbox\n' >> "$MOCK_USERS"
+# Exercise the crawler/provider environment-to-secret mappings as well.
+for spec in 'crawler:index-assist-crawler:CRAWLER_PASSWORD_FILE' 'provider:index-assist-provider:PROVIDER_PASSWORD_FILE'; do
+  IFS=: read -r service principal variable <<< "$spec"
+  grep -Fxv "$principal" "$MOCK_USERS" > "$TMP/users.without.service"
+  mv "$TMP/users.without.service" "$MOCK_USERS"
+  expect_rejected "missing $service service password file" env "$variable=$TMP/missing-$service.pass"
+  : > "$TMP/empty-$service.pass"
+  expect_rejected "empty $service service password file" env "$variable=$TMP/empty-$service.pass"
+  printf '%s\n' "$principal" >> "$MOCK_USERS"
+done
 chmod 000 "$TMP/ca.crt"
 expect_rejected 'unreadable CA file' env
 chmod 600 "$TMP/ca.crt"
