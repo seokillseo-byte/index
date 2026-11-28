@@ -86,5 +86,47 @@ ruby -e '
     abort "secret file mapping missing or incorrect: #{name}" unless source_file.end_with?(suffix)
   end
   abort "provisioner must receive TLS CA paths" unless init.fetch("environment")["RPK_TLS_CA"] == "/run/secrets/redpanda-ca.crt" && init.fetch("environment")["RPK_ADMIN_TLS_CA"] == "/run/secrets/redpanda-ca.crt"
+
+  expected_broker_secrets = {
+    "redpanda_ca" => ["/etc/redpanda/certs/ca.crt", "0444"],
+    "redpanda_broker_cert" => ["/etc/redpanda/certs/broker.crt", "0444"],
+    "redpanda_broker_key" => ["/etc/redpanda/certs/broker.key", "0400"],
+    "redpanda_admin_cert" => ["/etc/redpanda/certs/admin.crt", "0444"],
+    "redpanda_admin_key" => ["/etc/redpanda/certs/admin.key", "0400"],
+    "redpanda_admin_password" => ["/run/secrets/redpanda-admin-password", "0400"]
+  }
+  broker_mounts = broker.fetch("secrets").to_h { |secret| [secret.fetch("source"), [secret.fetch("target"), secret.fetch("mode").to_s.rjust(4, "0")]] }
+  expected_broker_secrets.each do |source, expected|
+    abort "broker secret mount or mode missing/incorrect: #{source}" unless broker_mounts[source] == expected
+  end
+
+  expected_provisioner_modes = {
+    "redpanda_ca" => "0444",
+    "redpanda_admin_password" => "0400",
+    "outbox_scram_password" => "0400",
+    "crawler_scram_password" => "0400",
+    "provider_scram_password" => "0400"
+  }
+  provisioner_modes = init.fetch("secrets").to_h { |secret| [secret.fetch("source"), secret.fetch("mode").to_s.rjust(4, "0")] }
+  expected_provisioner_modes.each do |source, mode|
+    abort "provisioner secret mode missing/incorrect: #{source}" unless provisioner_modes[source] == mode
+  end
+
+  expected_secret_files = {
+    "redpanda_ca" => "secrets/kafka/ca.crt",
+    "redpanda_broker_cert" => "secrets/redpanda/broker.crt",
+    "redpanda_broker_key" => "secrets/redpanda/broker.key",
+    "redpanda_admin_cert" => "secrets/redpanda/admin.crt",
+    "redpanda_admin_key" => "secrets/redpanda/admin.key",
+    "redpanda_admin_password" => "secrets/redpanda/admin-password",
+    "outbox_scram_password" => "secrets/kafka/outbox-scram-password",
+    "crawler_scram_password" => "secrets/kafka/crawler-scram-password",
+    "provider_scram_password" => "secrets/kafka/provider-scram-password"
+  }
+  declared_secrets = config.fetch("secrets")
+  expected_secret_files.each do |name, suffix|
+    source_file = declared_secrets.fetch(name).fetch("file")
+    abort "secret file mapping missing or incorrect: #{name}" unless source_file.end_with?(suffix)
+  end
 '
 echo 'Secure Redpanda Compose merge and runtime topology validation passed'
