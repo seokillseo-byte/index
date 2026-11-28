@@ -58,7 +58,7 @@ Updated: 2026-11-28
 
 - Replaced process-local Nest throttler storage with a Redis-backed storage adapter using one atomic Lua operation for counters/block windows.
 - Redis URL is required; the API does not silently fall back to per-process counters. Redis connection/command failure returns HTTP 503 for rate-limited requests.
-- API Compose startup waits for Redis health; `.env.api.example` documents `REDIS_URL` using the same password configured by infrastructure Redis.
+- API Compose startup waits for Redis health; API readiness now checks both PostgreSQL and Redis; `.env.api.example` documents `REDIS_URL` using the same password configured by infrastructure Redis.
 - Unit tests cover atomic command arguments, lazy connection, missing configuration and fail-closed outage behavior. A Redis-backed integration test uses two independent storage instances to verify shared counters/block state; CI now provisions Redis for the Node job. Fresh CI result is pending.
 
 ## Remaining release gates
