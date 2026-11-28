@@ -140,3 +140,8 @@ Next: provision actual non-production certificates and secret files, bring up th
 ## 2026-11-29 — Full service-secret mapping coverage
 - Expanded the missing/empty SCRAM password-file mock cases from the outbox principal to crawler and provider principals. The test now exercises all three `*_PASSWORD_FILE` environment mappings on the new-user path, with each mock principal restored after its rejection cases.
 - The existing final no-mutation assertions still check topic, user and ACL counts. This is CI-wired test source only; CI execution and live broker behavior remain unverified.
+
+
+## 2026-11-29 — Secure provisioner secret wiring assertions
+- Extended the merged-Compose mock validation to assert that outbox, crawler and provider SCRAM secrets are mounted into `redpanda-init` at the exact paths consumed by the provisioner; checked the declared host secret-file mappings and both Kafka/Admin CA environment paths.
+- This is static merged-config regression coverage. The workflow has not been confirmed on the latest commit, and no live broker test is claimed.
