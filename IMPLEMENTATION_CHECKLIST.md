@@ -24,6 +24,7 @@
 - [x] CI run #46103336063 passes on `b12727cc29bd4b1800b189ef33423cdc7f9f88bd` after shared Google per-minute worker quota hardening.
 - [x] CI run #46103551185 passes on `23808e3dc06c98bcb9c9538c856acb41521b7a55`, including new verified-property URL-scope regression tests.
 - [x] CI run #46103822023 passes on `f0b8ac2c8b837553a765e10ac1456ef52c3a7636`, including provider quota-decision unit tests.
+- [x] CI run #46107552896 passes on `1a9be1d87fa541866777475f28d0a6c3fe682bb4`: database migration/RLS/auth regressions, crawler Go race/vet, Node typecheck/build/Jest, worker syntax and age-encrypted backup/restore tests.
 
 ## Provider Job Engine
 
