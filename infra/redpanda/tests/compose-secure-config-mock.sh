@@ -85,6 +85,18 @@ ruby -e '
     source_file = declared_secrets.fetch(name).fetch("file")
     abort "secret file mapping missing or incorrect: #{name}" unless source_file.end_with?(suffix)
   end
+
+  broker_start = broker.fetch("command").join("\\n")
+  %w[ca.crt broker.crt broker.key admin.crt admin.key].each do |file|
+    abort "broker startup must require readable certificate material: #{file}" unless broker_start.include?("/etc/redpanda/certs/#{file}") && broker_start.include?("[ -r")
+  end
+  abort "bootstrap must validate password length" unless broker_start.include?('${#password}') && broker_start.include?("-ge 32")
+  abort "bootstrap must reject colon in password" unless broker_start.include?("case") && broker_start.include?("*: *") == false && broker_start.include?("*:*)")
+  healthcheck = broker.fetch("healthcheck").fetch("test").join(" ")
+  abort "broker healthcheck must authenticate with SCRAM" unless healthcheck.include?("RPK_USER=$REDPANDA_ADMIN_USER") && healthcheck.include?("SCRAM-SHA-512") && healthcheck.include?("RPK_PASS=$(cat /run/secrets/redpanda-admin-password)")
+  abort "broker healthcheck must verify Admin API TLS" unless healthcheck.include?("RPK_ADMIN_TLS_ENABLED=true") && healthcheck.include?("RPK_ADMIN_TLS_CA=/etc/redpanda/certs/ca.crt")
+  provisioner_start = init.fetch("command").join("\\n")
+  abort "provisioner must check Admin password readability before execution" unless provisioner_start.include?("[ -r /run/secrets/redpanda-admin-password ]")
   abort "provisioner must receive TLS CA paths" unless init.fetch("environment")["RPK_TLS_CA"] == "/run/secrets/redpanda-ca.crt" && init.fetch("environment")["RPK_ADMIN_TLS_CA"] == "/run/secrets/redpanda-ca.crt"
 
   expected_broker_secrets = {
