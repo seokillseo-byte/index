@@ -5,7 +5,7 @@ Branch reviewed: `feature/provider-job-engine` after Redis recovery and Redpanda
 
 ## Scope and confidence
 
-CI #286 passed on `da76342e9d0e295e565c45e3e541778f59565f5d` (Node, crawler and database jobs). This is the latest fully verified checkpoint before the multi-recipient backup source change in this review turn; that source change requires a new CI run.
+CI #286 passed on `da76342e9d0e295e565c45e3e541778f59565f5d` (Node, crawler and database jobs). CI #306 subsequently passed the multi-recipient age backup change and YAML template validation: https://github.com/seokillseo-byte/index/actions/runs/46111164620.
 
 This is a source/configuration review of the current repository state, not an independent penetration test, infrastructure audit, dependency audit, or production security certification. No live VPS, deployed network, provider account, secrets, or customer data were accessed.
 
