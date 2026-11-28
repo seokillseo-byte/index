@@ -26,7 +26,7 @@
 - [x] CI run #46103822023 passes on `f0b8ac2c8b837553a765e10ac1456ef52c3a7636`, including provider quota-decision unit tests.
 - [x] CI run #46107552896 passes on `1a9be1d87fa541866777475f28d0a6c3fe682bb4`: database migration/RLS/auth regressions, crawler Go race/vet, Node typecheck/build/Jest, worker syntax and age-encrypted backup/restore tests.
 - [x] CI #276 passed Redis two-client integration, API typecheck/build/Jest, worker tests, crawler Go race/vet and database regression suites.
-- [ ] CI #277 validation for the additional Redis reconnect/recovery regression test (pending).
+- [x] CI #277 passed the Redis reconnect/recovery regression test plus Redis two-client integration, API typecheck/build/Jest, worker tests, crawler Go race/vet and database regressions: [workflow](https://github.com/seokillseo-byte/index/actions/runs/46110358016).
 - [x] Added Redis integration test with two independent storage clients to verify shared counters and blocked state; CI Node job now provisions Redis service.
 - [x] Redis client is a Nest-managed provider and disconnects during application shutdown.
 - [x] API readiness checks PostgreSQL and Redis; added controller tests for Redis-unavailable readiness.
@@ -38,7 +38,7 @@
 - [ ] Replace pinned Redpanda v24.3.7 (24.3 release line is end-of-support) with a currently supported release and validate config compatibility.
 - [ ] Activate broker TLS/SASL/ACL on non-production Redpanda; verify each service principal and denied cross-topic/group access.
 - [x] CI #276 passed Redis and Kafka client changes; [workflow](https://github.com/seokillseo-byte/index/actions/runs/46110245705).
-- [ ] CI #277 for the follow-up Redis reconnect regression test (pending).
+- [x] CI #277 passed the follow-up Redis reconnect regression test: [workflow](https://github.com/seokillseo-byte/index/actions/runs/46110358016).
 
 ## Provider Job Engine
 
