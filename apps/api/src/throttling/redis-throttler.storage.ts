@@ -21,9 +21,9 @@ return {hits, ttl, 0, 0}
 export class RedisThrottlerStorage implements ThrottlerStorage {
   private readonly redis: Redis;
 
-  constructor(redisUrl: string) {
+  constructor(redisUrl: string, redisClient?: Redis) {
     if (!redisUrl) throw new Error('REDIS_URL is required for shared API rate limiting');
-    this.redis = new Redis(redisUrl, {
+    this.redis = redisClient ?? new Redis(redisUrl, {
       lazyConnect: true,
       connectTimeout: 2000,
       commandTimeout: 2000,
