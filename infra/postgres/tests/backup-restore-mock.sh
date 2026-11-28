@@ -109,6 +109,10 @@ if BACKUP_AGE_RECIPIENTS='age1aaaaaaaaaaaaaaaaaaaa,age1aaaaaaaaaaaaaaaaaaaa' bas
   echo 'backup accepted duplicate age recipients' >&2
   exit 1
 fi
+if BACKUP_AGE_RECIPIENTS='age1aaaaaaaaaaaaaaaaaaaa,' bash "$ROOT/infra/postgres/backup.sh" >/dev/null 2>&1; then
+  echo 'backup accepted an empty age recipient entry' >&2
+  exit 1
+fi
 [[ "$(find "$OUT" -maxdepth 1 -name '*.dump.age' | wc -l)" == "$before_invalid" ]]
 
 # When age is installed (CI installs it), exercise real authenticated encryption/decryption.
