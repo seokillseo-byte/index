@@ -1,3 +1,10 @@
+## 2026-11-28 — Verified property URL-prefix boundary
+
+- Tightened URL-prefix property matching so `/blog` authorizes `/blog` and `/blog/...`, but not sibling paths such as `/blogger/...`.
+- Added Jest regression tests for exact URL-prefix paths, child paths, sibling-prefix rejection, cross-origin rejection, and Search Console domain-property subdomains.
+- CI run #46103551185 passed on `23808e3dc06c98bcb9c9538c856acb41521b7a55`; Node typecheck/build/Jest, provider-worker syntax, Go race/vet and database regression checks passed.
+- This closes the identified URL-prefix matching issue; it does not replace the full security review release gate.
+
 ## 2026-11-28 — Google worker quota reservation hardening
 
 - Added a PostgreSQL-serialized rolling 60-second Google URL Inspection attempt counter shared by all provider-worker instances for the same tenant/property.

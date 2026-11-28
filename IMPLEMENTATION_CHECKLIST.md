@@ -22,11 +22,12 @@
 - [x] CI run #46102607623 passes on `0c50dc59380dabb99d597af5feabc17b641c8951`, including Node/Jest, worker syntax, Go race/vet and database security regressions.
 - [x] CI run #46103232631 passes on `aca15d51d989d782e76f4fa4a9d433dfa2f998ec`.
 - [x] CI run #46103336063 passes on `b12727cc29bd4b1800b189ef33423cdc7f9f88bd` after shared Google per-minute worker quota hardening.
+- [x] CI run #46103551185 passes on `23808e3dc06c98bcb9c9538c856acb41521b7a55`, including new verified-property URL-scope regression tests.
 
 ## Provider Job Engine
 
 - [x] Tenant-scoped provider job model and idempotency.
-- [x] Verified property binding and URL coverage checks.
+- [x] Verified property binding and URL coverage checks, including URL-prefix path-segment boundary validation.
 - [x] Google URL Inspection daily/minute quota reservation at API admission.
 - [x] Google URL Inspection per-minute attempt reservation shared across worker instances.
 - [x] Bing live DailyQuota/MonthlyQuota checks.

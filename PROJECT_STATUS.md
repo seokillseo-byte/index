@@ -22,7 +22,7 @@ Updated: 2026-11-28
 
 ## Provider job engine
 
-- Tenant-aware project/backlink verification and verified-property binding.
+- Tenant-aware project/backlink verification and verified-property binding; URL-prefix matching enforces path-segment boundaries, preventing sibling-prefix URLs from escaping a verified property.
 - Google Search Console and Bing Webmaster integrations with AES-256-GCM encrypted credentials.
 - Provider job persistence, transactional outbox, Kafka `provider.jobs` topic, and isolated provider worker.
 - Google URL Inspection queue admission and worker execution both enforce per-property daily/minute limits; worker reservations are serialized in PostgreSQL across worker instances.
@@ -41,6 +41,7 @@ Updated: 2026-11-28
 - CI run [#46102607623](https://github.com/seokillseo-byte/index/actions/runs/46102607623) passed on source head `0c50dc59380dabb99d597af5feabc17b641c8951`; Node typecheck/build/Jest and both worker syntax checks, Go race tests/vet, ordered DB migrations, tenant RLS, MFA lockout, auth-token replay, and MFA recovery-code replay all passed.
 - CI run [#46103232631](https://github.com/seokillseo-byte/index/actions/runs/46103232631) passed on `aca15d51d989d782e76f4fa4a9d433dfa2f998ec`, validating the status/checklist/changelog and release-process reconciliation.
 - CI run [#46103336063](https://github.com/seokillseo-byte/index/actions/runs/46103336063) passed on `b12727cc29bd4b1800b189ef33423cdc7f9f88bd`, including the Google provider worker syntax check and all Node, Go and database checks.
+- CI run [#46103551185](https://github.com/seokillseo-byte/index/actions/runs/46103551185) passed on `23808e3dc06c98bcb9c9538c856acb41521b7a55`; added Jest coverage for verified URL-prefix path boundaries, domain-property subdomains and cross-origin rejection.
 - The benchmark harness now reports queue-latency p50/p95/p99, PostgreSQL counter deltas and connection snapshots; host CPU/disk IO still require host-level monitoring.
 - Any later source change must be validated by its own run.
 
