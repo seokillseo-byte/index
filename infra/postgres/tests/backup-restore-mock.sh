@@ -16,7 +16,7 @@ printf 'test_database\n'
 MOCK
 cat > "$BIN/pg_dump" <<'MOCK'
 #!/usr/bin/env bash
-if [[ "\${1:-}" == --version ]]; then echo 'pg_dump mock 1.0'; exit 0; fi
+if [[ "${1:-}" == --version ]]; then echo 'pg_dump mock 1.0'; exit 0; fi
 while (($#)); do
   if [[ "$1" == --file ]]; then shift; printf 'mock-pg-dump-archive\n' > "$1"; printf '%s\n' "$1" >> "$MOCK_LOG"; exit 0; fi
   shift
@@ -25,8 +25,8 @@ exit 2
 MOCK
 cat > "$BIN/pg_restore" <<'MOCK'
 #!/usr/bin/env bash
-if [[ "\${1:-}" == --list ]]; then
-  file="\${2:?missing archive}"
+if [[ "${1:-}" == --list ]]; then
+  file="${2:?missing archive}"
   [[ "$(cat "$file")" == 'mock-pg-dump-archive' ]]
   exit
 fi
@@ -65,11 +65,11 @@ export BACKUP_AGE_RECIPIENT='age1mockpublicrecipient'
 bash "$ROOT/infra/postgres/backup.sh" >/dev/null
 shopt -s nullglob
 artifacts=("$OUT"/*.dump.age)
-[[ "\${#artifacts[@]}" -eq 1 ]]
-dump="\${artifacts[0]}"
+[[ "${#artifacts[@]}" -eq 1 ]]
+dump="${artifacts[0]}"
 [[ -s "$dump" && -s "$dump.sha256" ]]
-grep -q '^encryption=age$' "\${dump%.dump.age}.manifest"
-grep -q '^recipient_count=1$' "\${dump%.dump.age}.manifest"
+grep -q '^encryption=age$' "${dump%.dump.age}.manifest"
+grep -q '^recipient_count=1$' "${dump%.dump.age}.manifest"
 [[ "$(stat -c '%a' "$dump")" == 600 ]]
 plain_path="$(tail -n 1 "$MOCK_LOG")"
 [[ ! -e "$plain_path" ]]
@@ -124,7 +124,7 @@ if command -v age-keygen >/dev/null 2>&1; then
   bash "$ROOT/infra/postgres/backup.sh" >/dev/null
   real_dump="$(ls -1t "$OUT"/*.dump.age | head -n 1)"
   ! grep -q 'mock-pg-dump-archive' "$real_dump"
-  grep -q '^recipient_count=2$' "\${real_dump%.dump.age}.manifest"
+  grep -q '^recipient_count=2$' "${real_dump%.dump.age}.manifest"
   export RESTORE_DUMP_FILE="$real_dump"
   export RESTORE_AGE_IDENTITY_FILE="$real_identity"
   bash "$ROOT/infra/postgres/restore.sh" >/dev/null
