@@ -29,13 +29,13 @@ Impact: this closes the process-local storage design gap in source, but it is no
 
 Required before production: obtain passing CI, run two API instances against one non-production Redis and confirm shared limits, then stop Redis and confirm rate-limited requests fail closed without bypass. Configure production credentials outside the repository.
 
-### High — Kafka/Redpanda transport has no authentication, TLS or ACLs
+### High — Kafka client security is implemented, but broker TLS/SASL/ACL activation remains open
 
-Evidence: `infra/docker/compose.infrastructure.yml` starts Redpanda with internal plaintext Kafka listener and no broker authentication/ACL configuration.
+Evidence: Node outbox relay/provider worker and Go crawler now support CA-verified TLS and SCRAM-SHA-512; production startup rejects plaintext client settings. However `infra/docker/compose.infrastructure.yml` still starts Redpanda with an internal plaintext listener. A TLS/SASL example and ACL runbook are provided but are not active.
 
-Impact: internal-network or host compromise can potentially read/publish queue messages or impersonate producers/consumers.
+Impact: until the broker listener, users and ACLs are activated together, the internal broker remains unauthenticated and queue traffic is not encrypted. Production workers will fail closed rather than connect with plaintext.
 
-Required before production: enable authenticated TLS transport and least-privilege ACLs for API/outbox relay/crawler/provider worker; rotate credentials and test denied access. Current compose network isolation is a useful boundary, not a substitute for broker authentication.
+Required before production: provision broker certificates and distinct service SCRAM credentials, activate TLS/SASL/ACLs on non-production Redpanda, verify allowed producer/consumer operations and denied cross-topic/group access, then roll out the same reviewed configuration in production.
 
 ### High — Off-host recovery policy and key-management drill are not implemented
 
