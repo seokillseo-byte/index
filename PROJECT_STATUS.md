@@ -28,10 +28,12 @@ Updated: 2026-11-28
 - Added migration `0019_mfa_challenge_attempt_limits.sql`.
 - Added a CI database test covering the five-failure MFA challenge lockout semantics.
 - Added a CI database regression test for consumed authentication-token replay.
+- Added API Jest/ts-jest infrastructure and service-level MFA challenge lockout/token-hashing coverage.
+- Added a CI database regression test for single-use MFA recovery-code replay.
 - Added `docs/deployment/release-process.md` covering the feature-branch workflow, clean Git-based VPS deployment, configuration separation and rollback principles.
 - Serialized MFA enrollment and single-active password-reset/MFA-login challenge issuance with database transactions and row locks.
 
-**Validation caveat:** the authentication implementation has not yet been validated by a successful CI run or focused auth security test suite. Do not mark it production-ready until those checks pass.
+**Validation caveat:** the current branch still has no successful CI run visible in GitHub for the latest head. Focused auth coverage is now present in the repository, but tenant/session isolation still needs application-level validation. Do not mark auth production-ready until CI and the remaining isolation checks pass.
 
 ## Provider engine implemented
 
@@ -58,7 +60,7 @@ Updated: 2026-11-28
 ## CI and release validation
 
 - Previous CI run `46047692879` passed for an earlier provider-engine checkpoint only.
-- The latest auth hardening now has an explicit CI database test for MFA challenge lockout; a successful workflow run for the current branch head is still pending.
+- The latest auth hardening now has explicit CI database tests for MFA challenge lockout, auth-token replay, and MFA recovery-code replay. API Jest tests are also wired into the CI node job. A successful workflow run for the current branch head is still pending.
 - Google URL Inspection reservation values are capped at 2,000/day and 600/minute per site.
 - Bing submissions are bounded by live provider DailyQuota/MonthlyQuota.
 - Provider acceptance/inspection evidence must not be presented as proof of indexing.
@@ -66,7 +68,7 @@ Updated: 2026-11-28
 ## Release gates still open
 
 - CI/typecheck/build and tests for the current branch head.
-- Focused auth security tests: TOTP brute force/replay, recovery-code replay, tenant/session isolation. Basic consumed-token replay is now covered by CI.
+- Focused auth security tests: MFA challenge brute-force/lockout and recovery-code replay are now covered; application-level tenant/session isolation remains open. Basic consumed-token replay is covered by CI.
 - Execute queue benchmark on non-production hardware and record PostgreSQL CPU/IO/connection saturation.
 - Sustained queue/backpressure and failure/recovery benchmarks.
 - Validate 1,000,000 URLs/day only after measured end-to-end capacity; no such result exists yet.
@@ -78,4 +80,4 @@ Updated: 2026-11-28
 
 ## Immediate next step
 
-Get CI running and green for the current branch. Fix any compile, migration or test failures first; then add/run focused authentication security tests. After those gates, execute the non-production queue benchmark and use measured results to size worker/database capacity. Do not use production credentials/data, merge into `main`, or deploy as part of this work.
+Get CI running and green for the current branch. Fix any compile, migration or test failures first; then complete application-level tenant/session isolation checks. After those gates, execute the non-production queue benchmark and use measured results to size worker/database capacity. After those gates, execute the non-production queue benchmark and use measured results to size worker/database capacity. Do not use production credentials/data, merge into `main`, or deploy as part of this work.
