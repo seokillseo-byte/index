@@ -35,15 +35,20 @@
 - [x] Added KafkaJS TLS/SCRAM-SHA-512 config for outbox relay/provider worker and kafka-go TLS/SCRAM-SHA-512 config for crawler.
 - [x] Production worker/crawler startup rejects plaintext Kafka configuration; added Node/Go config tests, CA-file mounts and env examples.
 - [x] Added Redpanda TLS/SASL example, loopback-only TLS Admin API template, first-start `.bootstrap.yaml` example and Kafka security/ACL rollout runbook.
-- [ ] Validate broker templates and secured topic provisioning on a live non-production Redpanda release.
-- [x] Add a Redpanda v26.3.1 TLS/SASL/ACL broker template and first-start Admin API bootstrap example; reviewed against current Redpanda security docs.
-- [ ] Rehearse persistent-volume upgrade from EOL v24.3.7 to a supported Redpanda release on a disposable non-production cluster; do not change production image tag without a tested upgrade/rollback plan.
-- [ ] Wire broker TLS/SASL/Admin API bootstrap into non-production deployment; replace anonymous plaintext `redpanda-init` with authenticated topic provisioning.
-- [ ] Provision broker/Admin certificates and per-service SCRAM users; verify positive/negative topic/group ACL operations on non-production Redpanda.
+- [x] Add a Redpanda v26.3.1 TLS/SASL/ACL broker template, loopback-only TLS Admin API and first-start Admin API bootstrap example; reviewed against current Redpanda security docs.
+- [x] Add an isolated secure Compose overlay with a new `redpanda_data_secure` volume; it does not mount or modify the legacy EOL broker volume.
+- [x] Move `redpanda-init` into the broker network namespace and add repeat-safe topic provisioning for existing topics.
+- [x] Add secure one-shot provisioning for three service SCRAM principals and least-privilege topic/group/idempotent-write ACLs; passwords are read from Docker secret files.
+- [x] Add mock tests for topic provisioning, TLS/SCRAM fail-closed guards, SCRAM user/ACL repeat-safety and secure Compose merge; fresh CI pending.
+- [ ] Obtain fresh CI for the latest Redpanda scripts and Compose overlay.
+- [ ] Provision actual broker/Admin certificates and service password files; run the isolated secure overlay on non-production Redpanda and verify the Admin API/Kafka TLS/SCRAM handshakes.
+- [ ] Verify positive/negative ACL operations, wrong-password/untrusted-CA rejection and workload restart/recovery on a live non-production broker.
+- [ ] Rehearse the v24.3.7 persistent-volume upgrade on a disposable cold copy with a tested rollback plan; never change the active volume by merely changing the image tag.
 - [x] CI #276 passed Redis and Kafka client changes; [workflow](https://github.com/seokillseo-byte/index/actions/runs/46110245705).
 - [x] CI #277 passed the follow-up Redis reconnect regression test: [workflow](https://github.com/seokillseo-byte/index/actions/runs/46110358016).
 - [x] CI #286 passed on the full documentation checkpoint: [workflow](https://github.com/seokillseo-byte/index/actions/runs/46110473131).
 - [x] CI #306 passed multi-recipient age encryption/decryption using two independent identities, invalid/duplicate/empty recipient rejection, Bash safety tests, YAML syntax, Node typecheck/build/Jest, crawler Go race/vet and database regressions: [workflow](https://github.com/seokillseo-byte/index/actions/runs/46111164620).
+- [ ] Fresh CI for secure Redpanda Compose overlay and mock provisioning scripts.
 
 ## Provider Job Engine
 
@@ -81,7 +86,7 @@
 - [x] CI installs age and verifies real ephemeral-key encryption/decryption plus wrong-identity rejection (CI #180 passed); PostgreSQL itself remains mocked.
 - [x] Restore rejects age identity files with group/other permissions; regression test and full CI passed on commit `e956c903a2a1d1522e5dc716b2ac03437604160f` (run #46107414623).
 - [x] Document post-restore validation and operational limitations.
-- [x] Add multi-recipient age encryption support and document independent key custody/off-site replication/retention requirements (fresh CI pending).
+- [x] Add multi-recipient age encryption support and document independent key custody/off-site replication/retention requirements; CI #306 passed the two-identity crypto round-trip.
 - [ ] Configure protected age identity storage/key recovery and off-site encrypted backup replication in a separate account/failure domain.
 - [ ] Define approved backup frequency, RPO/RTO, retention and deletion policy; enable object versioning/immutability where supported.
 - [ ] Execute non-production restore drill using a copy retrieved from off-site storage and record evidence.
