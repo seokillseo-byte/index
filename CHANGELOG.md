@@ -1,3 +1,9 @@
+## 2026-11-28 — Preserve runtime bootstrap switch and command substitution
+
+- Escaped the bootstrap flag and password command substitution in the secure Compose command so Compose passes them to the container shell rather than evaluating them during host-side interpolation.
+- Corrected the UID/GID diagnostic printf format in the Kafka security runbook.
+- No secrets, broker containers or persistent volumes were touched.
+
 ## 2026-11-28 — Escape runtime shell variables in secure Compose command
 
 - Corrected the secure broker startup loop to escape shell variables as `$$file` in Compose YAML, preventing Compose from interpolating them on the host before the container shell runs.

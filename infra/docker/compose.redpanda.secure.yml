@@ -10,9 +10,9 @@ services:
         for file in /etc/redpanda/certs/ca.crt /etc/redpanda/certs/broker.crt /etc/redpanda/certs/broker.key /etc/redpanda/certs/admin.crt /etc/redpanda/certs/admin.key; do
           [ -r "$$file" ] || { echo "Redpanda cannot read required certificate material: $$file" >&2; exit 1; }
         done
-        if [ "${REDPANDA_BOOTSTRAP_ONCE:-0}" = "1" ]; then
+        if [ "$${REDPANDA_BOOTSTRAP_ONCE:-0}" = "1" ]; then
           [ -r /run/secrets/redpanda-admin-password ] || { echo "Redpanda cannot read the Admin bootstrap password secret" >&2; exit 1; }
-          password="$(cat /run/secrets/redpanda-admin-password)"
+          password="$$(cat /run/secrets/redpanda-admin-password)"
           [ "$${#password}" -ge 32 ] || { echo "Admin password must be at least 32 characters" >&2; exit 1; }
           case "$$password" in *:*) echo "Admin password must not contain ':'" >&2; exit 1 ;; esac
           export RP_BOOTSTRAP_USER="$${REDPANDA_ADMIN_USER}:$${password}:SCRAM-SHA-512"
