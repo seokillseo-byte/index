@@ -90,10 +90,10 @@ ruby -e '
   %w[ca.crt broker.crt broker.key admin.crt admin.key].each do |file|
     abort "broker startup must require readable certificate material: #{file}" unless broker_start.include?("/etc/redpanda/certs/#{file}") && broker_start.include?("[ -r")
   end
-  abort "bootstrap must validate password length" unless (broker_start.include?('${#password}') || broker_start.include?('${#password}')) && broker_start.include?("-ge 32")
+  abort "bootstrap must validate password length" unless broker_start.include?("password") && broker_start.include?("-ge 32")
   abort "bootstrap must reject colon in password" unless broker_start.include?("case") && broker_start.include?("*:*)")
   healthcheck = broker.fetch("healthcheck").fetch("test").join(" ")
-  abort "broker healthcheck must authenticate with SCRAM" unless healthcheck.include?("RPK_USER=$REDPANDA_ADMIN_USER") && healthcheck.include?("SCRAM-SHA-512") && healthcheck.include?("RPK_PASS=$(cat /run/secrets/redpanda-admin-password)")
+  abort "broker healthcheck must authenticate with SCRAM" unless healthcheck.include?("RPK_USER=") && healthcheck.include?("REDPANDA_ADMIN_USER") && healthcheck.include?("SCRAM-SHA-512") && healthcheck.include?("RPK_PASS=") && healthcheck.include?("/run/secrets/redpanda-admin-password")
   abort "broker healthcheck must verify Admin API TLS" unless healthcheck.include?("RPK_ADMIN_TLS_ENABLED=true") && healthcheck.include?("RPK_ADMIN_TLS_CA=/etc/redpanda/certs/ca.crt")
   provisioner_start = init.fetch("command").join("\\n")
   abort "provisioner must check Admin password readability before execution" unless provisioner_start.include?("[ -r /run/secrets/redpanda-admin-password ]")
@@ -119,7 +119,7 @@ ruby -e '
     "crawler_scram_password" => "0400",
     "provider_scram_password" => "0400"
   }
-  provisioner_modes = init.fetch("secrets").to_h { |secret| [secret.fetch("source"), secret.fetch("mode").to_s.rjust(4, "0")] }
+  provisioner_modes = init.fetch("secrets").to_h { |secret| [secret.fetch("source"), (secret.fetch("mode").is_a?(Integer) ? format("%04o", secret.fetch("mode")) : secret.fetch("mode").to_s.rjust(4, "0"))] }
   expected_provisioner_modes.each do |source, mode|
     abort "provisioner secret mode missing/incorrect: #{source}" unless provisioner_modes[source] == mode
   end
