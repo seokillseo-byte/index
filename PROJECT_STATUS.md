@@ -27,6 +27,8 @@ Updated: 2026-11-28
 - Password-reset success responses no longer return internal user IDs.
 - Added migration `0019_mfa_challenge_attempt_limits.sql`.
 - Added a CI database test covering the five-failure MFA challenge lockout semantics.
+- Added a CI database regression test for consumed authentication-token replay.
+- Serialized MFA enrollment and single-active password-reset/MFA-login challenge issuance with database transactions and row locks.
 
 **Validation caveat:** the authentication implementation has not yet been validated by a successful CI run or focused auth security test suite. Do not mark it production-ready until those checks pass.
 
@@ -63,7 +65,7 @@ Updated: 2026-11-28
 ## Release gates still open
 
 - CI/typecheck/build and tests for the current branch head.
-- Focused auth security tests: TOTP brute force/replay, recovery-code replay, reset/verification token replay, tenant/session isolation.
+- Focused auth security tests: TOTP brute force/replay, recovery-code replay, tenant/session isolation. Basic consumed-token replay is now covered by CI.
 - Execute queue benchmark on non-production hardware and record PostgreSQL CPU/IO/connection saturation.
 - Sustained queue/backpressure and failure/recovery benchmarks.
 - Validate 1,000,000 URLs/day only after measured end-to-end capacity; no such result exists yet.
