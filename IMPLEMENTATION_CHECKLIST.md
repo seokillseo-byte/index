@@ -207,3 +207,10 @@ Google URL Inspection is inspection evidence, not an indexing request. Bing subm
 - [x] Require CA, broker/admin certificates and private keys to be readable and non-empty before broker startup.
 - [x] Assert the merged secure Compose startup command includes both readability and non-empty checks.
 - [ ] Confirm the updated test in CI and verify with real certificate files in non-production.
+
+
+## Compose-safe certificate preflight (2026-11-29)
+
+- [x] Use explicit per-file readability and non-empty checks to avoid Compose environment interpolation of a shell loop variable.
+- [x] Assert all five certificate-material paths have the startup checks in merged Compose.
+- [ ] Confirm CI and non-production runtime behavior.
