@@ -58,7 +58,10 @@ export class AuthService{
  private async createAuthToken(userId:string,purpose:'password_reset'|'mfa_login'|'mfa_recovery',expiresIn:string):Promise<string>{
   const token=randomBytes(32).toString('base64url');
   await this.db.withTransaction(async client=>{
-   if(purpose==='password_reset'||purpose==='mfa_login') await client.query("DELETE FROM app.auth_tokens WHERE user_id=$1 AND purpose=$2 AND consumed_at IS NULL",[userId,purpose]);
+   if(purpose==='password_reset'||purpose==='mfa_login'){
+    await client.query('SELECT id FROM app.users WHERE id=$1 FOR UPDATE',[userId]);
+    await client.query("DELETE FROM app.auth_tokens WHERE user_id=$1 AND purpose=$2 AND consumed_at IS NULL",[userId,purpose]);
+   }
    await client.query("INSERT INTO app.auth_tokens(user_id,purpose,token_hash,expires_at) VALUES($1,$2,$3,now()+$4::interval)",[userId,purpose,this.hashToken(token),expiresIn]);
   });
   return token;
