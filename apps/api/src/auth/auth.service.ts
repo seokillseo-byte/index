@@ -43,8 +43,10 @@ export class AuthService{
 
  private async createVerificationToken(userId:string):Promise<string>{
   const token=randomBytes(32).toString('base64url');
-  await this.db.query("DELETE FROM app.email_verification_tokens WHERE user_id=$1 AND used_at IS NULL",[userId]);
-  await this.db.query("INSERT INTO app.email_verification_tokens(user_id,token_hash,expires_at) VALUES($1,$2,now()+interval '30 minutes')",[userId,this.hashToken(token)]);
+  await this.db.withTransaction(async client=>{
+   await client.query("DELETE FROM app.email_verification_tokens WHERE user_id=$1 AND used_at IS NULL",[userId]);
+   await client.query("INSERT INTO app.email_verification_tokens(user_id,token_hash,expires_at) VALUES($1,$2,now()+interval '30 minutes')",[userId,this.hashToken(token)]);
+  });
   return token;
  }
 
@@ -55,8 +57,10 @@ export class AuthService{
 
  private async createAuthToken(userId:string,purpose:'password_reset'|'mfa_login'|'mfa_recovery',expiresIn:string):Promise<string>{
   const token=randomBytes(32).toString('base64url');
-  if(purpose==='password_reset'||purpose==='mfa_login') await this.db.query("DELETE FROM app.auth_tokens WHERE user_id=$1 AND purpose=$2 AND consumed_at IS NULL",[userId,purpose]);
-  await this.db.query("INSERT INTO app.auth_tokens(user_id,purpose,token_hash,expires_at) VALUES($1,$2,$3,now()+$4::interval)",[userId,purpose,this.hashToken(token),expiresIn]);
+  await this.db.withTransaction(async client=>{
+   if(purpose==='password_reset'||purpose==='mfa_login') await client.query("DELETE FROM app.auth_tokens WHERE user_id=$1 AND purpose=$2 AND consumed_at IS NULL",[userId,purpose]);
+   await client.query("INSERT INTO app.auth_tokens(user_id,purpose,token_hash,expires_at) VALUES($1,$2,$3,now()+$4::interval)",[userId,purpose,this.hashToken(token),expiresIn]);
+  });
   return token;
  }
 
@@ -175,29 +179,32 @@ export class AuthService{
  }
 
  async setupMfa(userId:string){
-  const user=await this.db.query<{email:string;mfa_enabled:boolean}>('SELECT email,mfa_enabled FROM app.users WHERE id=$1 AND status=\'active\' AND email_verified_at IS NOT NULL',[userId]);
-  if(!user.rowCount)throw new UnauthorizedException('User account is unavailable');
-  if(user.rows[0].mfa_enabled)throw new ConflictException('MFA is already enabled');
   const secret=this.base32Encode(randomBytes(20));
   const encrypted=this.encryptSecret(secret);
-  await this.db.query("INSERT INTO app.mfa_credentials(user_id,secret_ciphertext,secret_iv,secret_auth_tag,key_version,enrolled_at) VALUES($1,$2,$3,$4,'v1',NULL) ON CONFLICT(user_id) DO UPDATE SET secret_ciphertext=EXCLUDED.secret_ciphertext,secret_iv=EXCLUDED.secret_iv,secret_auth_tag=EXCLUDED.secret_auth_tag,key_version='v1',enrolled_at=NULL,updated_at=now()",[userId,encrypted.ciphertext,encrypted.iv,encrypted.authTag]);
-  const issuer='Index Assist',label=encodeURIComponent(user.rows[0].email);
+  const email=await this.db.withTransaction(async client=>{
+   const user=await client.query<{email:string;mfa_enabled:boolean}>("SELECT email,mfa_enabled FROM app.users WHERE id=$1 AND status='active' AND email_verified_at IS NOT NULL FOR UPDATE",[userId]);
+   if(!user.rowCount)throw new UnauthorizedException('User account is unavailable');
+   if(user.rows[0].mfa_enabled)throw new ConflictException('MFA is already enabled');
+   await client.query("INSERT INTO app.mfa_credentials(user_id,secret_ciphertext,secret_iv,secret_auth_tag,key_version,enrolled_at) VALUES($1,$2,$3,$4,'v1',NULL) ON CONFLICT(user_id) DO UPDATE SET secret_ciphertext=EXCLUDED.secret_ciphertext,secret_iv=EXCLUDED.secret_iv,secret_auth_tag=EXCLUDED.secret_auth_tag,key_version='v1',enrolled_at=NULL,updated_at=now()",[userId,encrypted.ciphertext,encrypted.iv,encrypted.authTag]);
+   return user.rows[0].email;
+  });
+  const issuer='Index Assist',label=encodeURIComponent(email);
   return {mfaEnabled:false,secret,otpauthUri:'otpauth://totp/'+issuer+':'+label+'?secret='+secret+'&issuer='+encodeURIComponent(issuer)+'&algorithm=SHA1&digits=6&period=30'};
  }
 
  async verifyMfa(userId:string,code:string){
-  const state=await this.db.query<{mfa_enabled:boolean}>("SELECT mfa_enabled FROM app.users WHERE id=$1 AND status='active'",[userId]);
-  if(!state.rowCount)throw new UnauthorizedException('User account is unavailable');
-  if(state.rows[0].mfa_enabled)throw new ConflictException('MFA is already enabled');
-  const row=await this.db.query<{secret_ciphertext:Buffer;secret_iv:Buffer;secret_auth_tag:Buffer}>("SELECT secret_ciphertext,secret_iv,secret_auth_tag FROM app.mfa_credentials WHERE user_id=$1",[userId]);
-  if(!row.rowCount)throw new BadRequestException('MFA enrollment has not been started');
-  if(!this.verifyTotp(this.decryptSecret(row.rows[0]),code))throw new UnauthorizedException('Invalid MFA code');
   const recoveryCodes=Array.from({length:10},()=>randomBytes(5).toString('hex').toUpperCase());
   await this.db.withTransaction(async client=>{
-   await client.query("UPDATE app.users SET mfa_enabled=true,updated_at=now() WHERE id=$1",[userId]);
+   const state=await client.query<{mfa_enabled:boolean}>("SELECT mfa_enabled FROM app.users WHERE id=$1 AND status='active' FOR UPDATE",[userId]);
+   if(!state.rowCount)throw new UnauthorizedException('User account is unavailable');
+   if(state.rows[0].mfa_enabled)throw new ConflictException('MFA is already enabled');
+   const row=await client.query<{secret_ciphertext:Buffer;secret_iv:Buffer;secret_auth_tag:Buffer}>("SELECT secret_ciphertext,secret_iv,secret_auth_tag FROM app.mfa_credentials WHERE user_id=$1 FOR UPDATE",[userId]);
+   if(!row.rowCount)throw new BadRequestException('MFA enrollment has not been started');
+   if(!this.verifyTotp(this.decryptSecret(row.rows[0]),code))throw new UnauthorizedException('Invalid MFA code');
+   await client.query("UPDATE app.users SET mfa_enabled=true,updated_at=now() WHERE id=$1 AND mfa_enabled=false",[userId]);
    await client.query("UPDATE app.mfa_credentials SET enrolled_at=now(),updated_at=now() WHERE user_id=$1",[userId]);
    await client.query("DELETE FROM app.auth_tokens WHERE user_id=$1 AND purpose='mfa_recovery' AND consumed_at IS NULL",[userId]);
-   for(const code of recoveryCodes)await client.query("INSERT INTO app.auth_tokens(user_id,purpose,token_hash,expires_at) VALUES($1,'mfa_recovery',$2,now()+interval '10 years')",[userId,this.hashToken(code)]);
+   for(const recoveryCode of recoveryCodes)await client.query("INSERT INTO app.auth_tokens(user_id,purpose,token_hash,expires_at) VALUES($1,'mfa_recovery',$2,now()+interval '10 years')",[userId,this.hashToken(recoveryCode)]);
   });
   return {mfaEnabled:true,recoveryCodes};
  }
