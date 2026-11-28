@@ -25,16 +25,19 @@
 - [x] CI run #46103551185 passes on `23808e3dc06c98bcb9c9538c856acb41521b7a55`, including new verified-property URL-scope regression tests.
 - [x] CI run #46103822023 passes on `f0b8ac2c8b837553a765e10ac1456ef52c3a7636`, including provider quota-decision unit tests.
 - [x] CI run #46107552896 passes on `1a9be1d87fa541866777475f28d0a6c3fe682bb4`: database migration/RLS/auth regressions, crawler Go race/vet, Node typecheck/build/Jest, worker syntax and age-encrypted backup/restore tests.
-- [ ] Fresh CI validation for Redis-backed throttler implementation and outage tests (pending).
+- [x] CI #276 passed Redis two-client integration, API typecheck/build/Jest, worker tests, crawler Go race/vet and database regression suites.
+- [ ] CI #277 validation for the additional Redis reconnect/recovery regression test (pending).
 - [x] Added Redis integration test with two independent storage clients to verify shared counters and blocked state; CI Node job now provisions Redis service.
 - [x] Redis client is a Nest-managed provider and disconnects during application shutdown.
 - [x] API readiness checks PostgreSQL and Redis; added controller tests for Redis-unavailable readiness.
 - [x] Redis uses `noeviction`; rejected counter writes fail closed rather than evicting active throttle state.
+- [x] Redis client retries transient reconnects with bounded backoff; rate-limited requests remain fail-closed until ready.
 - [x] Added KafkaJS TLS/SCRAM-SHA-512 config for outbox relay/provider worker and kafka-go TLS/SCRAM-SHA-512 config for crawler.
 - [x] Production worker/crawler startup rejects plaintext Kafka configuration; added Node/Go config tests, CA-file mounts and env examples.
 - [x] Added Redpanda TLS/SASL example and Kafka security/ACL rollout runbook.
 - [ ] Activate broker TLS/SASL/ACL on non-production Redpanda; verify each service principal and denied cross-topic/group access.
-- [ ] Fresh CI validation for Redis and Kafka client changes.
+- [x] CI #276 passed Redis and Kafka client changes; [workflow](https://github.com/seokillseo-byte/index/actions/runs/46110245705).
+- [ ] CI #277 for the follow-up Redis reconnect regression test (pending).
 
 ## Provider Job Engine
 
