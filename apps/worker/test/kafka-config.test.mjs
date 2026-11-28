@@ -10,6 +10,10 @@ test('Kafka client requires complete TLS-protected SCRAM configuration',()=>{
   assert.throws(()=>buildKafkaConfig({KAFKA_BROKERS:'broker:9092',KAFKA_SASL_USERNAME:'relay',KAFKA_SASL_PASSWORD:'secret',KAFKA_SASL_MECHANISM:'plain',KAFKA_TLS_CA_FILE:'/ca.pem'}),/SCRAM-SHA-512/);
 });
 
+test('production Kafka clients reject plaintext configuration',()=>{
+  assert.throws(()=>buildKafkaConfig({NODE_ENV:'production',KAFKA_BROKERS:'broker:9092'}),/require TLS and SCRAM-SHA-512/);
+});
+
 test('Kafka client enables certificate-verified TLS and SCRAM-SHA-512',()=>{
   const dir=mkdtempSync(join(tmpdir(),'index-kafka-'));
   try {
