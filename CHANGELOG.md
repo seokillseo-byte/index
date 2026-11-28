@@ -270,3 +270,9 @@
 
 - Added negative-path mock cases for missing Kafka CA, missing Admin API CA and an empty Admin API CA file. These complement the existing unreadable-CA and credential/configuration rejection tests.
 - The tests are wired into the existing Node CI workflow; execution on the new commit remains unconfirmed. No local test execution or live broker test is claimed.
+
+
+## 2026-11-29 — Empty Kafka CA rejection regression
+
+- Added a mock negative-path case for an empty Kafka CA file. The provisioner test suite now covers missing, empty and unreadable Kafka CA inputs, plus missing and empty Admin API CA inputs, alongside the existing security-configuration rejection cases.
+- CI is configured to run this test, but execution on the latest branch head has not been confirmed. No local shell test or live broker validation is claimed.
