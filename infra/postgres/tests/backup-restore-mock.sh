@@ -68,7 +68,320 @@ artifacts=("$OUT"/*.dump.age)
 [[ "${#artifacts[@]}" -eq 1 ]]
 dump="${artifacts[0]}"
 [[ -s "$dump" && -s "$dump.sha256" ]]
-grep -q '^encryption=age$' "${dump%.dump.age}.manifest"
+grep -q '^encryption=age
+[[ "$(stat -c '%a' "$dump")" == 600 ]]
+plain_path="$(tail -n 1 "$MOCK_LOG")"
+[[ ! -e "$plain_path" ]]
+
+identity="$TMP/age-identity.txt"
+printf 'AGE-SECRET-IDENTITY-MOCK\n' > "$identity"
+chmod 600 "$identity"
+export RESTORE_DATABASE_URL='postgresql://mock.invalid/restore'
+export RESTORE_DUMP_FILE="$dump"
+export RESTORE_AGE_IDENTITY_FILE="$identity"
+export RESTORE_CONFIRM_NONPROD=YES
+export RESTORE_TARGET_EMPTY=YES
+bash "$ROOT/infra/postgres/restore.sh" >/dev/null
+[[ "$(cat "$RESTORE_MARKER")" == "$RESTORE_DATABASE_URL" ]]
+
+rm -f "$RESTORE_MARKER"
+chmod 644 "$identity"
+if bash "$ROOT/infra/postgres/restore.sh" >/dev/null 2>&1; then
+  echo 'restore accepted an age identity readable by other users' >&2
+  exit 1
+fi
+chmod 600 "$identity"
+[[ ! -e "$RESTORE_MARKER" ]]
+if RESTORE_CONFIRM_NONPROD=NO bash "$ROOT/infra/postgres/restore.sh" >/dev/null 2>&1; then
+  echo 'restore safety confirmation was not enforced' >&2
+  exit 1
+fi
+[[ ! -e "$RESTORE_MARKER" ]]
+
+# Invalid and duplicate recipients must be rejected before any dump is created.
+before_invalid="$(find "$OUT" -maxdepth 1 -name '*.dump.age' | wc -l)"
+if BACKUP_AGE_RECIPIENTS='not-an-age-recipient' bash "$ROOT/infra/postgres/backup.sh" >/dev/null 2>&1; then
+  echo 'backup accepted an invalid age recipient' >&2
+  exit 1
+fi
+if BACKUP_AGE_RECIPIENTS='age1aaaaaaaaaaaaaaaaaaaa,age1aaaaaaaaaaaaaaaaaaaa' bash "$ROOT/infra/postgres/backup.sh" >/dev/null 2>&1; then
+  echo 'backup accepted duplicate age recipients' >&2
+  exit 1
+fi
+[[ "$(find "$OUT" -maxdepth 1 -name '*.dump.age' | wc -l)" == "$before_invalid" ]]
+
+# When age is installed (CI installs it), exercise real authenticated encryption/decryption.
+if command -v age-keygen >/dev/null 2>&1; then
+  mv "$BIN/age" "$BIN/age.mock"
+  real_identity="$TMP/real-age-identity.txt"
+  age-keygen -o "$real_identity" >/dev/null 2>&1
+  real_recipient="$(age-keygen -y "$real_identity")"
+  recovery_identity="$TMP/recovery-age-identity.txt"
+  age-keygen -o "$recovery_identity" >/dev/null 2>&1
+  recovery_recipient="$(age-keygen -y "$recovery_identity")"
+  export BACKUP_AGE_RECIPIENTS="$real_recipient,$recovery_recipient"
+  bash "$ROOT/infra/postgres/backup.sh" >/dev/null
+  real_dump="$(ls -1t "$OUT"/*.dump.age | head -n 1)"
+  ! grep -q 'mock-pg-dump-archive' "$real_dump"
+  grep -q '^recipient_count=2
+  export RESTORE_DUMP_FILE="$real_dump"
+  export RESTORE_AGE_IDENTITY_FILE="$real_identity"
+  bash "$ROOT/infra/postgres/restore.sh" >/dev/null
+  [[ "$(cat "$RESTORE_MARKER")" == "$RESTORE_DATABASE_URL" ]]
+  rm -f "$RESTORE_MARKER"
+  export RESTORE_AGE_IDENTITY_FILE="$recovery_identity"
+  bash "$ROOT/infra/postgres/restore.sh" >/dev/null
+  [[ "$(cat "$RESTORE_MARKER")" == "$RESTORE_DATABASE_URL" ]]
+  rm -f "$RESTORE_MARKER"
+  wrong_identity="$TMP/wrong-age-identity.txt"
+  age-keygen -o "$wrong_identity" >/dev/null 2>&1
+  export RESTORE_AGE_IDENTITY_FILE="$wrong_identity"
+  if bash "$ROOT/infra/postgres/restore.sh" >/dev/null 2>&1; then
+    echo 'restore accepted an unrelated age identity' >&2
+    exit 1
+  fi
+  [[ ! -e "$RESTORE_MARKER" ]]
+fi
+
+tampered="$OUT/tampered.dump.age"
+cp "$dump" "$tampered"
+printf 'tamper' >> "$tampered"
+printf '%s  %s\\n' "$(sha256sum "$dump" | awk '{print $1}')" "$(basename "$tampered")" > "$tampered.sha256"
+export RESTORE_DUMP_FILE="$tampered"
+if bash "$ROOT/infra/postgres/restore.sh" >/dev/null 2>&1; then
+  echo 'tampered encrypted backup was accepted' >&2
+  exit 1
+fi
+[[ ! -e "$RESTORE_MARKER" ]]
+echo 'backup/restore mock tests passed'
+ "${dump%.dump.age}.manifest"
+grep -q '^recipient_count=1
+[[ "$(stat -c '%a' "$dump")" == 600 ]]
+plain_path="$(tail -n 1 "$MOCK_LOG")"
+[[ ! -e "$plain_path" ]]
+
+identity="$TMP/age-identity.txt"
+printf 'AGE-SECRET-IDENTITY-MOCK\n' > "$identity"
+chmod 600 "$identity"
+export RESTORE_DATABASE_URL='postgresql://mock.invalid/restore'
+export RESTORE_DUMP_FILE="$dump"
+export RESTORE_AGE_IDENTITY_FILE="$identity"
+export RESTORE_CONFIRM_NONPROD=YES
+export RESTORE_TARGET_EMPTY=YES
+bash "$ROOT/infra/postgres/restore.sh" >/dev/null
+[[ "$(cat "$RESTORE_MARKER")" == "$RESTORE_DATABASE_URL" ]]
+
+rm -f "$RESTORE_MARKER"
+chmod 644 "$identity"
+if bash "$ROOT/infra/postgres/restore.sh" >/dev/null 2>&1; then
+  echo 'restore accepted an age identity readable by other users' >&2
+  exit 1
+fi
+chmod 600 "$identity"
+[[ ! -e "$RESTORE_MARKER" ]]
+if RESTORE_CONFIRM_NONPROD=NO bash "$ROOT/infra/postgres/restore.sh" >/dev/null 2>&1; then
+  echo 'restore safety confirmation was not enforced' >&2
+  exit 1
+fi
+[[ ! -e "$RESTORE_MARKER" ]]
+
+# When age is installed (CI installs it), exercise real authenticated encryption/decryption.
+if command -v age-keygen >/dev/null 2>&1; then
+  mv "$BIN/age" "$BIN/age.mock"
+  real_identity="$TMP/real-age-identity.txt"
+  age-keygen -o "$real_identity" >/dev/null 2>&1
+  real_recipient="$(age-keygen -y "$real_identity")"
+  export BACKUP_AGE_RECIPIENT="$real_recipient"
+  bash "$ROOT/infra/postgres/backup.sh" >/dev/null
+  real_dump="$(ls -1t "$OUT"/*.dump.age | head -n 1)"
+  ! grep -q 'mock-pg-dump-archive' "$real_dump"
+  export RESTORE_DUMP_FILE="$real_dump"
+  export RESTORE_AGE_IDENTITY_FILE="$real_identity"
+  bash "$ROOT/infra/postgres/restore.sh" >/dev/null
+  [[ "$(cat "$RESTORE_MARKER")" == "$RESTORE_DATABASE_URL" ]]
+  rm -f "$RESTORE_MARKER"
+  wrong_identity="$TMP/wrong-age-identity.txt"
+  age-keygen -o "$wrong_identity" >/dev/null 2>&1
+  export RESTORE_AGE_IDENTITY_FILE="$wrong_identity"
+  if bash "$ROOT/infra/postgres/restore.sh" >/dev/null 2>&1; then
+    echo 'restore accepted an unrelated age identity' >&2
+    exit 1
+  fi
+  [[ ! -e "$RESTORE_MARKER" ]]
+fi
+
+tampered="$OUT/tampered.dump.age"
+cp "$dump" "$tampered"
+printf 'tamper' >> "$tampered"
+printf '%s  %s\\n' "$(sha256sum "$dump" | awk '{print $1}')" "$(basename "$tampered")" > "$tampered.sha256"
+export RESTORE_DUMP_FILE="$tampered"
+if bash "$ROOT/infra/postgres/restore.sh" >/dev/null 2>&1; then
+  echo 'tampered encrypted backup was accepted' >&2
+  exit 1
+fi
+[[ ! -e "$RESTORE_MARKER" ]]
+echo 'backup/restore mock tests passed'
+ "${dump%.dump.age}.manifest"
+[[ "$(stat -c '%a' "$dump")" == 600 ]]
+plain_path="$(tail -n 1 "$MOCK_LOG")"
+[[ ! -e "$plain_path" ]]
+
+identity="$TMP/age-identity.txt"
+printf 'AGE-SECRET-IDENTITY-MOCK\n' > "$identity"
+chmod 600 "$identity"
+export RESTORE_DATABASE_URL='postgresql://mock.invalid/restore'
+export RESTORE_DUMP_FILE="$dump"
+export RESTORE_AGE_IDENTITY_FILE="$identity"
+export RESTORE_CONFIRM_NONPROD=YES
+export RESTORE_TARGET_EMPTY=YES
+bash "$ROOT/infra/postgres/restore.sh" >/dev/null
+[[ "$(cat "$RESTORE_MARKER")" == "$RESTORE_DATABASE_URL" ]]
+
+rm -f "$RESTORE_MARKER"
+chmod 644 "$identity"
+if bash "$ROOT/infra/postgres/restore.sh" >/dev/null 2>&1; then
+  echo 'restore accepted an age identity readable by other users' >&2
+  exit 1
+fi
+chmod 600 "$identity"
+[[ ! -e "$RESTORE_MARKER" ]]
+if RESTORE_CONFIRM_NONPROD=NO bash "$ROOT/infra/postgres/restore.sh" >/dev/null 2>&1; then
+  echo 'restore safety confirmation was not enforced' >&2
+  exit 1
+fi
+[[ ! -e "$RESTORE_MARKER" ]]
+
+# When age is installed (CI installs it), exercise real authenticated encryption/decryption.
+if command -v age-keygen >/dev/null 2>&1; then
+  mv "$BIN/age" "$BIN/age.mock"
+  real_identity="$TMP/real-age-identity.txt"
+  age-keygen -o "$real_identity" >/dev/null 2>&1
+  real_recipient="$(age-keygen -y "$real_identity")"
+  export BACKUP_AGE_RECIPIENT="$real_recipient"
+  bash "$ROOT/infra/postgres/backup.sh" >/dev/null
+  real_dump="$(ls -1t "$OUT"/*.dump.age | head -n 1)"
+  ! grep -q 'mock-pg-dump-archive' "$real_dump"
+  export RESTORE_DUMP_FILE="$real_dump"
+  export RESTORE_AGE_IDENTITY_FILE="$real_identity"
+  bash "$ROOT/infra/postgres/restore.sh" >/dev/null
+  [[ "$(cat "$RESTORE_MARKER")" == "$RESTORE_DATABASE_URL" ]]
+  rm -f "$RESTORE_MARKER"
+  wrong_identity="$TMP/wrong-age-identity.txt"
+  age-keygen -o "$wrong_identity" >/dev/null 2>&1
+  export RESTORE_AGE_IDENTITY_FILE="$wrong_identity"
+  if bash "$ROOT/infra/postgres/restore.sh" >/dev/null 2>&1; then
+    echo 'restore accepted an unrelated age identity' >&2
+    exit 1
+  fi
+  [[ ! -e "$RESTORE_MARKER" ]]
+fi
+
+tampered="$OUT/tampered.dump.age"
+cp "$dump" "$tampered"
+printf 'tamper' >> "$tampered"
+printf '%s  %s\\n' "$(sha256sum "$dump" | awk '{print $1}')" "$(basename "$tampered")" > "$tampered.sha256"
+export RESTORE_DUMP_FILE="$tampered"
+if bash "$ROOT/infra/postgres/restore.sh" >/dev/null 2>&1; then
+  echo 'tampered encrypted backup was accepted' >&2
+  exit 1
+fi
+[[ ! -e "$RESTORE_MARKER" ]]
+echo 'backup/restore mock tests passed'
+ "${real_dump%.dump.age}.manifest"
+  export RESTORE_DUMP_FILE="$real_dump"
+  export RESTORE_AGE_IDENTITY_FILE="$real_identity"
+  bash "$ROOT/infra/postgres/restore.sh" >/dev/null
+  [[ "$(cat "$RESTORE_MARKER")" == "$RESTORE_DATABASE_URL" ]]
+  rm -f "$RESTORE_MARKER"
+  wrong_identity="$TMP/wrong-age-identity.txt"
+  age-keygen -o "$wrong_identity" >/dev/null 2>&1
+  export RESTORE_AGE_IDENTITY_FILE="$wrong_identity"
+  if bash "$ROOT/infra/postgres/restore.sh" >/dev/null 2>&1; then
+    echo 'restore accepted an unrelated age identity' >&2
+    exit 1
+  fi
+  [[ ! -e "$RESTORE_MARKER" ]]
+fi
+
+tampered="$OUT/tampered.dump.age"
+cp "$dump" "$tampered"
+printf 'tamper' >> "$tampered"
+printf '%s  %s\\n' "$(sha256sum "$dump" | awk '{print $1}')" "$(basename "$tampered")" > "$tampered.sha256"
+export RESTORE_DUMP_FILE="$tampered"
+if bash "$ROOT/infra/postgres/restore.sh" >/dev/null 2>&1; then
+  echo 'tampered encrypted backup was accepted' >&2
+  exit 1
+fi
+[[ ! -e "$RESTORE_MARKER" ]]
+echo 'backup/restore mock tests passed'
+ "${dump%.dump.age}.manifest"
+grep -q '^recipient_count=1
+[[ "$(stat -c '%a' "$dump")" == 600 ]]
+plain_path="$(tail -n 1 "$MOCK_LOG")"
+[[ ! -e "$plain_path" ]]
+
+identity="$TMP/age-identity.txt"
+printf 'AGE-SECRET-IDENTITY-MOCK\n' > "$identity"
+chmod 600 "$identity"
+export RESTORE_DATABASE_URL='postgresql://mock.invalid/restore'
+export RESTORE_DUMP_FILE="$dump"
+export RESTORE_AGE_IDENTITY_FILE="$identity"
+export RESTORE_CONFIRM_NONPROD=YES
+export RESTORE_TARGET_EMPTY=YES
+bash "$ROOT/infra/postgres/restore.sh" >/dev/null
+[[ "$(cat "$RESTORE_MARKER")" == "$RESTORE_DATABASE_URL" ]]
+
+rm -f "$RESTORE_MARKER"
+chmod 644 "$identity"
+if bash "$ROOT/infra/postgres/restore.sh" >/dev/null 2>&1; then
+  echo 'restore accepted an age identity readable by other users' >&2
+  exit 1
+fi
+chmod 600 "$identity"
+[[ ! -e "$RESTORE_MARKER" ]]
+if RESTORE_CONFIRM_NONPROD=NO bash "$ROOT/infra/postgres/restore.sh" >/dev/null 2>&1; then
+  echo 'restore safety confirmation was not enforced' >&2
+  exit 1
+fi
+[[ ! -e "$RESTORE_MARKER" ]]
+
+# When age is installed (CI installs it), exercise real authenticated encryption/decryption.
+if command -v age-keygen >/dev/null 2>&1; then
+  mv "$BIN/age" "$BIN/age.mock"
+  real_identity="$TMP/real-age-identity.txt"
+  age-keygen -o "$real_identity" >/dev/null 2>&1
+  real_recipient="$(age-keygen -y "$real_identity")"
+  export BACKUP_AGE_RECIPIENT="$real_recipient"
+  bash "$ROOT/infra/postgres/backup.sh" >/dev/null
+  real_dump="$(ls -1t "$OUT"/*.dump.age | head -n 1)"
+  ! grep -q 'mock-pg-dump-archive' "$real_dump"
+  export RESTORE_DUMP_FILE="$real_dump"
+  export RESTORE_AGE_IDENTITY_FILE="$real_identity"
+  bash "$ROOT/infra/postgres/restore.sh" >/dev/null
+  [[ "$(cat "$RESTORE_MARKER")" == "$RESTORE_DATABASE_URL" ]]
+  rm -f "$RESTORE_MARKER"
+  wrong_identity="$TMP/wrong-age-identity.txt"
+  age-keygen -o "$wrong_identity" >/dev/null 2>&1
+  export RESTORE_AGE_IDENTITY_FILE="$wrong_identity"
+  if bash "$ROOT/infra/postgres/restore.sh" >/dev/null 2>&1; then
+    echo 'restore accepted an unrelated age identity' >&2
+    exit 1
+  fi
+  [[ ! -e "$RESTORE_MARKER" ]]
+fi
+
+tampered="$OUT/tampered.dump.age"
+cp "$dump" "$tampered"
+printf 'tamper' >> "$tampered"
+printf '%s  %s\\n' "$(sha256sum "$dump" | awk '{print $1}')" "$(basename "$tampered")" > "$tampered.sha256"
+export RESTORE_DUMP_FILE="$tampered"
+if bash "$ROOT/infra/postgres/restore.sh" >/dev/null 2>&1; then
+  echo 'tampered encrypted backup was accepted' >&2
+  exit 1
+fi
+[[ ! -e "$RESTORE_MARKER" ]]
+echo 'backup/restore mock tests passed'
+ "${dump%.dump.age}.manifest"
 [[ "$(stat -c '%a' "$dump")" == 600 ]]
 plain_path="$(tail -n 1 "$MOCK_LOG")"
 [[ ! -e "$plain_path" ]]
