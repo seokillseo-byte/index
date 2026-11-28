@@ -68,3 +68,8 @@
 ### Release note
 
 No production deployment, secret rotation, destructive data operation, or main-branch merge was performed in this checkpoint.
+
+### Validation bookkeeping
+
+- Focused authentication and tenant/session isolation tests are present in the branch.
+- The remaining validation gate is a fresh CI result for the current branch head; no production release action is implied by this checkpoint.
