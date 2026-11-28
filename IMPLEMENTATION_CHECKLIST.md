@@ -63,7 +63,7 @@
 
 ## Release validation
 
-- [ ] Production VPS deployment.
+- [ ] Production VPS deployment (release procedure documented).
 - [ ] Production HTTPS/DNS validation.
 - [ ] Google OAuth production connection test.
 - [ ] Bing OAuth/API-key production connection test.
