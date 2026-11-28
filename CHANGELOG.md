@@ -1,3 +1,11 @@
+## 2026-11-28 — Backup tooling CI validation and failure cleanup
+
+- CI run #46105828409 passed on `441df56070b520d65bdf7447b4e1e8260532fe23`; includes Bash syntax checks for backup and restore scripts, Node build/tests, Go race/vet and DB migrations/regressions.
+- Hardened backup failure handling to remove partial artifacts unless the full archive/checksum/manifest validation succeeds.
+- Added non-interactive PostgreSQL client flags to avoid hanging for password prompts; credentials must be supplied securely through approved environment/pgpass configuration.
+- CI run #46105880673 passed on `c6171e948ba7e9d3487a4eb523c93535a487a330` across Node build/tests, Go race/vet, Bash syntax and database checks.
+- The scripts are CI syntax-validated only; no real database backup or restore drill has been executed.
+
 ## 2026-11-28 — Backup/restore tooling and benchmark protocols
 
 - Added PostgreSQL custom-format backup with restrictive permissions, archive listing validation, SHA-256 checksum and manifest.

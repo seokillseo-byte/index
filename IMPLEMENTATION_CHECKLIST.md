@@ -55,6 +55,8 @@
 - [ ] Validate 1,000,000 URLs/day using measured end-to-end capacity.
 - [ ] Google/Bing end-to-end test with non-production provider accounts.
 - [x] Add guarded PostgreSQL custom-format backup and non-production restore scripts with checksum/archive validation.
+- [x] Remove partial backup artifacts on failure and prevent interactive password prompts in unattended operations.
+- [x] CI validates Bash syntax for both operational scripts.
 - [x] Document post-restore validation and operational limitations.
 - [ ] Execute non-production restore drill and record evidence.
 - [ ] Security review.
