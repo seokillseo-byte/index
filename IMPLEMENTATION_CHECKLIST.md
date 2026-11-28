@@ -59,6 +59,7 @@
 - [x] Remove partial backup artifacts on failure and prevent interactive password prompts in unattended operations.
 - [x] CI validates Bash syntax and runs backup/restore safety tests, including temporary plaintext cleanup, restore guard and checksum tamper rejection (CI #178 passed).
 - [x] CI installs age and verifies real ephemeral-key encryption/decryption plus wrong-identity rejection (CI #180 passed); PostgreSQL itself remains mocked.
+- [x] Restore rejects age identity files with group/other permissions; CI coverage added for the permission guard.
 - [x] Document post-restore validation and operational limitations.
 - [ ] Configure protected age identity storage/key recovery and off-site encrypted backup replication.
 - [ ] Execute non-production restore drill and record evidence.

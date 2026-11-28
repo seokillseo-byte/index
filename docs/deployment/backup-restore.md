@@ -28,7 +28,7 @@ Use a dedicated backup identity with `pg_dump` privileges and secure PostgreSQL 
 
 1. Provision a new, empty, disposable non-production database. Never point this procedure at production.
 2. Copy the encrypted `.dump.age` artifact and matching `.sha256` file to the restore host.
-3. Make the corresponding private age identity available through a protected file with restrictive permissions.
+3. Make the corresponding private age identity available through a protected file with owner-only permissions (for example, `chmod 600`). The restore script rejects identity files accessible to group/other users.
 4. Run:
 
 ```bash

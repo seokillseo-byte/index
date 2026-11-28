@@ -8,6 +8,9 @@ set -euo pipefail
 [[ -s "$RESTORE_DUMP_FILE" ]] || { echo "Encrypted dump missing or empty" >&2; exit 1; }
 [[ "$RESTORE_DUMP_FILE" == *.dump.age ]] || { echo "Only age-encrypted .dump.age backups are accepted" >&2; exit 1; }
 [[ -r "$RESTORE_AGE_IDENTITY_FILE" ]] || { echo "Age identity file is not readable" >&2; exit 1; }
+command -v stat >/dev/null
+identity_mode="$(stat -c '%a' "$RESTORE_AGE_IDENTITY_FILE")"
+[[ "$identity_mode" =~ ^[0-7]*00$ ]] || { echo "Age identity file must not be accessible by group or other users (chmod 600)" >&2; exit 1; }
 command -v pg_restore >/dev/null
 command -v age >/dev/null
 command -v sha256sum >/dev/null

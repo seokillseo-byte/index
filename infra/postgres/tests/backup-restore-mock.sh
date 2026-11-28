@@ -85,6 +85,13 @@ bash "$ROOT/infra/postgres/restore.sh" >/dev/null
 [[ "$(cat "$RESTORE_MARKER")" == "$RESTORE_DATABASE_URL" ]]
 
 rm -f "$RESTORE_MARKER"
+chmod 644 "$identity"
+if bash "$ROOT/infra/postgres/restore.sh" >/dev/null 2>&1; then
+  echo 'restore accepted an age identity readable by other users' >&2
+  exit 1
+fi
+chmod 600 "$identity"
+[[ ! -e "$RESTORE_MARKER" ]]
 if RESTORE_CONFIRM_NONPROD=NO bash "$ROOT/infra/postgres/restore.sh" >/dev/null 2>&1; then
   echo 'restore safety confirmation was not enforced' >&2
   exit 1
