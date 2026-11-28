@@ -118,3 +118,9 @@ Next: provision actual non-production certificates and secret files, bring up th
 - The short-password case temporarily removes the outbox principal from the mock state so the provisioner must validate the supplied password instead of taking the idempotent existing-user path. The test then restores the fixture and asserts rejected configurations did not mutate topic/user/ACL counts.
 - Latest code checkpoint: `dca6ddaeba566a3f2d40b4c7ef7f8b992b9f1e66`. These tests are wired into the Node CI job, but this workflow cannot execute repository shell commands; latest CI run/status remains unconfirmed through the available GitHub Actions lookup.
 - No live broker, VPS, credentials, certificates or persistent data volume was accessed.
+
+
+## 2026-11-29 — Redpanda CA negative-path coverage follow-up
+- Extended secure provisioner mock rejection coverage to include missing Kafka CA, missing Admin API CA and an empty Admin API CA file.
+- These are source-level regression cases wired into the Node CI job; execution on the current branch head is not confirmed by the available workflow/status lookup.
+- Live broker TLS/SCRAM/ACL, credential/CA handshake, restart/recovery and cold-copy volume migration remain unverified release gates.
