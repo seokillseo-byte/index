@@ -128,3 +128,12 @@ Google URL Inspection is inspection evidence, not an indexing request. Bing subm
 - [ ] CI validation for `11ae3cd1b9c8e2bf222475ee1602fc783061b139` — pending confirmation; the available run/status lookup returned no entries.
 - [ ] Live non-production broker TLS/SCRAM, positive/negative ACL, invalid credential/CA and restart/recovery tests remain outstanding.
 - [ ] Disposable cold-copy volume upgrade/rollback rehearsal remains outstanding.
+
+
+## Secure Redpanda provisioner negative-path regression coverage (2026-11-29)
+
+- [x] Add mock rejection cases for plaintext Kafka, disabled Admin API TLS, non-SCRAM mechanism, missing bootstrap Admin password, short service password and unreadable CA.
+- [x] Ensure the short-password fixture exercises new-user creation rather than the existing-principal idempotency path.
+- [x] Assert rejected configurations do not change mock topic, principal or ACL counts.
+- [ ] CI execution/result for latest branch commit — pending confirmation.
+- [ ] Live non-production TLS/SCRAM/ACL and restart/recovery validation — outstanding.
