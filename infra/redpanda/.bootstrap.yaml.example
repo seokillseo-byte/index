@@ -1,0 +1,5 @@
+# Copy to /etc/redpanda/.bootstrap.yaml before the FIRST startup of a NEW cluster.
+# This file is consumed only on initial cluster creation; later edits are ignored.
+admin_api_require_auth: true
+superusers:
+  - index-assist-admin
