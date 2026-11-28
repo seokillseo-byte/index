@@ -8,7 +8,7 @@ This runbook covers the existing `url.ingestion` and `provider.jobs` topics and 
 
 **Status: client support and configuration templates are implemented; broker activation and ACL provisioning remain a release gate.** The Compose broker still pins Redpanda `v24.3.7` and uses a plaintext listener; that release line is end-of-support. Current Redpanda documentation lists `v26.3` as the latest release line (released November 2026), with `v26.3.1` published November 20, 2026. The example template now targets `v26.3.1`, but the Compose image is deliberately NOT upgraded: this repository uses a persistent data volume, and a broker data-format upgrade must be rehearsed with a backup and the supported upgrade path before changing the image tag. Do not use the current Compose broker for production.
 
-The example broker configuration is `infra/redpanda/redpanda.yaml.example`, targeting the v26.3 configuration model. It enables SASL on the Kafka listener, Kafka ACL authorization, Kafka TLS, and a loopback-only TLS Admin API. `infra/redpanda/.bootstrap.yaml.example` protects the Admin API before first startup of a new cluster. These templates are not mounted by the current Compose stack and are not yet validated against a live broker; do not treat them as an active security boundary until compatibility and non-production integration tests pass.
+The example broker configuration is infra/redpanda/redpanda.yaml.example, targeting the v26.3 configuration model. It enables SASL on the Kafka listener, Kafka ACL authorization, Kafka TLS, and a loopback-only TLS Admin API. infra/redpanda/.bootstrap.yaml.example protects the Admin API before first startup of a new cluster. A separate non-production overlay, infra/docker/compose.redpanda.secure.yml, mounts these templates and provisions the existing topics over authenticated TLS/SCRAM. The overlay is repository code only; it has not been run against a live broker and is not production-approved.
 
 ## Required certificate material
 
@@ -16,13 +16,13 @@ Provision these files through the approved certificate/key-management process, o
 
 - Broker certificate and private key. The certificate SAN must include `redpanda`, the advertised broker hostname used by the containers.
 - Private CA certificate used to verify broker and Admin API certificates.
-- Admin API certificate/key pair for the loopback Admin listener; its SAN must cover `localhost` (and the chosen loopback address if IP verification is used).
+- Admin API certificate/key pair for the loopback Admin listener; its SAN must cover localhost.
 - Keep broker and Admin API private keys readable only by the Redpanda service account.
 - Mount the CA certificate read-only into crawler, outbox relay and provider worker at `/run/secrets/kafka/ca.crt`.
 - Do not mount the broker private key into application containers.
 - Rotate certificates before expiry and test rotation in non-production.
 
-The example config enables TLS on the Kafka listener and the loopback Admin API; Redpanda's documented minimum TLS version is 1.2. SASL/SCRAM does not replace TLS: both are required. The Admin API is deliberately bound to `127.0.0.1` and must not be published to the Docker host or a public interface. Kafka SASL does not secure the Admin API.
+The example config enables TLS on the Kafka listener and the loopback Admin API. SASL/SCRAM does not replace TLS: both are required. The Admin API is deliberately bound to 127.0.0.1; the secure Compose overlay's one-shot provisioning container shares the broker network namespace so it can reach that loopback listener without publishing port 9644. Kafka SASL does not secure the Admin API.
 
 ## Application client configuration
 
@@ -60,7 +60,30 @@ The example keeps the Admin API loopback-only and enables TLS. If remote adminis
 
 Create the initial SCRAM superuser before enabling authorization to avoid locking out administration. Use `rpk security user create` with `--mechanism SCRAM-SHA-512`, then create each application principal and its topic/group ACLs using `rpk security acl create`. The superuser is for provisioning only, never application traffic.
 
-The current `redpanda-init` Compose job uses an unauthenticated Kafka connection and will NOT work unchanged after SASL/ACL enforcement is enabled. In a secured non-production deployment, create the existing topics through an authenticated administrative `rpk` session, or replace that init step with an authenticated, secret-injected provisioning job before enabling the protected workloads.
+The base development Compose profile still uses a plaintext v24.3.7 broker. Its topic-init job has been changed to run in the broker network namespace and call the shared provisioning script. When the secure overlay is applied, that same job is overridden to use TLS, SCRAM-SHA-512 and the bootstrap administrator credentials read from a protected secret file. It creates only the two existing topics (url.ingestion and provider.jobs), and is repeat-safe if they already exist.
+
+### Isolated non-production secure Compose rehearsal
+
+The secure overlay creates a separate named volume, redpanda_data_secure; it does NOT attach, migrate, or modify the legacy redpanda_data volume. This lets the team validate a clean v26.3.1 secured cluster without risking the existing v24.3.7 data. It is not a rehearsal of the data-format upgrade itself. For that, clone the old volume to disposable storage and follow Redpanda's supported upgrade path with a verified backup and rollback plan.
+
+1. Create the following files outside Git (the repository ignores the entire secrets/ directory):
+   - secrets/kafka/ca.crt
+   - secrets/redpanda/broker.crt and broker.key (broker certificate SAN: redpanda)
+   - secrets/redpanda/admin.crt and admin.key (Admin API certificate SAN: localhost)
+   - secrets/redpanda/admin-password (at least 32 characters, no colon; owner-readable only, e.g. mode 0600)
+2. Copy .env.redpanda.secure.example to .env.redpanda.secure. Keep REDPANDA_ADMIN_USER=index-assist-admin aligned with the superuser in .bootstrap.yaml.example.
+3. For a NEW empty cluster only, leave REDPANDA_BOOTSTRAP_ONCE=1 and start only the broker:
+   ~~~bash
+   docker compose --env-file .env --env-file .env.redpanda.secure \
+     -f infra/docker/compose.infrastructure.yml \
+     -f infra/docker/compose.redpanda.secure.yml up -d redpanda
+   ~~~
+   The broker wrapper reads the bootstrap password from the mounted secret file and exports RP_BOOTSTRAP_USER only for this first startup. The bootstrap file is read only on first cluster creation.
+4. After the authenticated Admin API health check succeeds, set REDPANDA_BOOTSTRAP_ONCE=0 and recreate the broker with the same Compose files. This removes the one-time bootstrap environment from subsequent broker processes while preserving the new secure volume. Do not skip this step.
+5. Start the complete stack with all three Compose files. The one-shot redpanda-init service waits for broker health, authenticates over TLS/SCRAM, and creates the existing topics. Workloads depend on successful completion of this job.
+6. Do not point this overlay at the existing v24.3.7 volume. For upgrade testing, make a separate cold copy/snapshot and test the exact supported upgrade sequence on disposable infrastructure first.
+
+The overlay requires the broker/admin certificate and password files to exist before Compose starts. It keeps the Kafka port published only on host loopback and does not publish Admin API port 9644. The admin password is mounted as a Docker secret; the topic provisioner reads it into the rpk process environment rather than placing it in command-line arguments.
 
 Create dedicated SCRAM-SHA-512 principals:
 
@@ -80,7 +103,27 @@ Grant only the following Kafka ACLs:
 | `index-assist-provider` | topic `provider.jobs` | Read, Describe |
 | `index-assist-provider` | group `index-assist-provider-v1` | Read |
 
-The bootstrap/admin identity may create the two existing topics. Application principals must not receive cluster-wide superuser access, topic-create permission, wildcard topic ACLs or access to the other consumer group. Because the current Compose init job is unauthenticated, it must not be used in the secured configuration.
+The bootstrap/admin identity creates the two existing topics. Application principals must not receive cluster-wide superuser access, topic-create permission, wildcard topic ACLs or access to the other consumer group. Create the three application SCRAM users through an authenticated admin session, then apply the following least-privilege ACLs. Use unique random passwords and inject them through the approved secret manager; do not reuse the bootstrap administrator password.
+
+The following commands show the exact ACL grants. Run them from the broker container or another trusted admin environment configured with TLS-verified Admin API/Kafka connections and the bootstrap superuser. User creation uses the rpk --password argument; run it only in a short-lived, access-controlled admin session, avoid shell history/audit capture of secrets, and rotate the bootstrap credential after service principals have been validated.
+
+~~~bash
+rpk security user create index-assist-outbox --password "$OUTBOX_SCRAM_PASSWORD" --mechanism SCRAM-SHA-512
+rpk security user create index-assist-crawler --password "$CRAWLER_SCRAM_PASSWORD" --mechanism SCRAM-SHA-512
+rpk security user create index-assist-provider --password "$PROVIDER_SCRAM_PASSWORD" --mechanism SCRAM-SHA-512
+
+rpk security acl create --allow-principal User:index-assist-outbox --operation write,describe --topic url.ingestion
+rpk security acl create --allow-principal User:index-assist-outbox --operation write,describe --topic provider.jobs
+rpk security acl create --allow-principal User:index-assist-outbox --operation idempotentwrite --cluster
+
+rpk security acl create --allow-principal User:index-assist-crawler --operation read,describe --topic url.ingestion
+rpk security acl create --allow-principal User:index-assist-crawler --operation read --group index-assist-crawler-v1
+
+rpk security acl create --allow-principal User:index-assist-provider --operation read,describe --topic provider.jobs
+rpk security acl create --allow-principal User:index-assist-provider --operation read --group index-assist-provider-v1
+~~~
+
+The three SCRAM passwords must then be copied into the protected .env.worker, .env.crawler and .env.provider-worker files using the matching username. Keep each workload's KAFKA_TLS_CA_FILE pointing to the read-only CA mount. Never put service credentials in a committed example file.
 
 ## Non-production verification gates
 
@@ -99,12 +142,14 @@ Do not roll out to production until the positive and negative ACL tests pass. If
 
 ## Existing CI coverage and limitations
 
-CI now includes Node tests for the shared Kafka config and Go tests for the crawler dialer configuration. These test configuration construction and fail-closed validation; they do not start Redpanda, verify SCRAM handshakes, validate broker certificates, or prove ACL enforcement. A real non-production Redpanda integration test remains required.
+CI validates Compose/Redpanda YAML syntax, shell syntax and the topic provisioner's behavior using a mock rpk command, including repeat-safe topic creation and fail-closed TLS/SCRAM settings. Node tests cover the shared Kafka config and Go tests cover crawler dialer configuration. CI does not start Redpanda, verify SCRAM handshakes, validate broker certificates, or prove ACL enforcement. A real non-production Redpanda integration test remains required.
 
 ## References
 
 - Redpanda supported versions and release lifecycle: https://docs.redpanda.com/streaming/current/
-- Redpanda v26.2 production deployment and first-start Admin API bootstrap: https://docs.redpanda.com/streaming/26.2/deploy/redpanda/manual/production/production-deployment/
+- Redpanda production deployment and first-start Admin API bootstrap: https://docs.redpanda.com/streaming/current/deploy/redpanda/manual/production/production-deployment/
+- Redpanda rpk environment variables: https://docs.redpanda.com/streaming/current/reference/environment-variables/
+- Redpanda v26.3 upgrade guide: https://docs.redpanda.com/streaming/current/upgrade/
 - Redpanda authentication and SCRAM user creation: https://docs.redpanda.com/streaming/current/manage/security/authentication/
 - Redpanda Kafka TLS: https://docs.redpanda.com/streaming/current/manage/security/encryption/
 - Redpanda ACLs: https://docs.redpanda.com/streaming/current/manage/security/authorization/acl/
