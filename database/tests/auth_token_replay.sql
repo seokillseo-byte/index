@@ -42,15 +42,15 @@ BEGIN
     RAISE EXCEPTION 'AUTH REPLAY FAILURE: consumed token remains usable';
   END IF;
 
-  SELECT count(*) INTO v_found
-    FROM app.auth_tokens
+  UPDATE app.auth_tokens
+     SET consumed_at=now()
    WHERE token_hash=v_token_hash
      AND purpose='password_reset'
      AND consumed_at IS NULL
      AND expires_at>now();
 
-  IF v_found<>0 THEN
-    RAISE EXCEPTION 'AUTH REPLAY FAILURE: second lookup can still claim the token';
+  IF FOUND THEN
+    RAISE EXCEPTION 'AUTH REPLAY FAILURE: second consumption succeeded';
   END IF;
 END $$;
 
