@@ -135,7 +135,7 @@ Do not roll out to production until the positive and negative ACL tests pass. If
 
 ## Existing CI coverage and limitations
 
-CI validates Compose/Redpanda YAML syntax, shell syntax and the topic provisioner's behavior using a mock rpk command, including repeat-safe topic creation and fail-closed TLS/SCRAM settings. Node tests cover the shared Kafka config and Go tests cover crawler dialer configuration. CI does not start Redpanda, verify SCRAM handshakes, validate broker certificates, or prove ACL enforcement. A real non-production Redpanda integration test remains required.
+CI #340 passed Compose/Redpanda YAML syntax, merged Compose config, shell syntax and mock rpk tests for repeat-safe topic creation, three SCRAM principals, least-privilege ACLs and fail-closed TLS/SCRAM settings: https://github.com/seokillseo-byte/index/actions/runs/46119413495. CI #341 passed the current documentation checkpoint: https://github.com/seokillseo-byte/index/actions/runs/46119449767. Node tests cover the shared Kafka config and Go tests cover crawler dialer configuration. CI does not start Redpanda, verify SCRAM handshakes, validate broker certificates, or prove ACL enforcement. A real non-production Redpanda integration test remains required.
 
 ## References
 
