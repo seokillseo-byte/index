@@ -2,7 +2,18 @@
 set -euo pipefail
 : "${BACKUP_DATABASE_URL:?Set BACKUP_DATABASE_URL}"
 : "${BACKUP_OUTPUT_DIR:?Set BACKUP_OUTPUT_DIR}"
-: "${BACKUP_AGE_RECIPIENT:?Set BACKUP_AGE_RECIPIENT to the age public recipient}"
+recipient_csv="${BACKUP_AGE_RECIPIENTS:-${BACKUP_AGE_RECIPIENT:-}}"
+: "${recipient_csv:?Set BACKUP_AGE_RECIPIENTS (comma-separated age recipients) or BACKUP_AGE_RECIPIENT}"
+IFS=',' read -r -a recipients <<< "$recipient_csv"
+(("${#recipients[@]}" > 0)) || { echo "At least one age recipient is required" >&2; exit 1; }
+age_recipient_args=()
+declare -A seen_recipients=()
+for recipient in "${recipients[@]}"; do
+  [[ "$recipient" =~ ^age1[023456789acdefghjklmnpqrstuvwxyz]{20,}$ ]] || { echo "Invalid age X25519 recipient format" >&2; exit 1; }
+  [[ -z "${seen_recipients[$recipient]+x}" ]] || { echo "Duplicate age recipient" >&2; exit 1; }
+  seen_recipients["$recipient"]=1
+  age_recipient_args+=(--recipient "$recipient")
+done
 command -v psql >/dev/null
 command -v pg_dump >/dev/null
 command -v pg_restore >/dev/null
@@ -28,7 +39,7 @@ cleanup() {
 trap cleanup EXIT
 pg_dump --no-password --format=custom --no-owner --no-acl --file "$plain" "$BACKUP_DATABASE_URL"
 pg_restore --list "$plain" >/dev/null
-age --encrypt --recipient "$BACKUP_AGE_RECIPIENT" --output "$encrypted" "$plain"
+age --encrypt "${age_recipient_args[@]}" --output "$encrypted" "$plain"
 [[ -s "$encrypted" ]] || { echo "Encrypted backup is empty" >&2; exit 1; }
 (cd "$BACKUP_OUTPUT_DIR" && sha256sum "$(basename "$encrypted")" > "$(basename "$checksum")" && sha256sum -c "$(basename "$checksum")")
 {
