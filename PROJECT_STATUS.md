@@ -157,3 +157,8 @@ Next: provision actual non-production certificates and secret files, bring up th
 - Extended the secure merged-Compose regression test to inspect broker startup guards for readable CA/certificate/key material, bootstrap password minimum length and colon rejection; it also asserts the broker healthcheck authenticates with the Admin SCRAM identity and verifies Admin API TLS using the mounted CA.
 - Corrected provisioner secret-mode normalization to handle YAML octal/integer representations consistently with broker secret-mode checks. This was identified by static source inspection; no local Compose/test execution is claimed.
 - CI execution on the latest commit and live container/broker behavior remain unverified.
+
+
+## 2026-11-29 — Reject empty broker certificate material
+- Tightened the secure broker entrypoint guard so each mounted CA/certificate/private-key file must be both readable and non-empty before Redpanda starts. Extended the merged-Compose regression assertion to require both checks for all five certificate-material paths.
+- This closes a static configuration gap where a readable but empty bind-mounted file could pass the startup preflight. CI execution and real container behavior remain unverified.
