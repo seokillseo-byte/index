@@ -215,10 +215,12 @@ export class AuthService{
  async disableMfa(userId:string,password:string,code:string){
   const user=await this.db.query<{password_hash:string;mfa_enabled:boolean}>("SELECT password_hash,mfa_enabled FROM app.users WHERE id=$1 AND status='active'",[userId]);
   if(!user.rowCount||!user.rows[0].mfa_enabled||!(await argon2.verify(user.rows[0].password_hash,password).catch(()=>false)))throw new UnauthorizedException('Invalid password or MFA state');
-  const secret=await this.db.query<{secret_ciphertext:Buffer;secret_iv:Buffer;secret_auth_tag:Buffer}>('SELECT secret_ciphertext,secret_iv,secret_auth_tag FROM app.mfa_credentials WHERE user_id=$1',[userId]);
-  if(!secret.rowCount||!this.verifyTotp(this.decryptSecret(secret.rows[0]),code))throw new UnauthorizedException('Invalid MFA code');
   await this.db.withTransaction(async client=>{
-   await client.query("UPDATE app.users SET mfa_enabled=false,updated_at=now() WHERE id=$1",[userId]);
+   const locked=await client.query<{mfa_enabled:boolean;secret_ciphertext:Buffer;secret_iv:Buffer;secret_auth_tag:Buffer}>("SELECT u.mfa_enabled,m.secret_ciphertext,m.secret_iv,m.secret_auth_tag FROM app.users u LEFT JOIN app.mfa_credentials m ON m.user_id=u.id WHERE u.id=$1 AND u.status='active' FOR UPDATE",[userId]);
+   if(!locked.rowCount||!locked.rows[0].mfa_enabled)throw new UnauthorizedException('Invalid password or MFA state');
+   if(!locked.rows[0].secret_ciphertext||!locked.rows[0].secret_iv||!locked.rows[0].secret_auth_tag)throw new UnauthorizedException('Invalid MFA state');
+   if(!this.verifyTotp(this.decryptSecret(locked.rows[0]),code))throw new UnauthorizedException('Invalid MFA code');
+   await client.query("UPDATE app.users SET mfa_enabled=false,updated_at=now() WHERE id=$1 AND mfa_enabled=true",[userId]);
    await client.query("DELETE FROM app.mfa_credentials WHERE user_id=$1",[userId]);
    await client.query("DELETE FROM app.auth_tokens WHERE user_id=$1 AND purpose IN ('mfa_recovery','mfa_login')",[userId]);
    await client.query("UPDATE app.user_sessions SET revoked_at=now() WHERE user_id=$1 AND revoked_at IS NULL",[userId]);
