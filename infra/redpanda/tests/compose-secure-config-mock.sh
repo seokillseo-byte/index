@@ -95,7 +95,7 @@ ruby -e '
     "redpanda_admin_key" => ["/etc/redpanda/certs/admin.key", "0400"],
     "redpanda_admin_password" => ["/run/secrets/redpanda-admin-password", "0400"]
   }
-  broker_mounts = broker.fetch("secrets").to_h { |secret| [secret.fetch("source"), [secret.fetch("target"), (secret.fetch("mode").is_a?(Integer) ? format("%04o", secret.fetch("mode")) : secret.fetch("mode").to_s.rjust(4, "0"))]] }
+  broker_mounts = broker.fetch("secrets").to_h { |secret| [secret.fetch("source"), [secret.fetch("target"), (secret.fetch("mode").is_a?(Integer) ? format("%04o", secret.fetch("mode")) : (secret.fetch("mode").is_a?(Integer) ? format("%04o", secret.fetch("mode")) : secret.fetch("mode").to_s.rjust(4, "0")))]] }
   expected_broker_secrets.each do |source, expected|
     abort "broker secret mount or mode missing/incorrect: #{source}" unless broker_mounts[source] == expected
   end
