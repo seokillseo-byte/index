@@ -1,3 +1,9 @@
+## 2026-11-28 — Provider quota decision tests
+
+- Extracted the Google worker quota decision into a small side-effect-free helper and added Node tests for daily and rolling-minute limits, same-day retry prevention, and next-day eligibility.
+- Added the worker package test script so recursive CI executes the new tests alongside API Jest tests.
+- CI run #46103822023 passed on `f0b8ac2c8b837553a765e10ac1456ef52c3a7636`; Node typecheck/build/tests/worker syntax, Go race/vet and database migrations/security regressions all passed.
+
 ## 2026-11-28 — Verified property URL-prefix boundary
 
 - Tightened URL-prefix property matching so `/blog` authorizes `/blog` and `/blog/...`, but not sibling paths such as `/blogger/...`.

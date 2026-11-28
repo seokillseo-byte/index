@@ -23,6 +23,7 @@
 - [x] CI run #46103232631 passes on `aca15d51d989d782e76f4fa4a9d433dfa2f998ec`.
 - [x] CI run #46103336063 passes on `b12727cc29bd4b1800b189ef33423cdc7f9f88bd` after shared Google per-minute worker quota hardening.
 - [x] CI run #46103551185 passes on `23808e3dc06c98bcb9c9538c856acb41521b7a55`, including new verified-property URL-scope regression tests.
+- [x] CI run #46103822023 passes on `f0b8ac2c8b837553a765e10ac1456ef52c3a7636`, including provider quota-decision unit tests.
 
 ## Provider Job Engine
 
@@ -30,6 +31,7 @@
 - [x] Verified property binding and URL coverage checks, including URL-prefix path-segment boundary validation.
 - [x] Google URL Inspection daily/minute quota reservation at API admission.
 - [x] Google URL Inspection per-minute attempt reservation shared across worker instances.
+- [x] Worker quota-decision unit tests cover daily cap, rolling-minute cap, same-day retry prevention and next-day eligibility.
 - [x] Bing live DailyQuota/MonthlyQuota checks.
 - [x] Restricted runtime DB role for provider worker.
 - [x] Kafka `provider.jobs` consumer and isolated worker.

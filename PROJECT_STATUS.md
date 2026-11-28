@@ -25,7 +25,7 @@ Updated: 2026-11-28
 - Tenant-aware project/backlink verification and verified-property binding; URL-prefix matching enforces path-segment boundaries, preventing sibling-prefix URLs from escaping a verified property.
 - Google Search Console and Bing Webmaster integrations with AES-256-GCM encrypted credentials.
 - Provider job persistence, transactional outbox, Kafka `provider.jobs` topic, and isolated provider worker.
-- Google URL Inspection queue admission and worker execution both enforce per-property daily/minute limits; worker reservations are serialized in PostgreSQL across worker instances.
+- Google URL Inspection queue admission and worker execution both enforce per-property daily/minute limits; worker reservations are serialized in PostgreSQL across worker instances, with isolated unit tests for quota decision boundaries.
 - Bing URL submission checks live DailyQuota/MonthlyQuota.
 - Retry/backoff, dead-letter handling, lease recovery, batch draining, idempotency, provider job history, attempt timestamps, and provider-job indexes are implemented.
 - Provider acceptance and Google inspection evidence are not treated as proof of indexing.
@@ -42,6 +42,7 @@ Updated: 2026-11-28
 - CI run [#46103232631](https://github.com/seokillseo-byte/index/actions/runs/46103232631) passed on `aca15d51d989d782e76f4fa4a9d433dfa2f998ec`, validating the status/checklist/changelog and release-process reconciliation.
 - CI run [#46103336063](https://github.com/seokillseo-byte/index/actions/runs/46103336063) passed on `b12727cc29bd4b1800b189ef33423cdc7f9f88bd`, including the Google provider worker syntax check and all Node, Go and database checks.
 - CI run [#46103551185](https://github.com/seokillseo-byte/index/actions/runs/46103551185) passed on `23808e3dc06c98bcb9c9538c856acb41521b7a55`; added Jest coverage for verified URL-prefix path boundaries, domain-property subdomains and cross-origin rejection.
+- CI run [#46103822023](https://github.com/seokillseo-byte/index/actions/runs/46103822023) passed on `f0b8ac2c8b837553a765e10ac1456ef52c3a7636`; Node tests now include worker quota-decision unit coverage in addition to API Jest tests.
 - The benchmark harness now reports queue-latency p50/p95/p99, PostgreSQL counter deltas and connection snapshots; host CPU/disk IO still require host-level monitoring.
 - Any later source change must be validated by its own run.
 
