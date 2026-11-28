@@ -2,77 +2,52 @@
 
 ## Authentication hardening
 
-- [x] Email verification token storage added.
-- [x] Verification tokens are single-use and expire after 30 minutes.
-- [x] Registration sends transactional verification email and does not issue sessions before verification.
-- [x] Login and refresh require a verified email address.
+- [x] Email verification tokens are single-use and expire after 30 minutes.
+- [x] Registration sends verification email and does not issue sessions before verification.
+- [x] Login and refresh require verified email.
 - [x] Verification and resend endpoints are rate-limited.
 - [x] TOTP MFA enrollment and login challenge.
 - [x] Single-use MFA recovery codes hashed at rest.
-- [x] Password recovery with single-use 30-minute reset tokens.
-- [x] Password reset revokes existing sessions.
+- [x] Password recovery uses single-use 30-minute tokens and revokes existing sessions.
 - [x] Server-side session listing and revocation endpoints.
-- [x] Rate limits applied to MFA login, recovery, enrollment verification and disable endpoints.
-- [x] Corrected Unicode workspace-name and six-digit TOTP validation regexes.
-- [x] MFA login challenge invalidated after five failed TOTP or recovery-code attempts.
-- [x] Password-reset success response does not disclose the user identifier.
-- [x] Migration 0019 and MFA lockout behavior covered by a CI database test.
-- [x] Auth token replay regression covered by a CI database test.
-- [x] MFA enrollment and single-active-challenge issuance serialized transactionally.
-- [x] Focused authentication service coverage for MFA brute-force/lockout and challenge-token hashing.
-- [x] Focused database coverage for single-use MFA recovery-code replay.
-- [x] Tenant/session isolation validation at the application/API level (JWT session binding, tenant-switch guard, and session ownership tests).
-- [ ] Authentication CI/typecheck/test validation for the current branch head.
+- [x] MFA endpoint rate limits and DTO validation hardening.
+- [x] MFA login challenge invalidated after five failed TOTP/recovery attempts.
+- [x] MFA enrollment/disable and active challenge issuance serialized transactionally.
+- [x] API service tests for MFA lockout and challenge-token hashing.
+- [x] Database tests for auth-token replay, recovery-code replay, and tenant RLS.
+- [x] Application tests for JWT session binding, tenant-switch rejection, and session ownership.
+- [x] CI typecheck/build/tests pass on validation commit `af3fc9c8b9f2375dd945266ac0ce86d1975f2d9b` (run #46101301044).
+- [ ] CI pass on the newest checkpoint commit after this status update.
 
 ## Provider Job Engine
 
-- [x] Provider job database model exists.
-- [x] Provider jobs are tenant-scoped.
-- [x] Verified property must be bound to project.
-- [x] Submitted/inspected URLs are checked against the bound property.
-- [x] Idempotency keys prevent duplicate reservations.
-- [x] PostgreSQL advisory locking serializes quota reservations per property/window.
-- [x] Google daily inspection reservation limit enforced.
-- [x] Google per-minute inspection reservation limit enforced.
-- [x] Bing live DailyQuota retrieved before submission reservation.
-- [x] Bing live MonthlyQuota retrieved before submission reservation.
-- [x] Provider worker uses restricted runtime DB role.
-- [x] Provider worker consumes Kafka `provider.jobs`.
-- [x] Google URL Inspection response persisted.
-- [x] Bing submission acknowledgement persisted separately from indexing state.
-- [x] Retry/backoff implemented.
-- [x] Dead-letter state implemented.
-- [x] Lease recovery implemented.
-- [x] Batch draining implemented.
-- [x] Per-property worker isolation implemented.
-- [x] Attempt timestamp tracking implemented.
-- [x] Provider job indexes added.
-- [x] Runtime RLS claim test added.
-- [x] Provider quota SQL test added.
-- [ ] CI passes at latest checkpoint.
+- [x] Tenant-scoped provider job model and idempotency.
+- [x] Verified property binding and URL coverage checks.
+- [x] Google URL Inspection daily/minute quota reservation.
+- [x] Bing live DailyQuota/MonthlyQuota checks.
+- [x] Restricted runtime DB role for provider worker.
+- [x] Kafka `provider.jobs` consumer and isolated worker.
+- [x] Provider result persistence and acceptance/indexing distinction.
+- [x] Retry/backoff, dead-letter, lease recovery and batch draining.
+- [x] Provider job history, attempt tracking and indexes.
+- [x] Runtime RLS claim and provider quota SQL tests.
+- [x] CI database migrations and regression tests pass on validation commit above.
+- [ ] CI pass on newest checkpoint commit.
 
-## Production-readiness review
+## Capacity and production readiness
 
-- [x] Google URL Inspection quota values verified against current Google documentation.
-- [x] Bing worker endpoint checked against current Bing API retirement guidance; JSON/HTTP is retained.
-- [x] Provider acceptance is explicitly separated from indexing evidence.
-- [x] Dedicated non-production provider queue benchmark harness added and hardened for isolated concurrent runs/cleanup.
-- [ ] Benchmark run and capacity result.
-- [ ] 1,000,000 URL/day benchmark.
+- [x] Bounded non-production PostgreSQL queue benchmark harness and runbook.
+- [ ] Execute benchmark on dedicated non-production database/hardware.
+- [ ] Record queue latency, jobs/sec, DB CPU/IO, connections and saturation.
 - [ ] Sustained queue/backpressure benchmark.
-- [ ] Recovery/failure benchmark.
-
-## Release validation
-
-- [ ] Production VPS deployment (release procedure documented).
-- [ ] Production HTTPS/DNS validation.
-- [ ] Google OAuth production connection test.
-- [ ] Bing OAuth/API-key production connection test.
-- [ ] End-to-end provider job test against real provider accounts.
+- [ ] Failure/recovery benchmark.
+- [ ] Validate 1,000,000 URLs/day using measured end-to-end capacity.
+- [ ] Google/Bing end-to-end test with non-production provider accounts.
 - [ ] Backup/restore drill.
 - [ ] Security review.
-- [ ] Production observability/alerting review.
+- [ ] Observability/alerting review.
+- [ ] Production VPS deployment and HTTPS/DNS validation after release approval.
 
 ## Scope boundary
 
-This checkpoint does not claim that Google or Bing indexes submitted URLs. Provider acceptance and Google inspection results are stored as evidence only.
+Google URL Inspection is inspection evidence, not an indexing request. Bing submission acceptance is not proof of indexing. No throughput target is considered achieved without measured evidence.

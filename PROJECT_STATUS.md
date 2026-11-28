@@ -4,81 +4,56 @@ Updated: 2026-11-28
 
 ## Current implementation state
 
-- Production target: multi-tenant SaaS with Google + Bing provider integrations.
-- Target VPS capacity: 32 vCPU / 64 GB RAM / 2 TB NVMe / 1 Gbps; this is a target, not a measured capacity result.
-- Current repository baseline: `main` at `568e00af228c64249f5da6e4ec22f29e6cbe10be`.
+- Product target: multi-tenant backlink URL discovery and indexing-workflow SaaS with Google and Bing provider integrations.
+- Capacity target: 32 vCPU / 64 GB RAM / 2 TB NVMe / 1 Gbps; this is not a measured throughput result.
+- Main baseline: `568e00af228c64249f5da6e4ec22f29e6cbe10be`.
 - Active implementation branch: `feature/provider-job-engine`.
-- Review PR: #6 remains open and unmerged.
-- The branch has diverged from `main`; do not merge/rebase automatically. Review the one-commit base divergence deliberately before integration.
+- Review PR #6 remains open and unmerged.
+- Branch diverged from main (one base commit behind); do not rebase or merge automatically. Review the effective diff before integration.
 
-## Authentication implementation completed
+## Authentication and tenant isolation
 
-- Email verification tokens are single-use and expire after 30 minutes.
-- Registration sends verification email through Resend and does not issue sessions before verification.
-- Login and refresh reject unverified accounts.
-- Verification and resend endpoints are rate-limited.
-- MFA login/recovery and enrollment/disable endpoints have explicit rate limits.
-- DTO validators use valid Unicode-property and six-digit TOTP patterns.
-- TOTP MFA enrollment, verification and MFA-gated login are implemented.
-- MFA recovery codes are one-time and stored as SHA-256 hashes.
-- Password recovery uses single-use 30-minute tokens and revokes existing sessions after reset.
-- Server-side session listing, individual revocation and revoke-all controls are implemented.
-- MFA login challenges now persist failed-attempt counts and are invalidated after five incorrect TOTP or recovery-code attempts.
-- Password-reset success responses no longer return internal user IDs.
-- Added migration `0019_mfa_challenge_attempt_limits.sql`.
-- Added a CI database test covering the five-failure MFA challenge lockout semantics.
-- Added a CI database regression test for consumed authentication-token replay.
-- Added API Jest/ts-jest infrastructure and service-level MFA challenge lockout/token-hashing coverage.
-- Added application-level tenant/session isolation tests for JWT session binding, tenant-switch rejection and session ownership.
-- Hardened MFA disable to re-lock and re-check MFA state/credential inside the transaction before disabling and revoking sessions.
-- Added a CI database regression test for single-use MFA recovery-code replay.
-- Added `docs/deployment/release-process.md` covering the feature-branch workflow, clean Git-based VPS deployment, configuration separation and rollback principles.
-- Serialized MFA enrollment and single-active password-reset/MFA-login challenge issuance with database transactions and row locks.
+- Email verification is single-use, expires after 30 minutes, and is required before login/refresh can issue sessions.
+- MFA/TOTP enrollment and login, hashed single-use recovery codes, MFA challenge lockout after five failed attempts, password recovery, and server-side session management are implemented.
+- Password reset and MFA disable revoke existing sessions.
+- Tenant/session isolation tests cover JWT session binding, tenant-switch rejection, and session revocation ownership.
+- MFA enrollment, disable, and single-active challenge issuance use transactional row locking.
+- API Jest tests and database regression tests cover MFA lockout, auth-token replay, recovery-code replay, and tenant RLS.
 
-**Validation caveat:** the repository now contains the focused authentication and tenant/session isolation coverage, but the latest branch head still has no newly recorded CI workflow result. The remaining validation gate is to execute CI against the current head and fix any failures it reports. Do not mark authentication production-ready until that gate passes.
+## Provider job engine
 
-## Provider engine implemented
+- Tenant-aware project/backlink verification and verified-property binding.
+- Google Search Console and Bing Webmaster integrations with AES-256-GCM encrypted credentials.
+- Provider job persistence, transactional outbox, Kafka `provider.jobs` topic, and isolated provider worker.
+- Google URL Inspection reservation controls are bounded by per-site daily/minute limits.
+- Bing URL submission checks live DailyQuota/MonthlyQuota.
+- Retry/backoff, dead-letter handling, lease recovery, batch draining, idempotency, provider job history, attempt timestamps, and provider-job indexes are implemented.
+- Provider acceptance and Google inspection evidence are not treated as proof of indexing.
 
-- Tenant-aware project and backlink verification modules.
-- Google Search Console and Bing Webmaster OAuth integrations.
-- Encrypted provider credentials with AES-256-GCM.
-- Verified-property binding and URL coverage checks.
-- Provider job persistence and transactional outbox.
-- Kafka `provider.jobs` topic and isolated provider worker.
-- Google URL Inspection queue with property-scoped daily/minute reservation controls.
-- Bing URL submission queue with live DailyQuota/MonthlyQuota checks.
-- Retry/backoff, dead-letter handling, lease recovery and batch draining.
-- Provider job history API, attempt timestamp tracking and provider-job indexes.
-- Runtime tenant RLS/provider-job claim and quota SQL checks.
+## CI validation
 
-## Benchmark harness checkpoint
+- Added a push trigger for `feature/provider-job-engine` so implementation commits run CI without relying only on PR events.
+- Workflow run [#46101301044](https://github.com/seokillseo-byte/index/actions/runs/46101301044) completed successfully on commit `af3fc9c8b9f2375dd945266ac0ce86d1975f2d9b`.
+- Passing jobs: Node (install, typecheck, build, Jest tests, worker syntax checks), crawler (Go tests with race detector and vet), and database (migrations, tenant RLS, MFA lockout, auth-token replay, recovery-code replay).
+- This successful run validates the workflow-trigger commit. The documentation checkpoint that follows it will receive its own push-triggered CI run; do not treat that later run as passed until GitHub reports success.
 
-- Added a non-production PostgreSQL queue benchmark harness.
-- Fixed its worker lease owner, isolated concurrent runs by unique idempotency prefix, validated numeric limits, and made cleanup run-scoped in a `finally` block.
-- Reports seed duration separately from queue-drain throughput.
-- This harness measures only PostgreSQL queue claim/update performance; it does not call Google/Bing and does not establish end-to-end provider throughput.
-- The benchmark has **not** yet been executed against a dedicated non-production database.
+## Benchmark checkpoint
 
-## CI and release validation
+- A dedicated non-production PostgreSQL queue benchmark harness and runbook exist.
+- Harness measures PostgreSQL queue claim/update throughput only; it does not call Google/Bing and cannot prove end-to-end provider submission throughput.
+- No benchmark has yet been run against dedicated non-production hardware.
+- No evidence currently establishes 1,000,000 URLs/day.
 
-- Previous CI run `46047692879` passed for an earlier provider-engine checkpoint only.
-- The latest auth hardening has explicit CI database tests for MFA challenge lockout, auth-token replay, and MFA recovery-code replay. API Jest tests are also wired into the CI node job. A fresh workflow result for the current branch head is still pending.
-- Google URL Inspection reservation values are capped at 2,000/day and 600/minute per site.
-- Bing submissions are bounded by live provider DailyQuota/MonthlyQuota.
-- Provider acceptance/inspection evidence must not be presented as proof of indexing.
+## Remaining release gates
 
-## Release gates still open
-
-- CI/typecheck/build and tests for the current branch head.
-- Execute queue benchmark on non-production hardware and record PostgreSQL CPU/IO/connection saturation.
-- Sustained queue/backpressure and failure/recovery benchmarks.
-- Validate 1,000,000 URLs/day only after measured end-to-end capacity; no such result exists yet.
-- Real Google/Bing customer connections and end-to-end provider tests.
-- Backup/restore drill.
-- Production observability/alerting and security review.
-- Production VPS deployment and HTTPS/DNS validation (release procedure is documented, execution remains pending).
-- HA/failover remains outside the single-VPS baseline.
+1. Complete CI for the latest documentation checkpoint commit.
+2. Run queue benchmark against a dedicated non-production database and record jobs/sec, queue latency, PostgreSQL CPU/IO, connections and saturation.
+3. Run sustained queue/backpressure and failure/recovery benchmarks.
+4. Run real Google/Bing end-to-end tests with non-production provider accounts.
+5. Complete backup/restore drill, security review, and observability/alerting review.
+6. Complete production VPS, HTTPS and DNS validation only after the preceding gates and explicit release approval.
+7. Assess the 1,000,000 URL/day target only from measured end-to-end capacity; no current claim is made.
 
 ## Immediate next step
 
-Get a fresh CI run against the current branch head and fix any compile, migration or test failures first. Once CI passes, execute the non-production queue benchmark and use measured results to size worker/database capacity. Do not use production credentials/data, merge into `main`, or deploy as part of this work.
+Finish CI for the latest checkpoint, then execute the existing non-production benchmark harness. Do not add unrelated features, use production credentials/data, merge into `main`, or deploy production as part of this checkpoint.
