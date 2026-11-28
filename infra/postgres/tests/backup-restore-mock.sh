@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
+REAL_PATH="$PATH"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 BIN="$TMP/bin"
@@ -90,6 +91,31 @@ if RESTORE_CONFIRM_NONPROD=NO bash "$ROOT/infra/postgres/restore.sh" >/dev/null 
   exit 1
 fi
 [[ ! -e "$RESTORE_MARKER" ]]
+
+# When age is installed (CI installs it), exercise real authenticated encryption/decryption.
+if command -v age-keygen >/dev/null 2>&1; then
+  mv "$BIN/age" "$BIN/age.mock"
+  real_identity="$TMP/real-age-identity.txt"
+  age-keygen -o "$real_identity" >/dev/null 2>&1
+  real_recipient="$(age-keygen -y "$real_identity")"
+  export BACKUP_AGE_RECIPIENT="$real_recipient"
+  bash "$ROOT/infra/postgres/backup.sh" >/dev/null
+  real_dump="$(ls -1t "$OUT"/*.dump.age | head -n 1)"
+  ! grep -q 'mock-pg-dump-archive' "$real_dump"
+  export RESTORE_DUMP_FILE="$real_dump"
+  export RESTORE_AGE_IDENTITY_FILE="$real_identity"
+  bash "$ROOT/infra/postgres/restore.sh" >/dev/null
+  [[ "$(cat "$RESTORE_MARKER")" == "$RESTORE_DATABASE_URL" ]]
+  rm -f "$RESTORE_MARKER"
+  wrong_identity="$TMP/wrong-age-identity.txt"
+  age-keygen -o "$wrong_identity" >/dev/null 2>&1
+  export RESTORE_AGE_IDENTITY_FILE="$wrong_identity"
+  if bash "$ROOT/infra/postgres/restore.sh" >/dev/null 2>&1; then
+    echo 'restore accepted an unrelated age identity' >&2
+    exit 1
+  fi
+  [[ ! -e "$RESTORE_MARKER" ]]
+fi
 
 tampered="$OUT/tampered.dump.age"
 cp "$dump" "$tampered"
