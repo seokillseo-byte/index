@@ -276,3 +276,9 @@
 
 - Added a mock negative-path case for an empty Kafka CA file. The provisioner test suite now covers missing, empty and unreadable Kafka CA inputs, plus missing and empty Admin API CA inputs, alongside the existing security-configuration rejection cases.
 - CI is configured to run this test, but execution on the latest branch head has not been confirmed. No local shell test or live broker validation is claimed.
+
+
+## 2026-11-29 — Redpanda service-secret validation tests
+
+- Added mock negative-path coverage for missing and empty service SCRAM password files. The tests exercise the new-principal path rather than being skipped by the existing-user idempotency branch.
+- CI execution on the new checkpoint remains unconfirmed; no local shell run or live broker validation is claimed.
