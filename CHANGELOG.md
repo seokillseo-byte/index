@@ -243,3 +243,10 @@
 - Corrected Compose shell-variable escaping so runtime shell variables and command substitutions are evaluated inside containers, not by Compose.
 - CI #351 passed on `651aa595da71c1c70e6ed6bee31ac3ca25b5d6c1`: [workflow](https://github.com/seokillseo-byte/index/actions/runs/46167799041). Database, Node and crawler jobs all passed.
 - CI remains static/mock validation. Live broker TLS/SCRAM/ACL tests, workload recovery, volume upgrade/rollback, non-production restore/benchmark and provider-account E2E remain outstanding.
+
+
+## 2026-11-29 — Redpanda provisioner secret expansion guard
+
+- Updated the secure Compose overlay so the Admin password command substitution in `redpanda-init` is escaped as `$$(...)`, deferring expansion to the container shell.
+- Added a regression assertion in `compose-secure-config-mock.sh` to prevent Compose-side expansion from being reintroduced.
+- Latest branch head: `98c9527242933868675a1e357e3d04003ba4238d`; CI validation is pending confirmation. No live Redpanda broker or external infrastructure was accessed.
