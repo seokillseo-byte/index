@@ -6,6 +6,8 @@
 - Password-reset success responses no longer disclose the internal user ID.
 - Added migration `0019_mfa_challenge_attempt_limits.sql`.
 - Added a CI database test for five-failure MFA challenge lockout semantics.
+- Added a CI database test for consumed authentication-token replay.
+- Serialized MFA enrollment and single-active password-reset/MFA-login challenge issuance with transactional row locking.
 
 ### Authentication validation hardening
 
