@@ -55,18 +55,30 @@ services:
       RPK_TLS_CA: /run/secrets/redpanda-ca.crt
       RPK_SASL_MECHANISM: SCRAM-SHA-512
       RPK_USER: ${REDPANDA_ADMIN_USER:?Set REDPANDA_ADMIN_USER}
+      RPK_ADMIN_HOSTS: localhost:9644
+      RPK_ADMIN_TLS_ENABLED: "true"
+      RPK_ADMIN_TLS_CA: /run/secrets/redpanda-ca.crt
     command:
       - |
         export RPK_PASS="$$(cat /run/secrets/redpanda-admin-password)"
-        exec /bin/sh /opt/index-assist/provision-topics.sh
+        exec /bin/sh /opt/index-assist/provision-secure-cluster.sh
     volumes:
-      - ../redpanda/provision-topics.sh:/opt/index-assist/provision-topics.sh:ro
+      - ../redpanda/provision-secure-cluster.sh:/opt/index-assist/provision-secure-cluster.sh:ro
     secrets:
       - source: redpanda_ca
         target: /run/secrets/redpanda-ca.crt
         mode: 0444
       - source: redpanda_admin_password
         target: /run/secrets/redpanda-admin-password
+        mode: 0400
+      - source: outbox_scram_password
+        target: /run/secrets/outbox-scram-password
+        mode: 0400
+      - source: crawler_scram_password
+        target: /run/secrets/crawler-scram-password
+        mode: 0400
+      - source: provider_scram_password
+        target: /run/secrets/provider-scram-password
         mode: 0400
 
 secrets:
@@ -82,6 +94,12 @@ secrets:
     file: ../../secrets/redpanda/admin.key
   redpanda_admin_password:
     file: ../../secrets/redpanda/admin-password
+  outbox_scram_password:
+    file: ../../secrets/kafka/outbox-scram-password
+  crawler_scram_password:
+    file: ../../secrets/kafka/crawler-scram-password
+  provider_scram_password:
+    file: ../../secrets/kafka/provider-scram-password
 
 volumes:
   redpanda_data_secure:
