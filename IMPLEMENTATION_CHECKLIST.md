@@ -35,6 +35,7 @@
 - [x] Added KafkaJS TLS/SCRAM-SHA-512 config for outbox relay/provider worker and kafka-go TLS/SCRAM-SHA-512 config for crawler.
 - [x] Production worker/crawler startup rejects plaintext Kafka configuration; added Node/Go config tests, CA-file mounts and env examples.
 - [x] Added Redpanda TLS/SASL example and Kafka security/ACL rollout runbook.
+- [ ] Replace pinned Redpanda v24.3.7 (24.3 release line is end-of-support) with a currently supported release and validate config compatibility.
 - [ ] Activate broker TLS/SASL/ACL on non-production Redpanda; verify each service principal and denied cross-topic/group access.
 - [x] CI #276 passed Redis and Kafka client changes; [workflow](https://github.com/seokillseo-byte/index/actions/runs/46110245705).
 - [ ] CI #277 for the follow-up Redis reconnect regression test (pending).
