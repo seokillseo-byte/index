@@ -94,3 +94,11 @@ Next: provision actual non-production certificates and secret files, bring up th
 - CI is static/mock validation only. It does not start a Redpanda broker or prove TLS/SCRAM handshakes, ACL allow/deny, restart recovery, volume upgrade or rollback.
 - The Kafka security runbook UID/GID `printf` example was checked for newline escaping; no runtime behavior is changed by that example.
 - PR #6 remains open, unmerged and mergeable=false. No merge, rebase, production deployment, secret change or destructive operation was performed.
+
+
+## 2026-11-29 — Redpanda Compose secret expansion guard
+
+- Follow-up review found the one-shot `redpanda-init` command substitution for the Admin password was not explicitly escaped for Docker Compose interpolation. Updated it to `$$(cat ...)` so the container shell, not Compose, performs the secret-file read.
+- Added a regression assertion to `infra/redpanda/tests/compose-secure-config-mock.sh` that requires the escaped form.
+- Current branch head: `98c9527242933868675a1e357e3d04003ba4238d`. No CI run for this latest checkpoint was visible through the available PR-run/status lookup at review time; treat the change as pending CI until a run is confirmed.
+- PR #6 remains open, unmerged and `mergeable=false`; branch comparison reports 361 commits ahead and 1 behind `main`. No merge/rebase/deployment or live broker action was performed.
