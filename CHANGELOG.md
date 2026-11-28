@@ -264,3 +264,9 @@
 - Added negative-path mock coverage for plaintext Kafka, missing Admin API TLS, unsupported SASL mechanism, missing bootstrap password, weak service password and unreadable CA material.
 - Corrected the weak-password fixture to remove the existing outbox user temporarily, ensuring the new-user password validation path is actually exercised; the fixture is restored afterward and resource counts are checked for no mutation.
 - Tests are part of the existing Node CI job. Execution on the latest commit remains unconfirmed; no local shell or live broker was available.
+
+
+## 2026-11-29 — Redpanda CA input rejection tests
+
+- Added negative-path mock cases for missing Kafka CA, missing Admin API CA and an empty Admin API CA file. These complement the existing unreadable-CA and credential/configuration rejection tests.
+- The tests are wired into the existing Node CI workflow; execution on the new commit remains unconfirmed. No local test execution or live broker test is claimed.
