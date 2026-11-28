@@ -1,9 +1,11 @@
 # Index Assist — Observability and alerting review
 
 Updated: 2026-11-28
-Branch reviewed: `feature/provider-job-engine` at `8e6285f020e94c2b2fb122e5805426c279b8328d`
+Branch reviewed: `feature/provider-job-engine` at `1a9be1d87fa541866777475f28d0a6c3fe682bb4`
 
 ## Scope
+
+CI checkpoint update: run #184 passed on `1a9be1d87fa541866777475f28d0a6c3fe682bb4`; this does not provide live metrics, alert delivery evidence, or production monitoring.
 
 Static review of repository configuration and application/worker health/logging surfaces. No running VPS, metrics backend, alert receiver or production logs were available. This is a gap assessment, not a live observability validation.
 
