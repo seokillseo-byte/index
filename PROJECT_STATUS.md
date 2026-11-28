@@ -25,7 +25,7 @@ Updated: 2026-11-28
 - Tenant-aware project/backlink verification and verified-property binding.
 - Google Search Console and Bing Webmaster integrations with AES-256-GCM encrypted credentials.
 - Provider job persistence, transactional outbox, Kafka `provider.jobs` topic, and isolated provider worker.
-- Google URL Inspection reservation controls are bounded by per-site daily/minute limits.
+- Google URL Inspection queue admission and worker execution both enforce per-property daily/minute limits; worker reservations are serialized in PostgreSQL across worker instances.
 - Bing URL submission checks live DailyQuota/MonthlyQuota.
 - Retry/backoff, dead-letter handling, lease recovery, batch draining, idempotency, provider job history, attempt timestamps, and provider-job indexes are implemented.
 - Provider acceptance and Google inspection evidence are not treated as proof of indexing.
@@ -38,7 +38,9 @@ Updated: 2026-11-28
 - Both runs passed Node install/typecheck/build/Jest/worker syntax checks, crawler Go tests with race detector and vet, and database migrations plus tenant RLS/MFA/auth-token/recovery-code regression tests.
 - CI run [#46102361891](https://github.com/seokillseo-byte/index/actions/runs/46102361891) passed on `67f8447801b8837550fcdba607f09932be82eb29`, including Node typecheck/build/Jest/worker syntax, Go race tests/vet, and database migration/RLS/auth regression checks.
 - CI run [#46102488732](https://github.com/seokillseo-byte/index/actions/runs/46102488732) passed on `8ee786ce6fec4448db0f5755b602345aeaefb39e`.
-- CI run [#46102607623](https://github.com/seokillseo-byte/index/actions/runs/46102607623) passed on current source head `0c50dc59380dabb99d597af5feabc17b641c8951`; Node typecheck/build/Jest and both worker syntax checks, Go race tests/vet, ordered DB migrations, tenant RLS, MFA lockout, auth-token replay, and MFA recovery-code replay all passed.
+- CI run [#46102607623](https://github.com/seokillseo-byte/index/actions/runs/46102607623) passed on source head `0c50dc59380dabb99d597af5feabc17b641c8951`; Node typecheck/build/Jest and both worker syntax checks, Go race tests/vet, ordered DB migrations, tenant RLS, MFA lockout, auth-token replay, and MFA recovery-code replay all passed.
+- CI run [#46103232631](https://github.com/seokillseo-byte/index/actions/runs/46103232631) passed on `aca15d51d989d782e76f4fa4a9d433dfa2f998ec`, validating the status/checklist/changelog and release-process reconciliation.
+- CI run [#46103336063](https://github.com/seokillseo-byte/index/actions/runs/46103336063) passed on `b12727cc29bd4b1800b189ef33423cdc7f9f88bd`, including the Google provider worker syntax check and all Node, Go and database checks.
 - The benchmark harness now reports queue-latency p50/p95/p99, PostgreSQL counter deltas and connection snapshots; host CPU/disk IO still require host-level monitoring.
 - Any later source change must be validated by its own run.
 

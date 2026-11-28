@@ -1,3 +1,11 @@
+## 2026-11-28 — Google worker quota reservation hardening
+
+- Added a PostgreSQL-serialized rolling 60-second Google URL Inspection attempt counter shared by all provider-worker instances for the same tenant/property.
+- Added a worker-side daily attempt counter so execution limits are enforced independently of queue-admission pacing and per-process sleeps.
+- Quota-deferred jobs are rescheduled to the next minute boundary or next UTC daily window without consuming an attempt.
+- CI run #46103336063 passed on `b12727cc29bd4b1800b189ef33423cdc7f9f88bd` across Node install/typecheck/build/Jest/worker syntax, Go race tests/vet, ordered migrations and database security regression tests.
+- No external provider calls or production benchmark were performed; real provider E2E remains outstanding.
+
 ## 2026-11-28 — Latest CI and release-status reconciliation
 
 - Verified CI run #46102607623 on `0c50dc59380dabb99d597af5feabc17b641c8951`: Node install/typecheck/build/Jest and provider-worker/benchmark syntax checks, Go race tests/vet, ordered migrations, tenant RLS, MFA lockout, auth-token replay and MFA recovery-code replay all passed.

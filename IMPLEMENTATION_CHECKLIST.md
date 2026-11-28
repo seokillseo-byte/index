@@ -20,12 +20,15 @@
 - [x] CI validation of the docs/status checkpoint passes on commit `ac3bb0968ce1bc097337cdf2f9b22241e3fce057` (run #46101487019).
 - [x] CI run #46102488732 passes on `8ee786ce6fec4448db0f5755b602345aeaefb39e`.
 - [x] CI run #46102607623 passes on `0c50dc59380dabb99d597af5feabc17b641c8951`, including Node/Jest, worker syntax, Go race/vet and database security regressions.
+- [x] CI run #46103232631 passes on `aca15d51d989d782e76f4fa4a9d433dfa2f998ec`.
+- [x] CI run #46103336063 passes on `b12727cc29bd4b1800b189ef33423cdc7f9f88bd` after shared Google per-minute worker quota hardening.
 
 ## Provider Job Engine
 
 - [x] Tenant-scoped provider job model and idempotency.
 - [x] Verified property binding and URL coverage checks.
-- [x] Google URL Inspection daily/minute quota reservation.
+- [x] Google URL Inspection daily/minute quota reservation at API admission.
+- [x] Google URL Inspection per-minute attempt reservation shared across worker instances.
 - [x] Bing live DailyQuota/MonthlyQuota checks.
 - [x] Restricted runtime DB role for provider worker.
 - [x] Kafka `provider.jobs` consumer and isolated worker.
