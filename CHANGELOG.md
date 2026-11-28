@@ -282,3 +282,9 @@
 
 - Added mock negative-path coverage for missing and empty service SCRAM password files. The tests exercise the new-principal path rather than being skipped by the existing-user idempotency branch.
 - CI execution on the new checkpoint remains unconfirmed; no local shell run or live broker validation is claimed.
+
+
+## 2026-11-29 — Complete SCRAM secret mapping regression coverage
+
+- Extended mock negative tests to cover missing and empty service password files for all three application principals: outbox, crawler and provider. Each case targets the new-user path and preserves the final no-mutation assertions.
+- Tests are wired into the Node CI job; latest execution remains unconfirmed. No local shell test or live broker validation is claimed.
