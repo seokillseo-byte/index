@@ -6,7 +6,7 @@
 - Updated the Redpanda example toward supported v26.3.1 and added first-start Admin API bootstrap protection. Added explicit warning that current Compose v24.3.7 is EOL and its anonymous plaintext topic-init job cannot be reused after SASL activation.
 - Added loopback-only Admin API TLS to the broker template and documented why Kafka SASL alone does not protect the Admin API.
 - No broker image upgrade, persistent-volume modification, secret provisioning, production deployment or live infrastructure operation was performed.
-- Latest fully passing CI is #286 on da76342e9d0e295e565c45e3e541778f59565f5d; the multi-recipient backup source/tests in this entry are awaiting a new CI run.
+- CI #306 passed on `bd152d3b6c324720cfdf3047cd73510f54390def`: [workflow](https://github.com/seokillseo-byte/index/actions/runs/46111164620). The run verifies YAML syntax, Node typecheck/build/Jest, Bash syntax and backup safety, real age encryption/decryption with two independent recipients (each identity restored successfully), invalid/duplicate/empty recipient rejection, Go race/vet and database regressions.
 
 ## 2026-11-28 — Redis reconnect regression CI passed; Redpanda lifecycle gate
 
