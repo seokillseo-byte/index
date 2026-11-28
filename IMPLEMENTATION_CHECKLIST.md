@@ -190,3 +190,13 @@ Google URL Inspection is inspection evidence, not an indexing request. Bing subm
 - [x] Assert all provisioner secret mounts, restrictive modes and host source-file mappings.
 - [ ] Confirm the expanded merged-Compose test executes successfully in CI.
 - [ ] Verify effective UID/GID and secret readability inside real non-production containers.
+
+
+## Broker bootstrap and authenticated healthcheck regression coverage (2026-11-29)
+
+- [x] Assert broker startup checks readability of CA, broker/admin certificates and private keys.
+- [x] Assert bootstrap password minimum-length and colon guards are present.
+- [x] Assert healthcheck uses the Admin SCRAM identity/password secret and Admin API TLS CA.
+- [x] Normalize provisioner secret modes when YAML represents octal modes as integers.
+- [ ] Confirm merged-Compose test passes in CI.
+- [ ] Validate effective container UID/GID, TLS/SCRAM authentication and healthcheck against non-production Redpanda.
