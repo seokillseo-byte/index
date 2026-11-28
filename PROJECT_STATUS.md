@@ -35,7 +35,7 @@ Updated: 2026-11-28
 - Added `docs/deployment/release-process.md` covering the feature-branch workflow, clean Git-based VPS deployment, configuration separation and rollback principles.
 - Serialized MFA enrollment and single-active password-reset/MFA-login challenge issuance with database transactions and row locks.
 
-**Validation caveat:** the current branch still has no successful CI run visible in GitHub for the latest head. Focused auth coverage is now present in the repository, but tenant/session isolation still needs application-level validation. Do not mark auth production-ready until CI and the remaining isolation checks pass.
+**Validation caveat:** the repository now contains the focused authentication and tenant/session isolation coverage, but the latest branch head still has no newly recorded CI workflow result. The remaining validation gate is to execute CI against the current head and fix any failures it reports. Do not mark authentication production-ready until that gate passes.
 
 ## Provider engine implemented
 
@@ -62,7 +62,7 @@ Updated: 2026-11-28
 ## CI and release validation
 
 - Previous CI run `46047692879` passed for an earlier provider-engine checkpoint only.
-- The latest auth hardening now has explicit CI database tests for MFA challenge lockout, auth-token replay, and MFA recovery-code replay. API Jest tests are also wired into the CI node job. A successful workflow run for the current branch head is still pending.
+- The latest auth hardening has explicit CI database tests for MFA challenge lockout, auth-token replay, and MFA recovery-code replay. API Jest tests are also wired into the CI node job. A fresh workflow result for the current branch head is still pending.
 - Google URL Inspection reservation values are capped at 2,000/day and 600/minute per site.
 - Bing submissions are bounded by live provider DailyQuota/MonthlyQuota.
 - Provider acceptance/inspection evidence must not be presented as proof of indexing.
@@ -70,7 +70,6 @@ Updated: 2026-11-28
 ## Release gates still open
 
 - CI/typecheck/build and tests for the current branch head.
-- Focused auth security tests: MFA challenge brute-force/lockout, recovery-code replay and application-level tenant/session isolation are now covered. TOTP replay is constrained by single-use MFA login challenges; no separate global TOTP replay cache is claimed. Basic consumed-token replay is covered by CI.
 - Execute queue benchmark on non-production hardware and record PostgreSQL CPU/IO/connection saturation.
 - Sustained queue/backpressure and failure/recovery benchmarks.
 - Validate 1,000,000 URLs/day only after measured end-to-end capacity; no such result exists yet.
@@ -82,4 +81,4 @@ Updated: 2026-11-28
 
 ## Immediate next step
 
-Get CI running and green for the current branch. Fix any compile, migration or test failures first; then complete application-level tenant/session isolation checks. After those gates, execute the non-production queue benchmark and use measured results to size worker/database capacity. After those gates, execute the non-production queue benchmark and use measured results to size worker/database capacity. Do not use production credentials/data, merge into `main`, or deploy as part of this work.
+Get a fresh CI run against the current branch head and fix any compile, migration or test failures first. Once CI passes, execute the non-production queue benchmark and use measured results to size worker/database capacity. Do not use production credentials/data, merge into `main`, or deploy as part of this work.
