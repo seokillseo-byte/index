@@ -172,3 +172,12 @@ Google URL Inspection is inspection evidence, not an indexing request. Bing subm
 - [x] Preserve principal fixtures and final no-mutation assertions.
 - [ ] Confirm CI execution on the latest branch commit.
 - [ ] Validate real TLS/SCRAM/ACL behavior against a non-production broker.
+
+
+## Secure Compose secret wiring (2026-11-29)
+
+- [x] Assert outbox/crawler/provider SCRAM secret mounts and target paths.
+- [x] Assert service secret declarations resolve to the expected host files.
+- [x] Assert Kafka and Admin API CA environment paths match the mounted CA secret.
+- [ ] Confirm the updated Compose mock test executes successfully in CI.
+- [ ] Validate secret readability and authentication against a real non-production broker.
