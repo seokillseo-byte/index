@@ -3,9 +3,10 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 TMP="$(mktemp -d)"
 SECRETS="$ROOT/secrets"
+CREATED_SECRETS=0
 cleanup() {
   rm -rf "$TMP"
-  rm -rf "$SECRETS"
+  if [[ "$CREATED_SECRETS" == 1 ]]; then rm -rf "$SECRETS"; fi
 }
 trap cleanup EXIT
 if [[ -e "$SECRETS" ]]; then
@@ -13,6 +14,7 @@ if [[ -e "$SECRETS" ]]; then
   exit 1
 fi
 mkdir -p "$SECRETS/kafka" "$SECRETS/redpanda"
+CREATED_SECRETS=1
 for file in \
   "$SECRETS/kafka/ca.crt" \
   "$SECRETS/kafka/outbox-scram-password" \
