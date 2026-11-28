@@ -8,7 +8,7 @@ Updated: 2026-11-28
 - Capacity target: 32 vCPU / 64 GB RAM / 2 TB NVMe / 1 Gbps; this is a target specification, not a measured throughput result.
 - Main baseline: `568e00af228c64249f5da6e4ec22f29e6cbe10be`.
 - Active implementation branch: `feature/provider-job-engine`.
-- Latest reviewed feature-branch checkpoint before this status update: `1a9be1d87fa541866777475f28d0a6c3fe682bb4`.
+- Latest implementation checkpoint before the current Redis throttling work: `1a9be1d87fa541866777475f28d0a6c3fe682bb4`; Redis changes are being committed incrementally and require fresh CI.
 - Review PR #6 remains open and unmerged.
 - GitHub reports the branch diverged from main: 186 commits ahead, one commit behind; PR mergeable=false. The one main-only commit overlaps provider-engine files. Do not rebase or merge automatically; review the effective diff before integration.
 - No local working-tree status is available in this workflow; this status reflects GitHub branch/PR data only.
@@ -54,12 +54,19 @@ Updated: 2026-11-28
 - No benchmark has yet been run against dedicated non-production hardware.
 - No evidence currently establishes 1,000,000 URLs/day.
 
+## Shared API rate limiting
+
+- Replaced process-local Nest throttler storage with a Redis-backed storage adapter using one atomic Lua operation for counters/block windows.
+- Redis URL is required; the API does not silently fall back to per-process counters. Redis connection/command failure returns HTTP 503 for rate-limited requests.
+- API Compose startup waits for Redis health; `.env.api.example` documents `REDIS_URL` using the same password configured by infrastructure Redis.
+- Unit tests cover atomic command arguments, lazy connection, missing configuration and fail-closed outage behavior. These tests have not yet been validated by a fresh CI run.
+
 ## Remaining release gates
 
 1. Execute queue benchmark on dedicated non-production database/hardware; record jobs/sec, p50/p95/p99 queue latency, DB CPU/IO, connections and saturation.
 2. Execute sustained queue/backpressure and worker failure/recovery protocols; retain metrics and evidence.
 3. Run real Google/Bing end-to-end tests with non-production provider accounts.
-4. Configure shared Redis-backed API rate limiting and test Redis outage behavior.
+4. [x] Implement shared Redis-backed API throttling with atomic Lua counters and fail-closed 503 behavior; unit tests added, fresh CI validation pending.
 5. Enable Kafka/Redpanda TLS, authentication and least-privilege ACLs for API/outbox relay/crawler/provider worker; test denied access.
 6. Configure protected off-site encrypted backups, retention, age identity recovery/key escrow and execute a non-production restore drill.
 7. Implement metrics/logging/alerting, define thresholds/owners and test alert delivery in non-production.
@@ -69,4 +76,4 @@ Updated: 2026-11-28
 
 ## Immediate next step
 
-The next executable step requires a dedicated non-production PostgreSQL environment and host-level access for the existing benchmark/restore drills. Do not use production credentials/data, merge into `main`, deploy production, or add unrelated features. In parallel, continue only the existing security release gates (shared Redis throttling and Kafka transport security) after validating their exact runtime/package contracts.
+Next code task: implement Kafka/Redpanda TLS, SASL authentication and per-client ACLs only after validating the exact Redpanda and Kafka client configuration contracts for Node and Go. The benchmark/restore drills still require dedicated non-production PostgreSQL and host-level access. Do not use production credentials/data, merge into `main`, deploy production, or add unrelated features.
