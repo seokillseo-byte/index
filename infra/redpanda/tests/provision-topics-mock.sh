@@ -18,7 +18,7 @@ case "$1 $2" in
     grep -Fxq "$3" "$MOCK_TOPICS"
     ;;
   "topic create")
-    [[ -n "\${RPK_PASS:-}" ]] || [[ "\${REQUIRE_KAFKA_TLS_SASL:-false}" != true ]]
+    [[ -n "${RPK_PASS:-}" ]] || [[ "${REQUIRE_KAFKA_TLS_SASL:-false}" != true ]]
     printf '%s\n' "$3" >> "$MOCK_TOPICS"
     ;;
   *)
