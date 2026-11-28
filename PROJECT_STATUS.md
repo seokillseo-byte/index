@@ -67,7 +67,7 @@ Updated: 2026-11-28
 - Added shared KafkaJS TLS/SCRAM-SHA-512 configuration for outbox relay and provider worker, and a Go kafka-go TLS/SCRAM-SHA-512 dialer for crawler.
 - Production worker/crawler containers set `NODE_ENV=production`; both client implementations reject plaintext Kafka configuration in production and require a CA file plus dedicated SCRAM identity.
 - Added unit tests, environment examples, read-only CA mounts, a Redpanda TLS/SASL listener example and `docs/deployment/kafka-security.md` with least-privilege ACL plan and negative test gates.
-- The active Redpanda Compose service is still plaintext/development-only. Broker TLS listener activation, initial admin bootstrap, SCRAM user provisioning, topic/group ACL enforcement and real Redpanda integration tests are not completed. Do not deploy these production workloads until the broker and client credentials are provisioned together.
+- The active Redpanda Compose service is still plaintext/development-only and pins Redpanda v24.3.7, whose 24.3 release line is end-of-support. Select and validate a currently supported broker release before production. Broker TLS listener activation, initial admin bootstrap, SCRAM user provisioning, topic/group ACL enforcement and real Redpanda integration tests are not completed. Do not deploy these production workloads until the broker and client credentials are provisioned together.
 
 ## Remaining release gates
 
