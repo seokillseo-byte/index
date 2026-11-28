@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { AuthService } from '../src/auth/auth.service';
 
 describe('AuthService MFA challenge hardening', () => {
@@ -85,10 +84,12 @@ describe('AuthService MFA challenge hardening', () => {
   });
 
   it('does not expose the raw MFA challenge token to the database', async () => {
+    const queries: Array<{ sql: string; values: unknown[] }> = [];
     const db = {
       withTransaction: jest.fn(async (work: (tx: { query: jest.Mock }) => Promise<unknown>) => {
         const client = {
-          query: jest.fn(async (sql: string) => {
+          query: jest.fn(async (sql: string, values: unknown[] = []) => {
+            queries.push({ sql, values });
             if (sql.includes("purpose='mfa_login'") && sql.includes('FOR UPDATE')) {
               return { rowCount: 0, rows: [] };
             }
@@ -109,7 +110,9 @@ describe('AuthService MFA challenge hardening', () => {
       'Invalid or expired MFA challenge',
     );
 
-    const tx = db.withTransaction.mock.calls[0][0];
-    expect(tx).toBeDefined();
+    const challengeLookup = queries.find((entry) => entry.sql.includes("purpose='mfa_login'"));
+    expect(challengeLookup).toBeDefined();
+    expect(challengeLookup?.values[0]).toBeInstanceOf(Buffer);
+    expect(challengeLookup?.values[0]).not.toEqual(Buffer.from(rawToken));
   });
 });
