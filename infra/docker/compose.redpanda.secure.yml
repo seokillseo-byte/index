@@ -3,15 +3,15 @@ services:
     image: redpandadata/redpanda:v26.3.1
     entrypoint: ["/bin/sh","-ec"]
     environment:
-      REDPANDA_ADMIN_USER: \${REDPANDA_ADMIN_USER:?Set REDPANDA_ADMIN_USER}
-      REDPANDA_BOOTSTRAP_ONCE: \${REDPANDA_BOOTSTRAP_ONCE:-0}
+      REDPANDA_ADMIN_USER: ${REDPANDA_ADMIN_USER:?Set REDPANDA_ADMIN_USER}
+      REDPANDA_BOOTSTRAP_ONCE: ${REDPANDA_BOOTSTRAP_ONCE:-0}
     command:
       - |
-        if [ "$\${REDPANDA_BOOTSTRAP_ONCE:-0}" = "1" ]; then
+        if [ "$${REDPANDA_BOOTSTRAP_ONCE:-0}" = "1" ]; then
           password="$$(cat /run/secrets/redpanda-admin-password)"
-          [ "$\${#password}" -ge 32 ] || { echo "Admin password must be at least 32 characters" >&2; exit 1; }
+          [ "$${#password}" -ge 32 ] || { echo "Admin password must be at least 32 characters" >&2; exit 1; }
           case "$$password" in *:*) echo "Admin password must not contain ':'" >&2; exit 1 ;; esac
-          export RP_BOOTSTRAP_USER="$\${REDPANDA_ADMIN_USER}:$\${password}:SCRAM-SHA-512"
+          export RP_BOOTSTRAP_USER="$${REDPANDA_ADMIN_USER}:$${password}:SCRAM-SHA-512"
           unset password
         fi
         exec redpanda start --overprovisioned --smp 2 --memory 2G --reserve-memory 0M --node-id 0 --check=false
@@ -53,7 +53,7 @@ services:
       RPK_TLS_ENABLED: "true"
       RPK_TLS_CA: /run/secrets/redpanda-ca.crt
       RPK_SASL_MECHANISM: SCRAM-SHA-512
-      RPK_USER: \${REDPANDA_ADMIN_USER:?Set REDPANDA_ADMIN_USER}
+      RPK_USER: ${REDPANDA_ADMIN_USER:?Set REDPANDA_ADMIN_USER}
     command:
       - |
         export RPK_PASS="$$(cat /run/secrets/redpanda-admin-password)"
