@@ -10,7 +10,7 @@ Updated: 2026-11-28
 - Active implementation branch: `feature/provider-job-engine`.
 - Latest implementation checkpoint before Redis throttling work: `1a9be1d87fa541866777475f28d0a6c3fe682bb4`; current Redis implementation is in commit `c76b935a7b7cf051e9dab1f5a8a77b5a8c2e5f73` and awaits CI.
 - Review PR #6 remains open and unmerged.
-- GitHub reports the branch diverged from main: 186 commits ahead, one commit behind; PR mergeable=false. The one main-only commit overlaps provider-engine files. Do not rebase or merge automatically; review the effective diff before integration.
+- GitHub reports the branch diverged from main: 213 commits ahead, one commit behind at the latest comparison; PR mergeable=false. The one main-only commit overlaps provider-engine files. Do not rebase or merge automatically; review the effective diff before integration. The one main-only commit overlaps provider-engine files. Do not rebase or merge automatically; review the effective diff before integration.
 - No local working-tree status is available in this workflow; this status reflects GitHub branch/PR data only.
 
 ## Authentication and tenant isolation
