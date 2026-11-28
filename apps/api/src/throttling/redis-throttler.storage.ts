@@ -1,6 +1,13 @@
 import {OnModuleDestroy,ServiceUnavailableException} from '@nestjs/common';
-import type {ThrottlerStorage,ThrottlerStorageRecord} from '@nestjs/throttler';
-import Redis = require('ioredis');
+import type {ThrottlerStorage} from '@nestjs/throttler';
+import {Redis} from 'ioredis';
+
+type ThrottlerStorageRecord = {
+  totalHits: number;
+  timeToExpire: number;
+  isBlocked: boolean;
+  timeToBlockExpire: number;
+};
 
 const INCREMENT_SCRIPT = `
 local blockedTtl = redis.call('PTTL', KEYS[2])
