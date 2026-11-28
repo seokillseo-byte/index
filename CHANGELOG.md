@@ -294,3 +294,9 @@
 
 - Expanded the merged-Compose test to catch missing/misrouted application SCRAM secret mounts, incorrect host secret-file declarations, and Kafka/Admin CA path mismatches for the provisioner.
 - Static test source is CI-wired; execution on the latest commit and live broker verification remain outstanding.
+
+
+## 2026-11-29 — Redpanda secret mount and permission regression checks
+
+- Expanded secure Compose merged-config assertions to cover broker certificate/key/CA/bootstrap secret paths, expected file modes, provisioner secret modes, and all nine host secret-file declarations. Mode values are normalized to avoid YAML octal/integer representation differences.
+- These checks are static test source; latest CI execution and real container permission behavior remain unverified.
