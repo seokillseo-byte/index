@@ -7,9 +7,11 @@ services:
       REDPANDA_BOOTSTRAP_ONCE: ${REDPANDA_BOOTSTRAP_ONCE:-0}
     command:
       - |
-        for file in /etc/redpanda/certs/ca.crt /etc/redpanda/certs/broker.crt /etc/redpanda/certs/broker.key /etc/redpanda/certs/admin.crt /etc/redpanda/certs/admin.key; do
-          test -r "$file" && test -s "$file" || { echo "Redpanda cannot read non-empty required certificate material" >&2; exit 1; }
-        done
+        test -r /etc/redpanda/certs/ca.crt && test -s /etc/redpanda/certs/ca.crt || { echo "Redpanda requires readable, non-empty ca.crt" >&2; exit 1; }
+        test -r /etc/redpanda/certs/broker.crt && test -s /etc/redpanda/certs/broker.crt || { echo "Redpanda requires readable, non-empty broker.crt" >&2; exit 1; }
+        test -r /etc/redpanda/certs/broker.key && test -s /etc/redpanda/certs/broker.key || { echo "Redpanda requires readable, non-empty broker.key" >&2; exit 1; }
+        test -r /etc/redpanda/certs/admin.crt && test -s /etc/redpanda/certs/admin.crt || { echo "Redpanda requires readable, non-empty admin.crt" >&2; exit 1; }
+        test -r /etc/redpanda/certs/admin.key && test -s /etc/redpanda/certs/admin.key || { echo "Redpanda requires readable, non-empty admin.key" >&2; exit 1; }
         if [ "$${REDPANDA_BOOTSTRAP_ONCE:-0}" = "1" ]; then
           [ -r /run/secrets/redpanda-admin-password ] || { echo "Redpanda cannot read the Admin bootstrap password secret" >&2; exit 1; }
           password="$$(cat /run/secrets/redpanda-admin-password)"
