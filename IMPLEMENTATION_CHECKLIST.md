@@ -39,8 +39,9 @@
 - [x] Add an isolated secure Compose overlay with a new `redpanda_data_secure` volume; it does not mount or modify the legacy EOL broker volume.
 - [x] Move `redpanda-init` into the broker network namespace and add repeat-safe topic provisioning for existing topics.
 - [x] Add secure one-shot provisioning for three service SCRAM principals and least-privilege topic/group/idempotent-write ACLs; passwords are read from Docker secret files.
-- [x] Add mock tests for topic provisioning, TLS/SCRAM fail-closed guards, SCRAM user/ACL repeat-safety and secure Compose merge; fresh CI pending.
-- [ ] Obtain fresh CI for the latest Redpanda scripts and Compose overlay.
+- [x] Add mock tests for topic provisioning, TLS/SCRAM fail-closed guards, SCRAM user/ACL repeat-safety and secure Compose merge.
+- [x] CI #340 passed the secure overlay merge test, all Redpanda provisioning mocks, Node typecheck/build/Jest, Go race/vet and database security regressions: [workflow](https://github.com/seokillseo-byte/index/actions/runs/46119413495).
+- [x] CI #341 passed the current documentation checkpoint: [workflow](https://github.com/seokillseo-byte/index/actions/runs/46119449767).
 - [ ] Provision actual broker/Admin certificates and service password files; run the isolated secure overlay on non-production Redpanda and verify the Admin API/Kafka TLS/SCRAM handshakes.
 - [ ] Verify positive/negative ACL operations, wrong-password/untrusted-CA rejection and workload restart/recovery on a live non-production broker.
 - [ ] Rehearse the v24.3.7 persistent-volume upgrade on a disposable cold copy with a tested rollback plan; never change the active volume by merely changing the image tag.
@@ -48,7 +49,7 @@
 - [x] CI #277 passed the follow-up Redis reconnect regression test: [workflow](https://github.com/seokillseo-byte/index/actions/runs/46110358016).
 - [x] CI #286 passed on the full documentation checkpoint: [workflow](https://github.com/seokillseo-byte/index/actions/runs/46110473131).
 - [x] CI #306 passed multi-recipient age encryption/decryption using two independent identities, invalid/duplicate/empty recipient rejection, Bash safety tests, YAML syntax, Node typecheck/build/Jest, crawler Go race/vet and database regressions: [workflow](https://github.com/seokillseo-byte/index/actions/runs/46111164620).
-- [ ] Fresh CI for secure Redpanda Compose overlay and mock provisioning scripts.
+- [x] Fresh CI for secure Redpanda Compose overlay and mock provisioning scripts passed in CI #340; docs checkpoint passed in CI #341.
 
 ## Provider Job Engine
 
