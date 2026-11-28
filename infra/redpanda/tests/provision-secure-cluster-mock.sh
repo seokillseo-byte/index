@@ -106,7 +106,10 @@ expect_rejected 'Admin API without TLS' env RPK_ADMIN_TLS_ENABLED=false
 expect_rejected 'non-SCRAM mechanism' env RPK_SASL_MECHANISM=PLAIN
 expect_rejected 'missing bootstrap password' env -u RPK_PASS
 printf 'short\n' > "$TMP/short.pass"
+grep -Fxv 'index-assist-outbox' "$MOCK_USERS" > "$TMP/users.without.outbox"
+mv "$TMP/users.without.outbox" "$MOCK_USERS"
 expect_rejected 'short service password' env OUTBOX_PASSWORD_FILE="$TMP/short.pass"
+printf 'index-assist-outbox\n' >> "$MOCK_USERS"
 chmod 000 "$TMP/ca.crt"
 expect_rejected 'unreadable CA file' env
 chmod 600 "$TMP/ca.crt"
