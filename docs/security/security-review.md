@@ -23,7 +23,7 @@ This is a source/configuration review of the current repository state, not an in
 
 ### High — Shared Redis throttling implemented; CI and live failure test pending
 
-Evidence: `apps/api/src/throttling/redis-throttler.storage.ts` uses an atomic Redis Lua script for shared counters and block windows. `apps/api/src/app.module.ts` configures it as the Nest throttler storage; `REDIS_URL` is required, the API workload waits for Redis health, and rate-limited requests fail closed with HTTP 503 on Redis errors. Unit tests cover atomic command arguments, lazy connection, missing configuration and unavailable Redis; a Redis integration test uses two independent clients to verify shared counters/block state, and CI provisions Redis for the Node job.
+Evidence: `apps/api/src/throttling/redis-throttler.storage.ts` uses an atomic Redis Lua script for shared counters and block windows. `apps/api/src/app.module.ts` configures it as the Nest throttler storage; `REDIS_URL` is required, the API workload waits for Redis health, the Redis client disconnects on Nest shutdown, and rate-limited requests fail closed with HTTP 503 on Redis errors. Unit tests cover atomic command arguments, lazy connection, missing configuration and unavailable Redis; a Redis integration test uses two independent clients to verify shared counters/block state, and CI provisions Redis for the Node job.
 
 Impact: this closes the process-local storage design gap in source, but it is not yet CI-verified in the latest branch checkpoint and no deployed multi-instance/Redis outage drill has been run.
 
