@@ -1,3 +1,10 @@
+## 2026-11-28 — Redpanda secret ownership and readability guard
+
+- Confirmed the official Redpanda v26.3.1 image runs as the unprivileged `redpanda` user. Added a runbook procedure to query the exact image UID/GID and align owner-only private keys/password files with that identity; do not weaken permissions to make secrets world-readable.
+- Added startup checks for broker certificate/key and Admin bootstrap password readability, plus provisioner checks for Kafka/Admin CA and each service SCRAM password file.
+- Added a regression test that rejects an unreadable CA file.
+- No actual certificates, secrets, broker process or persistent data volume were accessed.
+
 ## 2026-11-28 — Redpanda SASL activation config assertion
 
 - Static review against current Redpanda security documentation found that the secure broker template configured SASL on the listener but omitted the cluster-level `redpanda.enable_sasl: true` switch required to activate SASL.

@@ -8,8 +8,8 @@ set -eu
 [ "${RPK_ADMIN_TLS_ENABLED:-false}" = "true" ] || { echo "Admin API TLS must be enabled" >&2; exit 1; }
 [ "${RPK_SASL_MECHANISM:-}" = "SCRAM-SHA-512" ] || { echo "SCRAM-SHA-512 is required" >&2; exit 1; }
 [ -n "${RPK_USER:-}" ] && [ -n "${RPK_PASS:-}" ] || { echo "Bootstrap admin SCRAM credentials are required" >&2; exit 1; }
-[ -n "${RPK_TLS_CA:-}" ] && [ -s "$RPK_TLS_CA" ] || { echo "A readable Kafka CA certificate is required" >&2; exit 1; }
-[ -n "${RPK_ADMIN_TLS_CA:-}" ] && [ -s "$RPK_ADMIN_TLS_CA" ] || { echo "A readable Admin API CA certificate is required" >&2; exit 1; }
+[ -n "${RPK_TLS_CA:-}" ] && [ -r "$RPK_TLS_CA" ] && [ -s "$RPK_TLS_CA" ] || { echo "A readable Kafka CA certificate is required" >&2; exit 1; }
+[ -n "${RPK_ADMIN_TLS_CA:-}" ] && [ -r "$RPK_ADMIN_TLS_CA" ] && [ -s "$RPK_ADMIN_TLS_CA" ] || { echo "A readable Admin API CA certificate is required" >&2; exit 1; }
 
 ensure_topic() {
   topic="$1"
@@ -26,7 +26,7 @@ ensure_user() {
     echo "SCRAM principal already exists; keeping its current credential: $username"
     return 0
   fi
-  [ -s "$password_file" ] || { echo "Missing SCRAM password file for $username" >&2; exit 1; }
+  [ -r "$password_file" ] && [ -s "$password_file" ] || { echo "Missing or unreadable SCRAM password file for $username" >&2; exit 1; }
   password="$(cat "$password_file")"
   [ "${#password}" -ge 32 ] || { echo "SCRAM password must be at least 32 characters for $username" >&2; exit 1; }
   rpk security user create "$username" --password "$password" --mechanism SCRAM-SHA-512

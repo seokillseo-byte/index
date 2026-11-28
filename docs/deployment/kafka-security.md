@@ -91,7 +91,40 @@ The secure overlay creates a separate named volume, redpanda_data_secure; it doe
    The one-shot redpanda-init service waits for broker health, authenticates over TLS/SCRAM, creates the existing topics, provisions the three service SCRAM principals and applies their least-privilege ACLs. Workloads depend on successful completion of this job.
 6. Do not point this overlay at the existing v24.3.7 volume. For upgrade testing, make a separate cold copy/snapshot and test the exact supported upgrade sequence on disposable infrastructure first.
 
-The overlay requires the broker/admin certificate and password files to exist before Compose starts. It keeps the Kafka port published only on host loopback and does not publish Admin API port 9644. The admin password is mounted as a Docker secret; the provisioner reads it into the rpk process environment rather than placing it in command-line arguments. Service password files are also mounted only into the one-shot provisioner; rpk's user-create command accepts the target password as an argument, so that value is briefly visible in the provisioner container's process arguments and must never be logged or run in a shared admin container.
+The overlay requires the broker/admin certificate and password files to exist before Compose starts. It keeps the Kafka port published only on host loopback and does not publish Admin API port 9644.
+
+### Secret file ownership and container readability
+
+The Redpanda v26.3.1 image runs as the unprivileged `redpanda` user, not root. Local file-backed Compose secrets are mounted from host files; a restrictive mode such as `0400` is useful only when the mounted file is owned by the UID that must read it. Do not assume that setting `mode: 0400` in the Compose secret declaration changes host-file ownership.
+
+After pulling the exact pinned image, obtain its runtime UID/GID rather than hard-coding an assumed numeric ID:
+
+```bash
+RP_UID="$(docker run --rm --entrypoint id redpandadata/redpanda:v26.3.1 -u)"
+RP_GID="$(docker run --rm --entrypoint id redpandadata/redpanda:v26.3.1 -g)"
+printf 'Redpanda container UID:GID = %s:%s\\n' "$RP_UID" "$RP_GID"
+```
+
+The broker must read its CA, broker certificate/key, Admin certificate/key and bootstrap password. The one-shot provisioner runs from the same Redpanda image and must also read the three service password files. Set owner and restrictive permissions on the private files:
+
+```bash
+sudo chown "$RP_UID:$RP_GID" \
+  secrets/redpanda/broker.key secrets/redpanda/admin.key \
+  secrets/redpanda/admin-password \
+  secrets/kafka/outbox-scram-password \
+  secrets/kafka/crawler-scram-password \
+  secrets/kafka/provider-scram-password
+sudo chmod 0400 \
+  secrets/redpanda/broker.key secrets/redpanda/admin.key \
+  secrets/redpanda/admin-password \
+  secrets/kafka/outbox-scram-password \
+  secrets/kafka/crawler-scram-password \
+  secrets/kafka/provider-scram-password
+sudo chmod 0444 secrets/kafka/ca.crt \
+  secrets/redpanda/broker.crt secrets/redpanda/admin.crt
+```
+
+The secure broker startup and provisioning scripts now fail early when their required files are unreadable. The CI mock also verifies that an unreadable CA is rejected. Confirm readability inside the exact image/container before starting the broker; do not solve permission errors by making private keys or passwords world-readable. The admin password is mounted as a Docker secret; the provisioner reads it into the rpk process environment rather than placing it in command-line arguments. Service password files are also mounted only into the one-shot provisioner; rpk's user-create command accepts the target password as an argument, so that value is briefly visible in the provisioner container's process arguments and must never be logged or run in a shared admin container.
 
 Create dedicated SCRAM-SHA-512 principals:
 

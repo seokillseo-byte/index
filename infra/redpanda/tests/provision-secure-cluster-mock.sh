@@ -96,4 +96,10 @@ if RPK_TLS_ENABLED=false bash "$ROOT/infra/redpanda/provision-secure-cluster.sh"
   echo 'secure provisioning accepted plaintext Kafka' >&2
   exit 1
 fi
+chmod 000 "$TMP/ca.crt"
+if bash "$ROOT/infra/redpanda/provision-secure-cluster.sh" >/dev/null 2>&1; then
+  echo 'secure provisioning accepted an unreadable CA file' >&2
+  exit 1
+fi
+chmod 600 "$TMP/ca.crt"
 echo 'Secure Redpanda provisioning mock tests passed'

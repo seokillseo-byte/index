@@ -41,6 +41,7 @@
 - [x] Add secure one-shot provisioning for three service SCRAM principals and least-privilege topic/group/idempotent-write ACLs; passwords are read from Docker secret files.
 - [x] Add mock tests for topic provisioning, TLS/SCRAM fail-closed guards, SCRAM user/ACL repeat-safety and secure Compose merge.
 - [x] Explicitly enable `redpanda.enable_sasl: true` in the v26.3.1 broker template; strengthen the secure-config test to assert SASL activation, Kafka ACL authorization, Kafka TLS and loopback Admin API TLS/binding.
+- [x] Add fail-fast readability checks for broker certificate/key, Admin bootstrap password, Kafka/Admin CA and service SCRAM password files; add an unreadable-CA regression test and document UID/GID alignment for the non-root Redpanda image.
 - [x] CI #340 passed the secure overlay merge test, all Redpanda provisioning mocks, Node typecheck/build/Jest, Go race/vet and database security regressions: [workflow](https://github.com/seokillseo-byte/index/actions/runs/46119413495).
 - [x] CI #341 passed the current documentation checkpoint: [workflow](https://github.com/seokillseo-byte/index/actions/runs/46119449767).
 - [ ] Provision actual broker/Admin certificates and service password files; run the isolated secure overlay on non-production Redpanda and verify the Admin API/Kafka TLS/SCRAM handshakes.
