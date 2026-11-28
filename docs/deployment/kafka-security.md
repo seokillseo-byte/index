@@ -111,7 +111,7 @@ Grant only the following Kafka ACLs:
 | `index-assist-provider` | topic `provider.jobs` | Read, Describe |
 | `index-assist-provider` | group `index-assist-provider-v1` | Read |
 
-The bootstrap/admin identity creates the two existing topics. Application principals must not receive cluster-wide superuser access, topic-create permission, wildcard topic ACLs or access to the other consumer group. Create the three application SCRAM users through an authenticated admin session, then apply the following least-privilege ACLs. Use unique random passwords and inject them through the approved secret manager; do not reuse the bootstrap administrator password.
+The bootstrap/admin identity creates the two existing topics, provisions the three application SCRAM users and applies the following least-privilege ACLs through the one-shot secure provisioner. Application principals must not receive cluster-wide superuser access, topic-create permission, wildcard topic ACLs or access to the other consumer group. Use unique random passwords from protected secret files; do not reuse the bootstrap administrator password.
 
 The secure overlay's one-shot provisioner runs infra/redpanda/provision-secure-cluster.sh after the bootstrap superuser is healthy. It reads the three service passwords from Docker secret files, creates missing SCRAM users, creates missing ACLs, and ensures the two existing topics. Existing users are deliberately not recreated or silently password-rotated; if a user already exists, the provisioner retains its current credential. To rotate one, use the authenticated rpk user-update workflow, then update the matching secret file and workload environment file together.
 
