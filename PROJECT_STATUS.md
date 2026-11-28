@@ -130,3 +130,8 @@ Next: provision actual non-production certificates and secret files, bring up th
 - Added an explicit mock case for an empty Kafka CA file, alongside the missing Kafka CA, missing Admin API CA and empty Admin API CA cases.
 - Secure provisioner mock coverage now checks missing, empty and unreadable CA inputs; all invalid-input cases are followed by resource-count assertions to detect unintended topic/user/ACL mutation.
 - These are CI-wired regression tests only. CI execution on the current branch head and live Redpanda validation remain unconfirmed.
+
+
+## 2026-11-29 — Redpanda service-secret negative paths
+- Added mock rejection cases for a missing service SCRAM password file and an empty service SCRAM password file. Each case temporarily removes the outbox principal from mock state to exercise the new-user validation path, then restores the fixture.
+- Invalid-input resource-count assertions remain in place for topics, SCRAM principals and ACLs. These are mock regressions wired into CI; latest CI execution and live broker validation are not confirmed.
