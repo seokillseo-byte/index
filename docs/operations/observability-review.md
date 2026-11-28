@@ -1,7 +1,7 @@
 # Index Assist — Observability and alerting review
 
 Updated: 2026-11-28
-Branch reviewed: `feature/provider-job-engine` at `1a9be1d87fa541866777475f28d0a6c3fe682bb4`
+Branch reviewed: `feature/provider-job-engine` after Redis and Kafka client-security changes (fresh CI pending)
 
 ## Scope
 
@@ -14,7 +14,7 @@ Static review of repository configuration and application/worker health/logging 
 - API has a readiness endpoint used by the Compose health check; it now reports not-ready when PostgreSQL or shared Redis is unavailable.
 - Crawler has a readiness endpoint used by its Compose health check.
 - API and workers emit process logs; provider worker records provider/queue errors to standard output/error.
-- API rate-limited requests depend on shared Redis; the current adapter fails closed with HTTP 503 when Redis is unavailable. Redis availability/error-rate and memory-pressure alerting (the service uses `noeviction`) plus deployed multi-instance outage drills remain outstanding. The repository now includes a Redis integration test with two independent storage instances; CI validation is pending.
+- API rate-limited requests depend on shared Redis; the current adapter fails closed with HTTP 503 when Redis is unavailable. Redis availability/error-rate and memory-pressure alerting (the service uses `noeviction`) plus deployed multi-instance outage drills remain outstanding. The repository now includes a Redis integration test with two independent storage instances; CI validation is pending. Kafka client TLS/SCRAM support and ACL rollout guidance are now present, but the active broker remains plaintext until non-production provisioning and negative ACL tests pass.
 - Provider queue state and attempt/error fields are persisted in PostgreSQL.
 - Benchmark harness reports queue-path throughput/latency, PostgreSQL counter deltas and connection snapshots.
 - No metrics scraper, dashboard, distributed tracing collector, log aggregation configuration, alert rules or notification integration was found in the repository tree.
