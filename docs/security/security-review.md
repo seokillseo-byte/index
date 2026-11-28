@@ -15,7 +15,7 @@ This is a source/configuration review of the current repository state, not an in
 - Provider operations are tenant-scoped and constrained to verified properties; worker DB connection uses the restricted runtime role.
 - Docker workload ports are not published publicly in the checked compose file; API is bound to loopback on the host.
 - Environment files are ignored by Git, with example templates retained.
-- Backup scripts restrict local file permissions and validate archive/checksum, but do not encrypt the archive.
+- Backup scripts now encrypt archives with age, restrict local file permissions and validate checksum/archive. Off-site replication, key escrow and an actual restore drill remain outstanding.
 
 ## Findings and required actions
 
@@ -35,13 +35,13 @@ Impact: internal-network or host compromise can potentially read/publish queue m
 
 Required before production: enable authenticated TLS transport and least-privilege ACLs for API/outbox relay/crawler/provider worker; rotate credentials and test denied access. Current compose network isolation is a useful boundary, not a substitute for broker authentication.
 
-### High — Backup artifacts are not encrypted and no off-host recovery policy is implemented
+### High — Off-host recovery policy and key-management drill are not implemented
 
-Evidence: `infra/postgres/backup.sh` writes a custom-format dump and SHA-256 checksum; it does not encrypt the dump or perform off-site replication. The runbook explicitly excludes retention, PITR and monitoring.
+Evidence: `infra/postgres/backup.sh` now encrypts custom-format dumps with age before writing final artifacts and verifies the encrypted-file SHA-256 checksum. The runbook still does not implement off-site replication, retention, PITR, monitoring or key escrow; the age private identity must be managed outside this repository.
 
-Impact: anyone obtaining a backup file may read customer and credential-related database contents; local disk loss can also destroy both database and backup.
+Impact: compromise of the age private identity or loss of both the VPS and its local backup can expose data or make recovery impossible. A local encrypted artifact alone is not a disaster-recovery plan.
 
-Required before production: encrypt backups using an approved key-management process, store copies separately from the VPS, define retention/access logging, and decide/test PITR or an explicitly accepted recovery-point objective. Keep encryption keys outside the backup and repository.
+Required before production: store encrypted copies separately from the VPS, define retention/access logging, protect and escrow the age private identity through an approved key-management process, and decide/test PITR or an explicitly accepted recovery-point objective. Execute a restore drill using the separately recovered identity. Keep encryption keys outside the backup and repository.
 
 ### Medium — Database transport encryption is not enabled in the example deployment
 

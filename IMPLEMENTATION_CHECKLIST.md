@@ -55,9 +55,11 @@
 - [ ] Validate 1,000,000 URLs/day using measured end-to-end capacity.
 - [ ] Google/Bing end-to-end test with non-production provider accounts.
 - [x] Add guarded PostgreSQL custom-format backup and non-production restore scripts with checksum/archive validation.
+- [x] Encrypt backup artifacts with age before final storage; restore decrypts only into a private temporary directory and requires an external identity file.
 - [x] Remove partial backup artifacts on failure and prevent interactive password prompts in unattended operations.
 - [x] CI validates Bash syntax for both operational scripts.
 - [x] Document post-restore validation and operational limitations.
+- [ ] Configure protected age identity storage/key recovery and off-site encrypted backup replication.
 - [ ] Execute non-production restore drill and record evidence.
 - [x] Perform preliminary static security/configuration review and document findings.
 - [ ] Resolve security release findings: shared Redis throttling, Kafka TLS/auth/ACL, encrypted/off-host backup policy, database TLS for multi-host, and independent security review.

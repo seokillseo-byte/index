@@ -1,3 +1,10 @@
+## 2026-11-28 — Encrypt PostgreSQL backup artifacts
+
+- Changed the backup workflow to create plaintext dumps only in a private temporary directory, validate the archive, encrypt with age, and persist only the encrypted artifact plus checksum/manifest.
+- Restore now requires an external age identity file, verifies the encrypted checksum, decrypts into a private temporary directory and validates the archive before restoring.
+- Updated the drill runbook and security review. No private key or secret was added to the repository. Off-site replication, key escrow and an actual restore drill remain outstanding.
+- CI shell syntax validation is required for this checkpoint; no live database backup/restore was executed.
+
 ## 2026-11-28 — Preliminary security and observability release reviews
 
 - Added a source/configuration security review documenting current controls, prioritized release findings and required remediation. It is explicitly not a penetration test or production sign-off.
