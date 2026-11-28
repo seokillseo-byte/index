@@ -3,7 +3,8 @@
 - Added a Redis-backed Nest throttler storage adapter using an atomic Lua script for shared counters and block windows across API instances.
 - API rate-limited requests fail closed with HTTP 503 when Redis is unavailable; there is no silent in-memory fallback.
 - Added required `REDIS_URL` to the API environment example and made the API workload wait for the infrastructure Redis health check.
-- Added unit tests for atomic Redis arguments, lazy connection, missing configuration and Redis outage behavior. Fresh CI validation is pending; this is not yet marked as a CI-verified release control.
+- Added unit tests for atomic Redis arguments, lazy connection, missing configuration and Redis outage behavior, plus an integration test with two independent storage clients against a real Redis service.
+- Updated Node CI job to provision Redis 7.4 for that integration test. Fresh CI validation is pending; this is not yet marked as a CI-verified release control.
 - No Redis production credentials or live infrastructure were accessed or changed.
 
 ## 2026-11-28 — CI #184 passed and release status reconciled
