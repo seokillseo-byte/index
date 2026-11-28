@@ -137,3 +137,11 @@ Google URL Inspection is inspection evidence, not an indexing request. Bing subm
 - [x] Assert rejected configurations do not change mock topic, principal or ACL counts.
 - [ ] CI execution/result for latest branch commit — pending confirmation.
 - [ ] Live non-production TLS/SCRAM/ACL and restart/recovery validation — outstanding.
+
+
+## Redpanda CA input validation follow-up (2026-11-29)
+
+- [x] Add mock rejection cases for missing Kafka CA, missing Admin API CA and empty Admin API CA.
+- [x] Keep invalid-input checks ahead of topic/user/ACL provisioning and retain the no-mutation assertions.
+- [ ] Confirm CI execution on the updated branch head.
+- [ ] Run live non-production broker TLS/SCRAM/ACL and restart/recovery validation.
