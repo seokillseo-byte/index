@@ -1,3 +1,9 @@
+## 2026-11-28 — Benchmark measurement coverage
+
+- Extended the non-production provider queue benchmark output with queue-latency p50/p95/p99, PostgreSQL statistics counter deltas, and visible/benchmark connection counts.
+- Clarified that host CPU and disk IO must still be collected from the non-production database host; database counters alone are not host utilization metrics.
+- No benchmark was executed and no throughput claim was added.
+
 ## 2026-11-28 — CI activation and validation
 
 - Added push-triggered CI for `feature/provider-job-engine`, ensuring branch commits run the same validation jobs rather than relying solely on pull-request events.

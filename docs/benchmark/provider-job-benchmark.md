@@ -40,12 +40,15 @@ pnpm --filter @index-assist/worker benchmark:provider-jobs
 
 - Seed duration (reported separately).
 - Queue-drain jobs/sec and estimated jobs/day.
+- Queue latency p50/p95/p99 from job creation to successful claim.
 - Queue batch size and worker concurrency.
-- PostgreSQL CPU/IO/connection saturation (collect from the database host during the run).
+- PostgreSQL counter deltas during draining (transactions, buffer reads/hits, tuple writes, deadlocks and temp bytes).
+- Visible database connections before/after the drain and benchmark pool connection count.
+- PostgreSQL host CPU, disk IO, memory and connection saturation (collect from the database host during the run; SQL statistics are not a substitute for OS-level metrics).
 
 Each invocation creates a unique run ID and workers claim only that run's jobs. Cleanup is scoped to the same unique idempotency prefix and runs from a `finally` block, including when seeding or draining fails. Concurrent benchmark runs therefore do not clean up one another's rows.
 
-The result is a database queue-path measurement only. It must not be presented as proof that the system can submit or inspect 1,000,000 URLs/day through Google/Bing.
+The result is a database queue-path measurement only. Database counter deltas and visible connection counts are diagnostic context; collect OS-level CPU/disk IO and peak connection utilization separately from the database host. It must not be presented as proof that the system can submit or inspect 1,000,000 URLs/day through Google/Bing.
 
 ## Safety
 

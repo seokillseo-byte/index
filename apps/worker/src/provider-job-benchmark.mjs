@@ -59,32 +59,67 @@ async function seed(){
 async function worker(){
  const workerId='benchmark-'+randomUUID();
  let processed=0;
+ const latenciesMs=[];
  while(true){
   const rows=await tx(async client=>{
    const result=await client.query(
-    "WITH due AS (SELECT id FROM app.provider_jobs WHERE tenant_id=$1 AND project_id=$2 AND connection_id=$3 AND provider=$4 AND site_url=$5 AND action=$6 AND status='queued' AND idempotency_key LIKE $8 ORDER BY created_at LIMIT $7 FOR UPDATE SKIP LOCKED) UPDATE app.provider_jobs j SET status='leased',lease_owner=$9,lease_expires_at=now()+interval '10 minutes',attempt_count=attempt_count+1,updated_at=now() FROM due WHERE j.tenant_id=$1 AND j.id=due.id RETURNING j.id",
+    "WITH due AS (SELECT id FROM app.provider_jobs WHERE tenant_id=$1 AND project_id=$2 AND connection_id=$3 AND provider=$4 AND site_url=$5 AND action=$6 AND status='queued' AND idempotency_key LIKE $8 ORDER BY created_at LIMIT $7 FOR UPDATE SKIP LOCKED) UPDATE app.provider_jobs j SET status='leased',lease_owner=$9,lease_expires_at=now()+interval '10 minutes',attempt_count=attempt_count+1,updated_at=now() FROM due WHERE j.tenant_id=$1 AND j.id=due.id RETURNING j.id,j.created_at",
     [tenantId,projectId,connectionId,provider,siteUrl,action,batchSize,idempotencyPrefix+'%',workerId]
    );
    if(!result.rowCount)return [];
    await client.query("UPDATE app.provider_jobs SET status='completed',lease_owner=NULL,lease_expires_at=NULL,completed_at=now(),updated_at=now() WHERE tenant_id=$1 AND id=ANY($2::uuid[]) AND lease_owner=$3",[tenantId,result.rows.map(x=>x.id),workerId]);
    return result.rows;
   });
-  if(!rows.length)return processed;
+  if(!rows.length)return {processed,latenciesMs};
+  const claimedAt=Date.now();
+  for(const row of rows)latenciesMs.push(Math.max(0,claimedAt-new Date(row.created_at).getTime()));
   processed+=rows.length;
  }
+}
+
+function percentile(values,percent){
+ if(!values.length)return 0;
+ const sorted=[...values].sort((a,b)=>a-b);
+ return sorted[Math.min(sorted.length-1,Math.ceil((percent/100)*sorted.length)-1)];
+}
+
+async function databaseSnapshot(){
+ const [stats,connections]=await Promise.all([
+  pool.query("SELECT xact_commit,blks_read,blks_hit,tup_inserted,tup_updated,tup_deleted,deadlocks,temp_bytes FROM pg_stat_database WHERE datname=current_database()"),
+  pool.query("SELECT count(*)::int AS visible_connections,count(*) FILTER (WHERE application_name='index-assist-provider-benchmark')::int AS benchmark_connections FROM pg_stat_activity WHERE datname=current_database()")
+ ]);
+ return {stats:stats.rows[0]||{},connections:connections.rows[0]||{}};
+}
+
+function counterDelta(before,after){
+ const keys=['xact_commit','blks_read','blks_hit','tup_inserted','tup_updated','tup_deleted','deadlocks','temp_bytes'];
+ return Object.fromEntries(keys.map(key=>[key,Number(after[key]||0)-Number(before[key]||0)]));
 }
 
 try{
  const seedStarted=process.hrtime.bigint();
  const inserted=await seed();
  const seedSeconds=Number(process.hrtime.bigint()-seedStarted)/1e9;
+ const beforeDrain=await databaseSnapshot();
  const drainStarted=process.hrtime.bigint();
- const counts=await Promise.all(Array.from({length:concurrency},()=>worker()));
+ const workerResults=await Promise.all(Array.from({length:concurrency},()=>worker()));
  const drainSeconds=Number(process.hrtime.bigint()-drainStarted)/1e9;
- const processed=counts.reduce((a,b)=>a+b,0);
+ const afterDrain=await databaseSnapshot();
+ const processed=workerResults.reduce((sum,result)=>sum+result.processed,0);
+ const latenciesMs=workerResults.flatMap(result=>result.latenciesMs);
  const rate=drainSeconds>0?processed/drainSeconds:0;
  if(processed!==inserted)throw new Error('Benchmark drained '+processed+' of '+inserted+' seeded jobs');
- console.log(JSON.stringify({runId,provider,action,inserted,processed,concurrency,batchSize,seedDurationSeconds:Number(seedSeconds.toFixed(3)),queueDrainDurationSeconds:Number(drainSeconds.toFixed(3)),jobsPerSecond:Number(rate.toFixed(2)),estimatedJobsPerDay:Number((rate*86400).toFixed(0))},null,2));
+ console.log(JSON.stringify({
+  runId,provider,action,inserted,processed,concurrency,batchSize,
+  seedDurationSeconds:Number(seedSeconds.toFixed(3)),
+  queueDrainDurationSeconds:Number(drainSeconds.toFixed(3)),
+  jobsPerSecond:Number(rate.toFixed(2)),
+  estimatedJobsPerDay:Number((rate*86400).toFixed(0)),
+  queueLatencyMs:{p50:Number(percentile(latenciesMs,50).toFixed(2)),p95:Number(percentile(latenciesMs,95).toFixed(2)),p99:Number(percentile(latenciesMs,99).toFixed(2)),samples:latenciesMs.length},
+  databaseCountersDuringDrain:counterDelta(beforeDrain.stats,afterDrain.stats),
+  visibleConnections:{before:beforeDrain.connections.visible_connections,after:afterDrain.connections.visible_connections,benchmarkBefore:beforeDrain.connections.benchmark_connections,benchmarkAfter:afterDrain.connections.benchmark_connections},
+  poolMaxConnections:pool.totalCount
+ },null,2));
 }finally{
  try{
   await tx(async client=>{
