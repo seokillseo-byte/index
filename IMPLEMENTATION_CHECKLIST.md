@@ -19,11 +19,10 @@
 - [x] Migration 0019 and MFA lockout behavior covered by a CI database test.
 - [x] Auth token replay regression covered by a CI database test.
 - [x] MFA enrollment and single-active-challenge issuance serialized transactionally.
-
-- [ ] Authentication CI/typecheck/test validation for the current branch head.
 - [x] Focused authentication service coverage for MFA brute-force/lockout and challenge-token hashing.
 - [x] Focused database coverage for single-use MFA recovery-code replay.
 - [x] Tenant/session isolation validation at the application/API level (JWT session binding, tenant-switch guard, and session ownership tests).
+- [ ] Authentication CI/typecheck/test validation for the current branch head.
 
 ## Provider Job Engine
 
