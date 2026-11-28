@@ -39,11 +39,12 @@ jobs:
       - run: node --check apps/worker/src/outbox-relay.mjs
       - run: node --check apps/worker/src/provider-jobs.mjs
       - run: node --check apps/worker/src/provider-job-benchmark.mjs
-      - run: bash -n infra/postgres/backup.sh infra/postgres/restore.sh infra/postgres/tests/backup-restore-mock.sh infra/redpanda/tests/provision-topics-mock.sh
-      - run: sh -n infra/redpanda/provision-topics.sh
+      - run: bash -n infra/postgres/backup.sh infra/postgres/restore.sh infra/postgres/tests/backup-restore-mock.sh infra/redpanda/tests/provision-topics-mock.sh infra/redpanda/tests/provision-secure-cluster-mock.sh
+      - run: sh -n infra/redpanda/provision-topics.sh infra/redpanda/provision-secure-cluster.sh
       - run: sudo apt-get update && sudo apt-get install -y age
       - run: bash infra/postgres/tests/backup-restore-mock.sh
       - run: bash infra/redpanda/tests/provision-topics-mock.sh
+      - run: bash infra/redpanda/tests/provision-secure-cluster-mock.sh
   crawler:
     runs-on: ubuntu-latest
     steps:
