@@ -8,7 +8,7 @@ Updated: 2026-11-28
 - Capacity target: 32 vCPU / 64 GB RAM / 2 TB NVMe / 1 Gbps; this is a target specification, not a measured throughput result.
 - Main baseline: `568e00af228c64249f5da6e4ec22f29e6cbe10be`.
 - Active implementation branch: `feature/provider-job-engine`.
-- Latest verified CI checkpoint remains `1a9be1d87fa541866777475f28d0a6c3fe682bb4`; subsequent Redis and Kafka client-security changes are committed on this branch and await fresh CI. The storage client is lifecycle-managed, readiness checks PostgreSQL and Redis, and Compose avoids interpolating the Redis password into command arguments.
+- Latest fully passing CI checkpoint is `6f2abb0263cd52618f16add28c371f0d4045ddbc` (run #276): database, crawler Go race/vet, Node typecheck/build/Jest, Redis two-client integration and backup/restore safety tests passed. A follow-up Redis reconnect regression test was added at `f61dc7ffb1605e32c93b2b623277f5d70bfb40f6` and awaits its own CI run. The storage client is lifecycle-managed, readiness checks PostgreSQL and Redis, and Compose avoids interpolating the Redis password into command arguments.
 - Review PR #6 remains open and unmerged.
 - GitHub reports the branch remains diverged from main by one main-only commit that overlaps provider-engine files; PR mergeable=false. Ahead count changes as this long-running feature branch receives incremental commits. Do not rebase or merge automatically; review the effective diff before integration.
 - No local working-tree status is available in this workflow; this status reflects GitHub branch/PR data only.
@@ -35,6 +35,7 @@ Updated: 2026-11-28
 ## CI validation
 
 - CI #184 passed on commit `1a9be1d87fa541866777475f28d0a6c3fe682bb4`: [workflow run](https://github.com/seokillseo-byte/index/actions/runs/46107552896).
+- CI #276 passed on commit `6f2abb0263cd52618f16add28c371f0d4045ddbc`: [workflow run](https://github.com/seokillseo-byte/index/actions/runs/46110245705). It includes the Redis two-client integration test, Node typecheck/build/Jest, worker tests/syntax, Go race/vet, database security regressions and age backup/restore tests. A further Redis reconnect regression test was committed afterward and is pending CI.
 - All three jobs passed: database migrations plus tenant RLS/MFA/auth-token/recovery-code regression SQL; crawler Go race tests and vet; Node dependency install, typecheck, build, Jest, provider worker syntax checks, backup/restore shell syntax and age-encryption regression tests.
 - Earlier backup security checkpoints also passed: CI #180 validates real age encryption/decryption and wrong-identity rejection; CI #183 validates owner-only age identity permissions.
 - CI coverage does not replace a live PostgreSQL restore drill, provider-account E2E, or production-like capacity benchmark.
@@ -58,8 +59,8 @@ Updated: 2026-11-28
 
 - Replaced process-local Nest throttler storage with a Redis-backed storage adapter using one atomic Lua operation for counters/block windows.
 - Redis URL is required; the API does not silently fall back to per-process counters. Redis connection/command failure returns HTTP 503 for rate-limited requests.
-- API Compose startup waits for Redis health; API readiness now checks both PostgreSQL and Redis; Redis uses `noeviction` so memory pressure cannot silently discard throttle counters; `.env.api.example` documents `REDIS_URL` using the same password configured by infrastructure Redis.
-- Unit tests cover atomic command arguments, lazy connection, missing configuration and fail-closed outage behavior. A Redis-backed integration test uses two independent storage instances to verify shared counters/block state; CI now provisions Redis for the Node job. Fresh CI result is pending.
+- API Compose startup waits for Redis health; API readiness now checks both PostgreSQL and Redis; Redis uses `noeviction` so memory pressure cannot silently discard throttle counters; `.env.api.example` documents `REDIS_URL` using the same password configured by infrastructure Redis. Client retry backoff now continues reconnect attempts after transient outages while rate-limited requests remain fail-closed during reconnect.
+- Unit tests cover atomic command arguments, lazy connection, missing configuration and fail-closed outage behavior. A Redis-backed integration test uses two independent storage instances to verify shared counters/block state; CI now provisions Redis for the Node job. This integration test passed in CI #276. An additional unit regression test for fail-closed behavior during reconnect and recovery after the client becomes ready is awaiting CI #277.
 
 ## Kafka / Redpanda transport security
 
