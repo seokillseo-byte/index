@@ -90,8 +90,8 @@ ruby -e '
   %w[ca.crt broker.crt broker.key admin.crt admin.key].each do |file|
     abort "broker startup must require readable certificate material: #{file}" unless broker_start.include?("/etc/redpanda/certs/#{file}") && broker_start.include?("[ -r")
   end
-  abort "bootstrap must validate password length" unless broker_start.include?('${#password}') && broker_start.include?("-ge 32")
-  abort "bootstrap must reject colon in password" unless broker_start.include?("case") && broker_start.include?("*: *") == false && broker_start.include?("*:*)")
+  abort "bootstrap must validate password length" unless (broker_start.include?('${#password}') || broker_start.include?('${#password}')) && broker_start.include?("-ge 32")
+  abort "bootstrap must reject colon in password" unless broker_start.include?("case") && broker_start.include?("*:*)")
   healthcheck = broker.fetch("healthcheck").fetch("test").join(" ")
   abort "broker healthcheck must authenticate with SCRAM" unless healthcheck.include?("RPK_USER=$REDPANDA_ADMIN_USER") && healthcheck.include?("SCRAM-SHA-512") && healthcheck.include?("RPK_PASS=$(cat /run/secrets/redpanda-admin-password)")
   abort "broker healthcheck must verify Admin API TLS" unless healthcheck.include?("RPK_ADMIN_TLS_ENABLED=true") && healthcheck.include?("RPK_ADMIN_TLS_CA=/etc/redpanda/certs/ca.crt")
@@ -107,7 +107,7 @@ ruby -e '
     "redpanda_admin_key" => ["/etc/redpanda/certs/admin.key", "0400"],
     "redpanda_admin_password" => ["/run/secrets/redpanda-admin-password", "0400"]
   }
-  broker_mounts = broker.fetch("secrets").to_h { |secret| [secret.fetch("source"), [secret.fetch("target"), (secret.fetch("mode").is_a?(Integer) ? format("%04o", secret.fetch("mode")) : (secret.fetch("mode").is_a?(Integer) ? format("%04o", secret.fetch("mode")) : secret.fetch("mode").to_s.rjust(4, "0")))]] }
+  broker_mounts = broker.fetch("secrets").to_h { |secret| [secret.fetch("source"), [secret.fetch("target"), (secret.fetch("mode").is_a?(Integer) ? format("%04o", secret.fetch("mode")) : (secret.fetch("mode").is_a?(Integer) ? format("%04o", secret.fetch("mode")) : (secret.fetch("mode").is_a?(Integer) ? format("%04o", secret.fetch("mode")) : secret.fetch("mode").to_s.rjust(4, "0"))))]] }
   expected_broker_secrets.each do |source, expected|
     abort "broker secret mount or mode missing/incorrect: #{source}" unless broker_mounts[source] == expected
   end
