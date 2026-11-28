@@ -5,7 +5,7 @@ Branch reviewed: `feature/provider-job-engine` after Redis recovery and Redpanda
 
 ## Scope
 
-CI #286 passed on `da76342e9d0e295e565c45e3e541778f59565f5d`; this verifies repository tests only and does not provide live metrics, alert delivery evidence, or production monitoring. The multi-recipient backup change added afterward is awaiting CI.
+CI #286 passed on `da76342e9d0e295e565c45e3e541778f59565f5d`; this verifies repository tests only and does not provide live metrics, alert delivery evidence, or production monitoring. The multi-recipient backup change added afterward passed CI #306, including real two-recipient age round-trip and YAML syntax validation.
 
 Static review of repository configuration and application/worker health/logging surfaces. No running VPS, metrics backend, alert receiver or production logs were available. This is a gap assessment, not a live observability validation.
 
