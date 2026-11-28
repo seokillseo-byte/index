@@ -257,3 +257,10 @@
 - Strengthened the secure Compose mock test to render and inspect the merged Compose configuration, asserting that the provisioner inherits `network_mode: service:redpanda` and waits for broker health, both services use the pinned v26.3.1 image, only the isolated secure data volume is mounted, and Admin API port 9644 is not published.
 - Latest implementation checkpoint: `11ae3cd1b9c8e2bf222475ee1602fc783061b139`. CI status is pending/unconfirmed because the available PR workflow/status lookup returned no entries.
 - No live broker, VPS, credentials, certificates or existing data volumes were accessed.
+
+
+## 2026-11-29 — Expand secure Redpanda provisioner rejection tests
+
+- Added negative-path mock coverage for plaintext Kafka, missing Admin API TLS, unsupported SASL mechanism, missing bootstrap password, weak service password and unreadable CA material.
+- Corrected the weak-password fixture to remove the existing outbox user temporarily, ensuring the new-user password validation path is actually exercised; the fixture is restored afterward and resource counts are checked for no mutation.
+- Tests are part of the existing Node CI job. Execution on the latest commit remains unconfirmed; no local shell or live broker was available.
