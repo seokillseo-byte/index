@@ -1,3 +1,8 @@
+## 2026-11-28 — Escape runtime shell variables in secure Compose command
+
+- Corrected the secure broker startup loop to escape shell variables as `$$file` in Compose YAML, preventing Compose from interpolating them on the host before the container shell runs.
+- This is a Compose correctness fix; no secrets or broker volumes were touched.
+
 ## 2026-11-28 — Redpanda secret ownership and readability guard
 
 - Confirmed the official Redpanda v26.3.1 image runs as the unprivileged `redpanda` user. Added a runbook procedure to query the exact image UID/GID and align owner-only private keys/password files with that identity; do not weaken permissions to make secrets world-readable.
