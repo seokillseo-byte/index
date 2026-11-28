@@ -33,6 +33,8 @@ jobs:
       - run: pnpm --recursive --if-present typecheck
       - run: pnpm --recursive --if-present build
       - run: pnpm --recursive --if-present test
+      - run: node --check apps/worker/src/kafka-config.mjs
+      - run: node --check apps/worker/src/outbox-relay.mjs
       - run: node --check apps/worker/src/provider-jobs.mjs
       - run: node --check apps/worker/src/provider-job-benchmark.mjs
       - run: bash -n infra/postgres/backup.sh infra/postgres/restore.sh infra/postgres/tests/backup-restore-mock.sh
