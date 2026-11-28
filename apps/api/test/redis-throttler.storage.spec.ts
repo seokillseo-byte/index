@@ -47,6 +47,25 @@ describe('RedisThrottlerStorage',()=>{
     expect(client.eval).not.toHaveBeenCalled();
   });
 
+
+  it('fails closed while Redis reconnects and resumes after the client is ready',async()=>{
+    const client={
+      status:'reconnecting',
+      connect:jest.fn(),
+      eval:jest.fn().mockResolvedValue([1,60000,0,0]),
+      disconnect:jest.fn(),
+    } as unknown as Redis;
+    const storage=new RedisThrottlerStorage('redis://localhost:6379',client);
+    await expect(storage.increment('key',60000,5,60000,'default'))
+      .rejects.toBeInstanceOf(ServiceUnavailableException);
+    expect(client.eval).not.toHaveBeenCalled();
+    (client as unknown as {status:string}).status='ready';
+    await expect(storage.increment('key',60000,5,60000,'default')).resolves.toMatchObject({
+      totalHits:1,isBlocked:false,
+    });
+    expect(client.eval).toHaveBeenCalledTimes(1);
+  });
+
   it('rejects missing Redis configuration',()=>{
     expect(()=>new RedisThrottlerStorage('')).toThrow('REDIS_URL is required');
   });
