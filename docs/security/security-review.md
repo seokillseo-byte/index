@@ -1,9 +1,11 @@
 # Index Assist — Preliminary security review
 
 Updated: 2026-11-28
-Branch reviewed: `feature/provider-job-engine` at `8e6285f020e94c2b2fb122e5805426c279b8328d`
+Branch reviewed: `feature/provider-job-engine` at `1a9be1d87fa541866777475f28d0a6c3fe682bb4`
 
 ## Scope and confidence
+
+CI checkpoint update: run #184 passed on `1a9be1d87fa541866777475f28d0a6c3fe682bb4`; this validates repository tests only and does not change the release findings below.
 
 This is a source/configuration review of the current repository state, not an independent penetration test, infrastructure audit, dependency audit, or production security certification. No live VPS, deployed network, provider account, secrets, or customer data were accessed.
 
