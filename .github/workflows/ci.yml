@@ -31,7 +31,7 @@ jobs:
           node-version: 22
       - run: pnpm install --no-frozen-lockfile
       - name: Validate Compose and Redpanda YAML syntax
-        run: ruby -e 'require "yaml"; ARGV.each { |file| YAML.parse_file(file) }' infra/docker/compose.infrastructure.yml infra/docker/compose.workloads.yml infra/redpanda/redpanda.yaml.example infra/redpanda/.bootstrap.yaml.example
+        run: ruby -e 'require "yaml"; ARGV.each { |file| YAML.parse_file(file) }' infra/docker/compose.infrastructure.yml infra/docker/compose.workloads.yml infra/docker/compose.redpanda.secure.yml infra/redpanda/redpanda.yaml.example infra/redpanda/.bootstrap.yaml.example
       - run: pnpm --recursive --if-present typecheck
       - run: pnpm --recursive --if-present build
       - run: pnpm --recursive --if-present test
@@ -39,9 +39,11 @@ jobs:
       - run: node --check apps/worker/src/outbox-relay.mjs
       - run: node --check apps/worker/src/provider-jobs.mjs
       - run: node --check apps/worker/src/provider-job-benchmark.mjs
-      - run: bash -n infra/postgres/backup.sh infra/postgres/restore.sh infra/postgres/tests/backup-restore-mock.sh
+      - run: bash -n infra/postgres/backup.sh infra/postgres/restore.sh infra/postgres/tests/backup-restore-mock.sh infra/redpanda/tests/provision-topics-mock.sh
+      - run: sh -n infra/redpanda/provision-topics.sh
       - run: sudo apt-get update && sudo apt-get install -y age
       - run: bash infra/postgres/tests/backup-restore-mock.sh
+      - run: bash infra/redpanda/tests/provision-topics-mock.sh
   crawler:
     runs-on: ubuntu-latest
     steps:
