@@ -9,6 +9,9 @@ export function buildKafkaConfig(env=process.env) {
   const mechanism=(env.KAFKA_SASL_MECHANISM||'').toLowerCase();
   const caFile=env.KAFKA_TLS_CA_FILE||'';
   const hasSasl=Boolean(username||password||mechanism);
+  if(env.NODE_ENV==='production' && !hasSasl) {
+    throw new Error('Production Kafka clients require TLS and SCRAM-SHA-512 authentication');
+  }
   if(hasSasl && (!username||!password||mechanism!=='scram-sha-512'||!caFile)) {
     throw new Error('Kafka SCRAM-SHA-512 requires username, password and KAFKA_TLS_CA_FILE');
   }
