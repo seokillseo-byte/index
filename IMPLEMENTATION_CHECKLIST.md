@@ -43,7 +43,7 @@
 - [x] CI #276 passed Redis and Kafka client changes; [workflow](https://github.com/seokillseo-byte/index/actions/runs/46110245705).
 - [x] CI #277 passed the follow-up Redis reconnect regression test: [workflow](https://github.com/seokillseo-byte/index/actions/runs/46110358016).
 - [x] CI #286 passed on the full documentation checkpoint: [workflow](https://github.com/seokillseo-byte/index/actions/runs/46110473131).
-- [ ] Fresh CI for multi-recipient age encryption and two-key recovery test.
+- [x] CI #306 passed multi-recipient age encryption/decryption using two independent identities, invalid/duplicate/empty recipient rejection, Bash safety tests, YAML syntax, Node typecheck/build/Jest, crawler Go race/vet and database regressions: [workflow](https://github.com/seokillseo-byte/index/actions/runs/46111164620).
 
 ## Provider Job Engine
 
