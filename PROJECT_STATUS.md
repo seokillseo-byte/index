@@ -1,6 +1,6 @@
 # Index Assist — Project Status
 
-Updated: 2026-11-28
+Updated: 2026-11-29
 
 ## Current implementation state
 
@@ -110,3 +110,11 @@ Next: provision actual non-production certificates and secret files, bring up th
 - Latest implementation checkpoint: `11ae3cd1b9c8e2bf222475ee1602fc783061b139`. The available GitHub PR-run/status lookup returned no run/status entries for this SHA; CI is therefore pending/unconfirmed, not passed.
 - This validates the merged Compose topology statically in CI when the test runs. It does not start Redpanda or verify TLS/SCRAM/ACL behavior against a live broker.
 - PR #6 remains open and unmerged; no merge/rebase, deployment, secret change, volume migration or destructive action was performed.
+
+
+## 2026-11-29 — Secure Redpanda provisioner negative-path coverage
+
+- Expanded `infra/redpanda/tests/provision-secure-cluster-mock.sh` to assert fail-closed behavior for plaintext Kafka, Admin API without TLS, a non-SCRAM mechanism, missing bootstrap Admin password, a too-short service SCRAM password and an unreadable CA file.
+- The short-password case temporarily removes the outbox principal from the mock state so the provisioner must validate the supplied password instead of taking the idempotent existing-user path. The test then restores the fixture and asserts rejected configurations did not mutate topic/user/ACL counts.
+- Latest code checkpoint: `dca6ddaeba566a3f2d40b4c7ef7f8b992b9f1e66`. These tests are wired into the Node CI job, but this workflow cannot execute repository shell commands; latest CI run/status remains unconfirmed through the available GitHub Actions lookup.
+- No live broker, VPS, credentials, certificates or persistent data volume was accessed.
