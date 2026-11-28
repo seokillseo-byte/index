@@ -1,5 +1,6 @@
 import pg from 'pg';
 import {Kafka} from 'kafkajs';
+import {googleQuotaDeferral} from './provider-quota.mjs';
 import {createDecipheriv,createCipheriv,randomBytes,randomUUID,createHash} from 'node:crypto';
 
 const {Pool}=pg;
@@ -107,14 +108,19 @@ async function reserveGoogleAttempt(payload,job){
   await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[payload.tenantId+':'+payload.siteUrl+':'+dayStart.toISOString().slice(0,10)]);
   const row=await client.query("SELECT last_attempt_at FROM app.provider_jobs WHERE tenant_id=$1 AND id=$2 AND lease_owner=$3",[payload.tenantId,job.id,workerId]);
   if(!row.rowCount)return {allowed:false,defer:null};
-  const last=row.rows[0].last_attempt_at?new Date(row.rows[0].last_attempt_at):null;
-  if(last&&last>=dayStart)return {allowed:false,defer:'daily'};
   const usage=await client.query(
    "SELECT count(*) FILTER(WHERE last_attempt_at >= $3)::int AS daily,count(*) FILTER(WHERE last_attempt_at >= $4)::int AS minute FROM app.provider_jobs WHERE tenant_id=$1 AND site_url=$2 AND provider='google_search_console' AND action='inspect' AND status<>'cancelled'",
    [payload.tenantId,payload.siteUrl,dayStart,minuteStart]
   );
-  if(usage.rows[0].daily>=dailyLimit)return {allowed:false,defer:'daily'};
-  if(usage.rows[0].minute>=minuteLimit)return {allowed:false,defer:'minute'};
+  const defer=googleQuotaDeferral({
+   lastAttemptAt:row.rows[0].last_attempt_at,
+   dailyUsed:usage.rows[0].daily,
+   minuteUsed:usage.rows[0].minute,
+   dailyLimit,
+   minuteLimit,
+   dayStart,
+  });
+  if(defer)return {allowed:false,defer};
   await client.query("UPDATE app.provider_jobs SET last_attempt_at=now(),updated_at=now() WHERE tenant_id=$1 AND id=$2 AND lease_owner=$3",[payload.tenantId,job.id,workerId]);
   return {allowed:true,defer:null};
  });

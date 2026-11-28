@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node src/outbox-relay.mjs",
     "start:provider": "node src/provider-jobs.mjs",
-    "benchmark:provider-jobs": "node src/provider-job-benchmark.mjs"
+    "benchmark:provider-jobs": "node src/provider-job-benchmark.mjs",
+    "test": "node --test test/*.test.mjs"
   },
   "dependencies": {
     "kafkajs": "^2.2.4",
