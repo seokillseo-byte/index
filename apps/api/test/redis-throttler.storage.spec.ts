@@ -1,5 +1,5 @@
 import {ServiceUnavailableException} from '@nestjs/common';
-import Redis = require('ioredis');
+import {Redis} from 'ioredis';
 import {RedisThrottlerStorage} from '../src/throttling/redis-throttler.storage';
 
 describe('RedisThrottlerStorage',()=>{
