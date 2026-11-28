@@ -17,9 +17,11 @@
 - [x] MFA login challenge invalidated after five failed TOTP or recovery-code attempts.
 - [x] Password-reset success response does not disclose the user identifier.
 - [x] Migration 0019 and MFA lockout behavior covered by a CI database test.
+- [x] Auth token replay regression covered by a CI database test.
+- [x] MFA enrollment and single-active-challenge issuance serialized transactionally.
 
 - [ ] Authentication CI/typecheck/test validation for the current branch head.
-- [ ] Focused authentication security tests (TOTP replay/brute force, recovery-code replay, token replay, tenant/session isolation).
+- [ ] Focused authentication security tests (TOTP replay/brute force, recovery-code replay, tenant/session isolation).
 
 ## Provider Job Engine
 
