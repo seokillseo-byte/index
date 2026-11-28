@@ -1,3 +1,9 @@
+## 2026-11-28 — Keep Redis password out of Compose command expansion
+
+- Redis server startup now reads its password from the container environment at runtime using shell command substitution, avoiding host-side Compose interpolation of the secret into the command definition.
+- Redis health check uses the same environment-only approach via `REDISCLI_AUTH`.
+- This is a configuration hardening change only; no live Redis service or password was accessed.
+
 ## 2026-11-28 — Redis infrastructure healthcheck correction
 
 - Corrected Redis Compose healthcheck to pass the container's password through `REDISCLI_AUTH` using shell command substitution that avoids Compose interpolation, rather than expanding the secret in the host Compose parser.
