@@ -120,3 +120,11 @@ Google URL Inspection is inspection evidence, not an indexing request. Bing subm
 - [x] Add a mock regression assertion that the secure overlay retains the escaped command substitution.
 - [ ] Await CI validation of branch head `98c9527242933868675a1e357e3d04003ba4238d`.
 - [ ] Continue with isolated non-production broker TLS/SCRAM/ACL and restart/recovery tests; no live broker is available in this execution context.
+
+
+## Secure Redpanda Compose topology checks (2026-11-29)
+
+- [x] Added merged-Compose assertions for broker/provisioner image pin, provisioner network namespace, healthy-broker dependency, isolated secure data volume, and no Admin API port publication.
+- [ ] CI validation for `11ae3cd1b9c8e2bf222475ee1602fc783061b139` — pending confirmation; the available run/status lookup returned no entries.
+- [ ] Live non-production broker TLS/SCRAM, positive/negative ACL, invalid credential/CA and restart/recovery tests remain outstanding.
+- [ ] Disposable cold-copy volume upgrade/rollback rehearsal remains outstanding.
