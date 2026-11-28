@@ -105,6 +105,10 @@ expect_rejected 'plaintext Kafka' env RPK_TLS_ENABLED=false
 expect_rejected 'Admin API without TLS' env RPK_ADMIN_TLS_ENABLED=false
 expect_rejected 'non-SCRAM mechanism' env RPK_SASL_MECHANISM=PLAIN
 expect_rejected 'missing bootstrap password' env -u RPK_PASS
+expect_rejected 'missing Kafka CA file' env RPK_TLS_CA="$TMP/missing-kafka-ca.crt"
+expect_rejected 'missing Admin API CA file' env RPK_ADMIN_TLS_CA="$TMP/missing-admin-ca.crt"
+: > "$TMP/empty-admin-ca.crt"
+expect_rejected 'empty Admin API CA file' env RPK_ADMIN_TLS_CA="$TMP/empty-admin-ca.crt"
 printf 'short\n' > "$TMP/short.pass"
 grep -Fxv 'index-assist-outbox' "$MOCK_USERS" > "$TMP/users.without.outbox"
 mv "$TMP/users.without.outbox" "$MOCK_USERS"
