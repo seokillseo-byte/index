@@ -25,6 +25,7 @@
 - [x] CI run #46103551185 passes on `23808e3dc06c98bcb9c9538c856acb41521b7a55`, including new verified-property URL-scope regression tests.
 - [x] CI run #46103822023 passes on `f0b8ac2c8b837553a765e10ac1456ef52c3a7636`, including provider quota-decision unit tests.
 - [x] CI run #46107552896 passes on `1a9be1d87fa541866777475f28d0a6c3fe682bb4`: database migration/RLS/auth regressions, crawler Go race/vet, Node typecheck/build/Jest, worker syntax and age-encrypted backup/restore tests.
+- [ ] Fresh CI validation for Redis-backed throttler implementation and outage tests (pending).
 
 ## Provider Job Engine
 
@@ -65,7 +66,8 @@
 - [ ] Configure protected age identity storage/key recovery and off-site encrypted backup replication.
 - [ ] Execute non-production restore drill and record evidence.
 - [x] Perform preliminary static security/configuration review and document findings.
-- [ ] Resolve security release findings: shared Redis throttling, Kafka TLS/auth/ACL, encrypted/off-host backup policy, database TLS for multi-host, and independent security review.
+- [x] Implement shared Redis-backed API throttler with atomic counter/blocking and fail-closed 503 behavior; unit tests added, CI pending.
+- [ ] Resolve remaining security release findings: Kafka TLS/auth/ACL, encrypted/off-host backup policy, database TLS for multi-host, and independent security review.
 - [x] Perform observability/alerting gap assessment and document required signals.
 - [ ] Deploy metrics/logging/alerting, define thresholds/owners, and test alert delivery in non-production.
 - [ ] Production VPS deployment and HTTPS/DNS validation after release approval.
