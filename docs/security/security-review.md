@@ -15,7 +15,7 @@ This is a source/configuration review of the current repository state, not an in
 - Provider operations are tenant-scoped and constrained to verified properties; worker DB connection uses the restricted runtime role.
 - Docker workload ports are not published publicly in the checked compose file; API is bound to loopback on the host.
 - Environment files are ignored by Git, with example templates retained.
-- Backup scripts now encrypt archives with age, restrict local file permissions and validate checksum/archive. CI #178 passes mock tests for encryption flow, temporary plaintext cleanup, non-production restore guard and tamper rejection. CI #180 now exercises age's real authenticated encryption/decryption with generated ephemeral keys and rejects a wrong identity. PostgreSQL utilities remain mocked; the live non-production restore drill and off-site/key-recovery policy remain outstanding. Off-site replication, key escrow and an actual restore drill remain outstanding.
+- Backup scripts now encrypt archives with age, restrict local file permissions and validate checksum/archive. CI #178 passes mock tests for encryption flow, temporary plaintext cleanup, non-production restore guard and tamper rejection. CI #180 exercises age's real authenticated encryption/decryption with generated ephemeral keys and rejects a wrong identity; CI #183 also verifies rejection of an identity file accessible by group/other users. PostgreSQL utilities remain mocked; the live non-production restore drill and off-site/key-recovery policy remain outstanding. Off-site replication, key escrow and an actual restore drill remain outstanding.
 
 ## Findings and required actions
 

@@ -1,3 +1,10 @@
+## 2026-11-28 — Enforce private age identity file permissions
+
+- Restore now checks the age identity file's Unix mode and refuses files accessible to group/other users.
+- Added regression coverage for mode 0644 rejection; documented owner-only mode such as 0600.
+- CI #182 passed on `af20d15714fb4865ba2e64d5b43aed7d7029d3c1`.
+- CI #183 passed on `e956c903a2a1d1522e5dc716b2ac03437604160f`, including real age crypto round-trip, wrong-key rejection, identity permission guard, Node tests/build, crawler race/vet and database regressions.
+
 ## 2026-11-28 — Real age cryptographic CI validation
 
 - CI #180 passed on `fa2b63ef0010f35b84138693591a0387d618974c`.
