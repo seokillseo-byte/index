@@ -1,6 +1,6 @@
 import {ServiceUnavailableException} from '@nestjs/common';
 import type {ThrottlerStorage,ThrottlerStorageRecord} from '@nestjs/throttler';
-import Redis from 'ioredis';
+import Redis = require('ioredis');
 
 const INCREMENT_SCRIPT = `
 local blockedTtl = redis.call('PTTL', KEYS[2])
