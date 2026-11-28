@@ -102,7 +102,7 @@ After pulling the exact pinned image, obtain its runtime UID/GID rather than har
 ```bash
 RP_UID="$(docker run --rm --entrypoint id redpandadata/redpanda:v26.3.1 -u)"
 RP_GID="$(docker run --rm --entrypoint id redpandadata/redpanda:v26.3.1 -g)"
-printf 'Redpanda container UID:GID = %s:%s\\n' "$RP_UID" "$RP_GID"
+printf 'Redpanda container UID:GID = %s:%s\n' "$RP_UID" "$RP_GID"
 ```
 
 The broker must read its CA, broker certificate/key, Admin certificate/key and bootstrap password. The one-shot provisioner runs from the same Redpanda image and must also read the three service password files. Set owner and restrictive permissions on the private files:
