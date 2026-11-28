@@ -71,7 +71,6 @@ async function worker(){
    return result.rows;
   });
   if(!rows.length)return {processed,latenciesMs};
-  const claimedAt=Date.now();
   for(const row of rows)latenciesMs.push(Math.max(0,new Date(row.claimed_at).getTime()-new Date(row.created_at).getTime()));
   processed+=rows.length;
  }

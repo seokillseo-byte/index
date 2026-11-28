@@ -1,3 +1,10 @@
+## 2026-11-28 — Latest CI and release-status reconciliation
+
+- Verified CI run #46102607623 on `0c50dc59380dabb99d597af5feabc17b641c8951`: Node install/typecheck/build/Jest and provider-worker/benchmark syntax checks, Go race tests/vet, ordered migrations, tenant RLS, MFA lockout, auth-token replay and MFA recovery-code replay all passed.
+- Verified preceding CI run #46102488732 also passed.
+- Updated project status and implementation checklist to reflect the latest passing validation; benchmark execution, provider-account E2E, backup/restore and review gates remain outstanding.
+- No production benchmark, secret change, merge, deployment or destructive operation was performed.
+
 ## 2026-11-28 — Integration documentation consistency
 
 - Removed stale API documentation statements claiming Google/Bing integrations and provider jobs were not yet connected, and clarified that real non-production provider-account E2E validation remains outstanding.

@@ -18,6 +18,8 @@
 - [x] Application tests for JWT session binding, tenant-switch rejection, and session ownership.
 - [x] CI install/typecheck/build/Jest/worker syntax checks pass on commit `af3fc9c8b9f2375dd945266ac0ce86d1975f2d9b` (run #46101301044).
 - [x] CI validation of the docs/status checkpoint passes on commit `ac3bb0968ce1bc097337cdf2f9b22241e3fce057` (run #46101487019).
+- [x] CI run #46102488732 passes on `8ee786ce6fec4448db0f5755b602345aeaefb39e`.
+- [x] CI run #46102607623 passes on `0c50dc59380dabb99d597af5feabc17b641c8951`, including Node/Jest, worker syntax, Go race/vet and database security regressions.
 
 ## Provider Job Engine
 

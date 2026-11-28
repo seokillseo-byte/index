@@ -81,4 +81,4 @@ Rollback application code to the last approved Git revision/image first. Databas
 
 ## Current release blocker
 
-The project is not yet production-release-ready. Current blockers are CI validation for the latest branch head, focused authentication security tests, non-production capacity/recovery benchmarks, real provider end-to-end validation, backup/restore, observability/security review, and the remaining production infrastructure gates.
+The project is not yet production-release-ready. CI and focused authentication regression tests pass on the current branch head. Remaining blockers are measured non-production capacity, sustained queue/backpressure and failure/recovery benchmarks, real Google/Bing end-to-end validation with non-production accounts, backup/restore, security and observability/alerting reviews, deliberate PR branch reconciliation, and production infrastructure validation after explicit release approval.
