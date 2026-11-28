@@ -1,3 +1,11 @@
+## 2026-11-28 — Preliminary security and observability release reviews
+
+- Added a source/configuration security review documenting current controls, prioritized release findings and required remediation. It is explicitly not a penetration test or production sign-off.
+- Recorded gaps: API throttling is process-local, Redpanda has no configured TLS/auth/ACL, backup artifacts are not encrypted/off-host, database transport TLS is not configured in the example, and independent security review remains outstanding.
+- Added observability gap assessment covering API/auth, PostgreSQL, Kafka, outbox/crawler, provider worker, backups and host signals; no metrics backend or alert rules were found in the repository tree.
+- CI #174 passed on `8e6285f020e94c2b2fb122e5805426c279b8328d` before these documentation-only changes. New docs checkpoint requires its own CI run.
+- No secrets, infrastructure, production data, or external accounts were changed or accessed.
+
 ## 2026-11-28 — Backup tooling CI validation and failure cleanup
 
 - CI run #46105828409 passed on `441df56070b520d65bdf7447b4e1e8260532fe23`; includes Bash syntax checks for backup and restore scripts, Node build/tests, Go race/vet and DB migrations/regressions.

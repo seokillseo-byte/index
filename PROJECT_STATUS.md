@@ -9,7 +9,8 @@ Updated: 2026-11-28
 - Main baseline: `568e00af228c64249f5da6e4ec22f29e6cbe10be`.
 - Active implementation branch: `feature/provider-job-engine`.
 - Review PR #6 remains open and unmerged.
-- Branch diverged from main (one base commit behind); do not rebase or merge automatically. Review the effective diff before integration.
+- CI run #46106014514 (#174) passed on `8e6285f020e94c2b2fb122e5805426c279b8328d`.
+- Branch diverged from main (176 commits ahead, one commit behind); GitHub reports PR not mergeable. The one main-only commit overlaps provider-engine files; do not rebase or merge automatically. Review the effective diff before integration.
 
 ## Authentication and tenant isolation
 

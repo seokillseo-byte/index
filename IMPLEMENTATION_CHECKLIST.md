@@ -59,8 +59,10 @@
 - [x] CI validates Bash syntax for both operational scripts.
 - [x] Document post-restore validation and operational limitations.
 - [ ] Execute non-production restore drill and record evidence.
-- [ ] Security review.
-- [ ] Observability/alerting review.
+- [x] Perform preliminary static security/configuration review and document findings.
+- [ ] Resolve security release findings: shared Redis throttling, Kafka TLS/auth/ACL, encrypted/off-host backup policy, database TLS for multi-host, and independent security review.
+- [x] Perform observability/alerting gap assessment and document required signals.
+- [ ] Deploy metrics/logging/alerting, define thresholds/owners, and test alert delivery in non-production.
 - [ ] Production VPS deployment and HTTPS/DNS validation after release approval.
 
 ## Scope boundary
