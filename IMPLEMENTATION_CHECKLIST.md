@@ -30,6 +30,11 @@
 - [x] Redis client is a Nest-managed provider and disconnects during application shutdown.
 - [x] API readiness checks PostgreSQL and Redis; added controller tests for Redis-unavailable readiness.
 - [x] Redis uses `noeviction`; rejected counter writes fail closed rather than evicting active throttle state.
+- [x] Added KafkaJS TLS/SCRAM-SHA-512 config for outbox relay/provider worker and kafka-go TLS/SCRAM-SHA-512 config for crawler.
+- [x] Production worker/crawler startup rejects plaintext Kafka configuration; added Node/Go config tests, CA-file mounts and env examples.
+- [x] Added Redpanda TLS/SASL example and Kafka security/ACL rollout runbook.
+- [ ] Activate broker TLS/SASL/ACL on non-production Redpanda; verify each service principal and denied cross-topic/group access.
+- [ ] Fresh CI validation for Redis and Kafka client changes.
 
 ## Provider Job Engine
 
