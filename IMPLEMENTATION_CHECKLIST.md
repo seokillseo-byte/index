@@ -27,6 +27,7 @@
 - [x] CI run #46107552896 passes on `1a9be1d87fa541866777475f28d0a6c3fe682bb4`: database migration/RLS/auth regressions, crawler Go race/vet, Node typecheck/build/Jest, worker syntax and age-encrypted backup/restore tests.
 - [ ] Fresh CI validation for Redis-backed throttler implementation and outage tests (pending).
 - [x] Added Redis integration test with two independent storage clients to verify shared counters and blocked state; CI Node job now provisions Redis service.
+- [x] Redis client is a Nest-managed provider and disconnects during application shutdown.
 
 ## Provider Job Engine
 
