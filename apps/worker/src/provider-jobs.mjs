@@ -1,5 +1,6 @@
 import pg from 'pg';
 import {Kafka} from 'kafkajs';
+import {buildKafkaConfig} from './kafka-config.mjs';
 import {googleQuotaDeferral} from './provider-quota.mjs';
 import {createDecipheriv,createCipheriv,randomBytes,randomUUID,createHash} from 'node:crypto';
 
@@ -9,7 +10,7 @@ for(const key of required)if(!process.env[key])throw new Error(key+' is required
 if(!/^[a-fA-F0-9]{64}$/.test(process.env.INTEGRATION_ENCRYPTION_KEY))throw new Error('INTEGRATION_ENCRYPTION_KEY must be 32-byte hex');
 const key=Buffer.from(process.env.INTEGRATION_ENCRYPTION_KEY,'hex');
 const pool=new Pool({connectionString:process.env.PROVIDER_DATABASE_URL,max:12,application_name:'index-assist-provider-worker'});
-const kafka=new Kafka({clientId:'index-assist-provider-worker',brokers:process.env.KAFKA_BROKERS.split(',').map(x=>x.trim()),connectionTimeout:5000,requestTimeout:30000});
+const kafka=new Kafka(buildKafkaConfig(process.env));
 const consumer=kafka.consumer({groupId:process.env.PROVIDER_KAFKA_GROUP_ID||'index-assist-provider-v1',allowAutoTopicCreation:false});
 const topic=process.env.PROVIDER_KAFKA_TOPIC||'provider.jobs';
 const workerId='provider-'+randomUUID();
