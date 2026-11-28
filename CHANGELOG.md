@@ -1,3 +1,11 @@
+## 2026-11-28 — Shared Redis rate limiting implementation
+
+- Added a Redis-backed Nest throttler storage adapter using an atomic Lua script for shared counters and block windows across API instances.
+- API rate-limited requests fail closed with HTTP 503 when Redis is unavailable; there is no silent in-memory fallback.
+- Added required `REDIS_URL` to the API environment example and made the API workload wait for the infrastructure Redis health check.
+- Added unit tests for atomic Redis arguments, lazy connection, missing configuration and Redis outage behavior. Fresh CI validation is pending; this is not yet marked as a CI-verified release control.
+- No Redis production credentials or live infrastructure were accessed or changed.
+
 ## 2026-11-28 — CI #184 passed and release status reconciled
 
 - CI run [#46107552896](https://github.com/seokillseo-byte/index/actions/runs/46107552896) passed on `1a9be1d87fa541866777475f28d0a6c3fe682bb4`; database, crawler and Node jobs all succeeded.
