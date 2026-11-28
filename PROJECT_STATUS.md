@@ -145,3 +145,9 @@ Next: provision actual non-production certificates and secret files, bring up th
 ## 2026-11-29 — Secure provisioner secret wiring assertions
 - Extended the merged-Compose mock validation to assert that outbox, crawler and provider SCRAM secrets are mounted into `redpanda-init` at the exact paths consumed by the provisioner; checked the declared host secret-file mappings and both Kafka/Admin CA environment paths.
 - This is static merged-config regression coverage. The workflow has not been confirmed on the latest commit, and no live broker test is claimed.
+
+
+## 2026-11-29 — Broker and provisioner secret permission assertions
+- Extended secure merged-Compose regression checks to cover all six Redpanda broker secret mounts (CA, broker/admin certificates and private keys, bootstrap password), their exact in-container targets, and expected file modes.
+- Extended the checks to verify restrictive modes for all five secrets mounted into the one-shot provisioner and host-file declarations for all nine secure-overlay secrets. Mode parsing normalizes YAML integer/octal representations before comparison.
+- This is static configuration test coverage only. CI execution and live broker/container readability remain unconfirmed.
