@@ -1,3 +1,13 @@
+## 2026-11-28 — Multi-recipient backup recovery and Redpanda admin hardening templates
+
+- Extended PostgreSQL backup encryption to accept comma-separated BACKUP_AGE_RECIPIENTS, retaining the legacy single-recipient variable as fallback; the manifest records public recipient values and count.
+- Added tests for invalid/duplicate recipient rejection and real age encryption/decryption using two independent private identities. Each identity can recover the same encrypted artifact; this is not threshold cryptography.
+- Documented off-site object-storage separation, object integrity verification, retention/RPO/RTO decisions and independent age-key custody. No remote storage, retention lifecycle or private identity was configured.
+- Updated the Redpanda example toward supported v26.3.1 and added first-start Admin API bootstrap protection. Added explicit warning that current Compose v24.3.7 is EOL and its anonymous plaintext topic-init job cannot be reused after SASL activation.
+- Added loopback-only Admin API TLS to the broker template and documented why Kafka SASL alone does not protect the Admin API.
+- No broker image upgrade, persistent-volume modification, secret provisioning, production deployment or live infrastructure operation was performed.
+- Latest fully passing CI is #286 on da76342e9d0e295e565c45e3e541778f59565f5d; the multi-recipient backup source/tests in this entry are awaiting a new CI run.
+
 ## 2026-11-28 — Redis reconnect regression CI passed; Redpanda lifecycle gate
 
 - CI #277 passed on `f61dc7ffb1605e32c93b2b623277f5d70bfb40f6`: Redis reconnect/recovery unit test, two-client Redis integration, Node typecheck/build/Jest, worker tests, crawler Go race/vet, database regressions and age backup/restore safety checks.
