@@ -112,3 +112,11 @@ Google URL Inspection is inspection evidence, not an indexing request. Bing subm
 - [ ] Run a real v26.3.1 Redpanda broker in isolated non-production and verify TLS/SCRAM handshakes and positive/negative ACLs.
 - [ ] Verify wrong-password/untrusted-CA rejection and workload restart/recovery on the live non-production broker.
 - [ ] Rehearse old-volume migration using a disposable cold copy and a tested rollback plan.
+
+
+## Redpanda Compose secret-expansion follow-up (2026-11-29)
+
+- [x] Explicitly defer the Admin password command substitution in the one-shot provisioner to the container shell using Compose's escaped dollar syntax.
+- [x] Add a mock regression assertion that the secure overlay retains the escaped command substitution.
+- [ ] Await CI validation of branch head `98c9527242933868675a1e357e3d04003ba4238d`.
+- [ ] Continue with isolated non-production broker TLS/SCRAM/ACL and restart/recovery tests; no live broker is available in this execution context.
