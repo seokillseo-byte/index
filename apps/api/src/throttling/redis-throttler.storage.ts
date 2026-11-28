@@ -1,4 +1,4 @@
-import {ServiceUnavailableException} from '@nestjs/common';
+import {OnModuleDestroy,ServiceUnavailableException} from '@nestjs/common';
 import type {ThrottlerStorage,ThrottlerStorageRecord} from '@nestjs/throttler';
 import Redis = require('ioredis');
 
@@ -18,7 +18,7 @@ end
 return {hits, ttl, 0, 0}
 `;
 
-export class RedisThrottlerStorage implements ThrottlerStorage {
+export class RedisThrottlerStorage implements ThrottlerStorage, OnModuleDestroy {
   private readonly redis: Redis;
   private connectPromise?: Promise<void>;
 
@@ -68,6 +68,10 @@ export class RedisThrottlerStorage implements ThrottlerStorage {
       // Fail closed: never silently fall back to per-process rate limits.
       throw new ServiceUnavailableException('Shared rate-limiting service is unavailable');
     }
+  }
+
+  onModuleDestroy(): void {
+    this.redis.disconnect();
   }
 
   async close(): Promise<void> {
