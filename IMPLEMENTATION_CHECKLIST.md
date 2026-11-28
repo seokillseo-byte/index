@@ -103,3 +103,12 @@
 ## Scope boundary
 
 Google URL Inspection is inspection evidence, not an indexing request. Bing submission acceptance is not proof of indexing. No throughput target is considered achieved without measured evidence.
+
+
+## Secure Redpanda validation checkpoint (2026-11-28)
+
+- [x] CI #351 passed on `651aa595da71c1c70e6ed6bee31ac3ca25b5d6c1`: [workflow](https://github.com/seokillseo-byte/index/actions/runs/46167799041). Database, Node and crawler jobs all succeeded.
+- [x] CI validates SASL activation, Kafka TLS/ACL and loopback Admin API TLS configuration, Compose merge/YAML, secret readability guards, shell syntax and secure provisioning mocks.
+- [ ] Run a real v26.3.1 Redpanda broker in isolated non-production and verify TLS/SCRAM handshakes and positive/negative ACLs.
+- [ ] Verify wrong-password/untrusted-CA rejection and workload restart/recovery on the live non-production broker.
+- [ ] Rehearse old-volume migration using a disposable cold copy and a tested rollback plan.
