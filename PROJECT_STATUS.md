@@ -8,7 +8,7 @@ Updated: 2026-11-28
 - Capacity target: 32 vCPU / 64 GB RAM / 2 TB NVMe / 1 Gbps; this is a target specification, not a measured throughput result.
 - Main baseline: `568e00af228c64249f5da6e4ec22f29e6cbe10be`.
 - Active implementation branch: `feature/provider-job-engine`.
-- Latest fully passing CI checkpoint is `da76342e9d0e295e565c45e3e541778f59565f5d` (CI #286): database, crawler Go race/vet, Node typecheck/build/Jest, Redis two-client integration/reconnect recovery, worker tests and backup/restore safety tests passed. CI #306 passed on `bd152d3b6c324720cfdf3047cd73510f54390def` after the multi-recipient backup change; the latest source checkpoint validates two independent age identities plus YAML template syntax. The storage client is lifecycle-managed, readiness checks PostgreSQL and Redis, and Compose avoids interpolating the Redis password into command arguments.
+- Latest fully passing CI checkpoint is `da76342e9d0e295e565c45e3e541778f59565f5d` (CI #286): database, crawler Go race/vet, Node typecheck/build/Jest, Redis two-client integration/reconnect recovery, worker tests and backup/restore safety tests passed. CI #306 passed on `bd152d3b6c324720cfdf3047cd73510f54390def` after the multi-recipient backup change; the latest source checkpoint validates two independent age identities plus YAML template syntax. The current Redpanda secure Compose/provisioning changes are awaiting a fresh CI run. The storage client is lifecycle-managed, readiness checks PostgreSQL and Redis, and Compose avoids interpolating the Redis password into command arguments.
 - Review PR #6 remains open and unmerged.
 - GitHub reports the branch remains diverged from main by one main-only commit that overlaps provider-engine files; PR mergeable=false. Ahead count changes as this long-running feature branch receives incremental commits. Do not rebase or merge automatically; review the effective diff before integration.
 - No local working-tree status is available in this workflow; this status reflects GitHub branch/PR data only.
@@ -39,7 +39,7 @@ Updated: 2026-11-28
 - All three jobs passed: database migrations plus tenant RLS/MFA/auth-token/recovery-code regression SQL; crawler Go race tests and vet; Node dependency install, typecheck, build, Jest, provider worker syntax checks, backup/restore shell syntax and age-encryption regression tests.
 - Earlier backup security checkpoints also passed: CI #180 validates real age encryption/decryption and wrong-identity rejection; CI #183 validates owner-only age identity permissions.
 - CI coverage does not replace a live PostgreSQL restore drill, provider-account E2E, or production-like capacity benchmark.
-- Any later source change requires its own CI run. CI #306 passed the multi-recipient age backup source/tests and Redpanda/Compose YAML syntax checks.
+- Any later source change requires its own CI run. CI #306 passed the multi-recipient age backup source/tests and initial Redpanda/Compose YAML syntax checks. Current Redpanda provisioning scripts and Compose overlay have not yet passed a fresh CI run.
 
 ## Backup and recovery
 
@@ -67,7 +67,7 @@ Updated: 2026-11-28
 - Added shared KafkaJS TLS/SCRAM-SHA-512 configuration for outbox relay and provider worker, and a Go kafka-go TLS/SCRAM-SHA-512 dialer for crawler.
 - Production worker/crawler containers set `NODE_ENV=production`; both client implementations reject plaintext Kafka configuration in production and require a CA file plus dedicated SCRAM identity.
 - Added unit tests, environment examples, read-only CA mounts, a Redpanda TLS/SASL listener example and `docs/deployment/kafka-security.md` with least-privilege ACL plan and negative test gates.
-- The active Redpanda Compose service remains plaintext/development-only and pins EOL `v24.3.7`. A template targets `v26.3.1`, enables Kafka TLS/SASL/ACL and loopback-only TLS Admin API; a `.bootstrap.yaml` example protects the Admin API on first startup. These templates are not wired into Compose or validated against a live broker. The Compose `redpanda-init` job still uses anonymous plaintext Kafka and must be replaced with authenticated provisioning for a secured broker. Broker upgrade rehearsal, certificate provisioning, admin bootstrap, SCRAM identities, ACL enforcement and live positive/negative integration tests remain open. Do not deploy these production workloads until all gates pass.
+- The base development Compose service still pins EOL `v24.3.7` and remains plaintext. Added a separate secure non-production overlay targeting `v26.3.1` on a new `redpanda_data_secure` volume, mounting Kafka/Admin TLS material and first-start bootstrap. The `redpanda-init` sidecar now shares the broker network namespace; secure mode reads the bootstrap admin password and three service SCRAM passwords from Docker secret files, creates the existing topics, provisions the outbox/crawler/provider principals and applies the least-privilege topic/group/idempotent-write ACL matrix. Provisioning scripts include repeat-safe checks and mock tests; CI for these latest changes is pending. No live broker, certificate or credential has been used. The old v24.3.7 volume is deliberately untouched and no data-format upgrade has been rehearsed. Live SCRAM/TLS handshake, positive/negative ACL tests and service restart/recovery remain release gates. Do not deploy production workloads until all gates pass.
 
 ## Remaining release gates
 
@@ -75,7 +75,7 @@ Updated: 2026-11-28
 2. Execute sustained queue/backpressure and worker failure/recovery protocols; retain metrics and evidence.
 3. Run real Google/Bing end-to-end tests with non-production provider accounts.
 4. [x] Implement shared Redis-backed API throttling with atomic Lua counters and fail-closed 503 behavior; two-client integration and reconnect/recovery tests passed in CI #276/#277/#286. Live outage drill remains pending.
-5. Enable Kafka/Redpanda TLS, authentication and least-privilege ACLs for API/outbox relay/crawler/provider worker; test denied access.
+5. [x] Prepare an isolated v26.3.1 secure non-production Compose overlay and authenticated provisioning scripts; live broker upgrade/TLS/SCRAM/ACL validation and denied-access tests remain pending.
 6. Configure protected off-site encrypted backups, retention, age identity recovery/key escrow and execute a non-production restore drill.
 7. Implement metrics/logging/alerting, define thresholds/owners and test alert delivery in non-production.
 8. Complete independent security/dependency review and resolve findings.
