@@ -1,6 +1,6 @@
 # PostgreSQL encrypted backup and restore drill
 
-These are manual, non-production tools. Backups are encrypted with [age](https://age-encryption.org/) before leaving a private temporary directory. The repository does not contain private age identities or backup credentials. These scripts do not provide scheduling, off-site replication, PITR, retention, monitoring or key escrow.
+These are manual, non-production tools. Backups are encrypted with [age](https://age-encryption.org/) before leaving a private temporary directory. The repository does not contain private age identities or backup credentials. The backup script supports multiple independent age recipients so separately held recovery identities can decrypt the same artifact. These scripts still do not provide scheduling, off-site replication, PITR, retention, monitoring or key escrow.
 
 ## Key preparation
 
@@ -11,7 +11,7 @@ age-keygen -o index-assist-backup-identity.txt
 age-keygen -y index-assist-backup-identity.txt
 ```
 
-The first command creates a private identity; protect it with owner-only permissions and store it separately from backups. The second prints its public recipient (the `age1...` value). Configure `BACKUP_AGE_RECIPIENT` with only that public recipient. Never place the private identity in Git, the backup directory, a container image or the database VPS. Store it in an approved secret manager/offline recovery location with controlled access and tested recovery.
+The first command creates a private identity; protect it with owner-only permissions and store it separately from backups. The second prints its public recipient (the `age1...` value). Configure `BACKUP_AGE_RECIPIENTS` with a comma-separated list of at least two public recipients held by separate recovery custodians (for example, primary operations and independent disaster-recovery custody). The script also accepts the legacy single `BACKUP_AGE_RECIPIENT` variable when the plural variable is unset. The manifest records public recipients so operators can identify which recovery identities are needed. Each age recipient can independently decrypt the backup; this is multi-recipient recovery, NOT threshold cryptography or two-person approval. If dual control is required, enforce it in the secret manager/key-release process. Never place private identities in Git, the backup directory, a container image or the database VPS. Store them in an approved secret manager/offline recovery locations with controlled access and tested retrieval.
 
 ## Backup
 
@@ -22,7 +22,20 @@ BACKUP_AGE_RECIPIENT='age1...' \
 bash infra/postgres/backup.sh
 ```
 
-Use a dedicated backup identity with `pg_dump` privileges and secure PostgreSQL password handling (for example, a protected `.pgpass`, not a URL committed to Git). The script uses umask 077, creates a private temporary directory for the plaintext custom-format dump, validates it with `pg_restore --list`, encrypts it using age, removes plaintext, and writes a SHA-256 checksum and manifest for the encrypted artifact. The encrypted dump, checksum and manifest are chmod 600. Keep all three together. Copy the encrypted artifacts to separate protected storage; do not assume encryption alone provides off-site recovery or key escrow.
+Use a dedicated backup identity with `pg_dump` privileges and secure PostgreSQL password handling (for example, a protected `.pgpass`, not a URL committed to Git). The script uses umask 077, creates a private temporary directory for the plaintext custom-format dump, validates it with `pg_restore --list`, encrypts it using age, removes plaintext, and writes a SHA-256 checksum and manifest for the encrypted artifact. The encrypted dump, checksum and manifest are chmod 600. Keep all three together. The `.manifest` records the recipient count and public recipient strings. Copy all three artifacts to separate protected storage; do not assume encryption alone provides off-site recovery or key escrow.
+
+## Off-site replication, retention and key recovery (operator setup required)
+
+No off-site provider or retention policy is configured in this repository. The local MinIO service is on the same infrastructure host and is NOT an off-site backup. Before release, select an object-storage destination in a separate account and failure domain (preferably a separate region/provider), then:
+
+1. Copy only `*.dump.age`, matching `*.dump.age.sha256`, and `*.manifest` files. Never replicate plaintext dumps, age identity files, database URLs or populated environment files.
+2. Use a dedicated write-only backup identity for uploads and a separate read/restore identity for recovery. Deny public access; require TLS in transit; enable bucket versioning and object-lock/immutability where supported.
+3. Verify every uploaded object by downloading it to an isolated restore host, checking `sha256sum -c`, and confirming age decryption plus `pg_restore --list`. A successful upload or object ETag is not a substitute for the repository SHA-256 verification.
+4. Define and approve backup frequency/RPO, restore RTO, retention windows, legal holds, deletion authorization and lifecycle expiry before enabling automated deletion. Keep enough generations to cover the approved retention schedule; do not invent a retention period in code.
+5. Store each private age identity separately from the backup destination, with independent custody and a documented emergency access process. Test recovery-key retrieval periodically. Losing every matching identity makes all copies unrecoverable; rotating recipients does not re-encrypt old backups.
+6. Execute a restore drill using a copy fetched from off-site storage, not the local backup directory. Record object version, checksum, key custodian, restore duration, RPO/RTO achieved and post-restore SQL checks.
+
+Age multi-recipient encryption means any one corresponding identity can decrypt. It does not implement a two-person cryptographic quorum. Protect key retrieval with the organization's access approval process.
 
 ## Restore drill — non-production only
 
