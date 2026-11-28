@@ -1,3 +1,11 @@
+## 2026-11-28 — Backup/restore tooling and benchmark protocols
+
+- Added PostgreSQL custom-format backup with restrictive permissions, archive listing validation, SHA-256 checksum and manifest.
+- Added explicitly guarded non-production restore. It verifies checksum/archive and avoids destructive `--clean`/`--create` behavior.
+- Added backup/restore drill runbook with post-restore schema, role, tenant-RLS, auth regression and app-connectivity checks. Actual restore remains unexecuted.
+- Documented controlled sustained-load/backpressure and worker failure/recovery protocols; no benchmark is claimed as executed.
+- Added CI shell syntax checks for operational scripts.
+
 ## 2026-11-28 — Provider quota decision tests
 
 - Extracted the Google worker quota decision into a small side-effect-free helper and added Node tests for daily and rolling-minute limits, same-day retry prevention, and next-day eligibility.

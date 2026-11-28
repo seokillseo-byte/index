@@ -53,3 +53,17 @@ The result is a database queue-path measurement only. Database counter deltas an
 ## Safety
 
 Do not point `BENCHMARK_DATABASE_URL` at production. The script requires `BENCHMARK_CONFIRM_NONPROD=YES`, validates numeric limits, and deletes only rows created by its own invocation. Run against a disposable/non-production database and use a dedicated benchmark tenant/project/connection.
+
+## Sustained load and backpressure protocol (not yet executed)
+
+1. Capture a baseline with fixed job count, batch size and concurrency; record commit, PostgreSQL version/config and host CPU/memory/disk metrics.
+2. Increase job volume in controlled steps while holding concurrency constant; vary concurrency separately.
+3. Collect queue depth, oldest queued-job age, claim latency p50/p95/p99, jobs/sec, DB active/idle connections, CPU, memory, disk latency/IOPS, WAL generation and lock/deadlock counts.
+4. Pause draining workers while adding jobs, then resume. Verify backlog drains without duplicate claims, cross-tenant access or unbounded connections.
+5. Stop on saturation, lock waits, connection exhaustion, unexpected errors or host limits. Record safe operating points; do not extrapolate beyond measurements.
+
+The current script is a bounded drain benchmark, not a sustained producer/consumer test. Do not mark this protocol complete until a controlled run and evidence exist.
+
+## Failure and recovery protocol (not yet executed)
+
+In isolated non-production, test worker termination after lease acquisition, restart, expired-lease recovery, transient provider failure, retry/backoff, max-attempt dead-letter and duplicate Kafka delivery. Verify terminal states, bounded retries, idempotency and tenant isolation. Record recovery time, duplicate side effects, queue depth and logs. Do not use customer credentials or production queues.

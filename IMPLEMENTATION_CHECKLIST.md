@@ -48,11 +48,15 @@
 - [x] CI validates benchmark metric instrumentation and all existing checks on commit `67f8447801b8837550fcdba607f09932be82eb29` (run #46102361891).
 - [ ] Execute benchmark on dedicated non-production database/hardware.
 - [ ] Record queue latency, jobs/sec, DB CPU/IO, connections and saturation.
-- [ ] Sustained queue/backpressure benchmark.
-- [ ] Failure/recovery benchmark.
+- [x] Document controlled sustained queue/backpressure benchmark protocol.
+- [ ] Execute sustained queue/backpressure benchmark and record metrics.
+- [x] Document non-production worker failure/recovery protocol.
+- [ ] Execute worker failure/recovery tests and record evidence.
 - [ ] Validate 1,000,000 URLs/day using measured end-to-end capacity.
 - [ ] Google/Bing end-to-end test with non-production provider accounts.
-- [ ] Backup/restore drill.
+- [x] Add guarded PostgreSQL custom-format backup and non-production restore scripts with checksum/archive validation.
+- [x] Document post-restore validation and operational limitations.
+- [ ] Execute non-production restore drill and record evidence.
 - [ ] Security review.
 - [ ] Observability/alerting review.
 - [ ] Production VPS deployment and HTTPS/DNS validation after release approval.

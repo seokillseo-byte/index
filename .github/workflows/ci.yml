@@ -23,6 +23,7 @@ jobs:
       - run: pnpm --recursive --if-present test
       - run: node --check apps/worker/src/provider-jobs.mjs
       - run: node --check apps/worker/src/provider-job-benchmark.mjs
+      - run: bash -n infra/postgres/backup.sh infra/postgres/restore.sh
   crawler:
     runs-on: ubuntu-latest
     steps:
