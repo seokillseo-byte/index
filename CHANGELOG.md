@@ -1,3 +1,8 @@
+## 2026-11-28 — Integration documentation consistency
+
+- Removed stale API documentation statements claiming Google/Bing integrations and provider jobs were not yet connected, and clarified that real non-production provider-account E2E validation remains outstanding.
+- Clarified that provider operations remain restricted to URLs covered by the project's bound verified property and that acknowledgements are not indexing proof.
+
 ## 2026-11-28 — Benchmark measurement coverage
 
 - Extended the non-production provider queue benchmark output with queue-latency p50/p95/p99, PostgreSQL statistics counter deltas, and visible/benchmark connection counts.

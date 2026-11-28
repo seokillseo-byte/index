@@ -67,7 +67,7 @@ A response with `accepted: 2` means the URLs entered the Index Assist processing
 
 - The seeded Free plan allows 500 accepted URLs/day; Growth 25,000/day; Scale 1,000,000/day. Pricing and entitlement changes must be managed through the billing/admin system before commercial launch.
 - Registration now requires email verification before login/session issuance. Verification uses a 30-minute single-use token and transactional email delivery. MFA, password recovery and server-side session management are implemented; production signup should still remain closed until end-to-end security testing is completed.
-- Search Console and Bing integrations are not yet connected to this API.
+- Google Search Console and Bing Webmaster integration endpoints and provider queues are implemented; live provider-account end-to-end validation remains a release gate.
 
 
 ## Projects
@@ -106,7 +106,7 @@ A discovered backlink is an observed HTML link, not proof that a search engine h
 
 Configure provider client credentials and exact redirect URIs in `.env.api`. The API also requires a 32-byte hex `INTEGRATION_ENCRYPTION_KEY` for AES-256-GCM token encryption and an `OAUTH_STATE_SECRET` of at least 48 characters. Never commit real credentials.
 
-The OAuth connection alone does not authorize arbitrary third-party backlink submissions. The project must be associated with a verified site/property belonging to the connected account. Provider site selection, refresh-token rotation, property verification, URL Inspection jobs and Bing JSON/HTTP submission jobs are subsequent integration stages.
+The OAuth connection alone does not authorize arbitrary third-party backlink submissions. The project must be associated with a verified site/property belonging to the connected account. Google URL Inspection and Bing URL submission jobs are available only for URLs covered by that bound verified property. Provider responses are recorded as inspection evidence or submission acknowledgements, not as proof of indexing.
 
 
 ## Provider URL operations
