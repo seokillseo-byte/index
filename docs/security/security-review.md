@@ -1,11 +1,11 @@
 # Index Assist — Preliminary security review
 
 Updated: 2026-11-28
-Branch reviewed: `feature/provider-job-engine` at current Redis throttling implementation checkpoint
+Branch reviewed: `feature/provider-job-engine` after Redis recovery and Redpanda security-template updates
 
 ## Scope and confidence
 
-CI checkpoint update: run #184 passed on `1a9be1d87fa541866777475f28d0a6c3fe682bb4`; this validates repository tests only and does not change the release findings below.
+CI #286 passed on `da76342e9d0e295e565c45e3e541778f59565f5d` (Node, crawler and database jobs). This is the latest fully verified checkpoint before the multi-recipient backup source change in this review turn; that source change requires a new CI run.
 
 This is a source/configuration review of the current repository state, not an independent penetration test, infrastructure audit, dependency audit, or production security certification. No live VPS, deployed network, provider account, secrets, or customer data were accessed.
 
@@ -17,29 +17,29 @@ This is a source/configuration review of the current repository state, not an in
 - Provider operations are tenant-scoped and constrained to verified properties; worker DB connection uses the restricted runtime role.
 - Docker workload ports are not published publicly in the checked compose file; API is bound to loopback on the host.
 - Environment files are ignored by Git, with example templates retained.
-- Backup scripts now encrypt archives with age, restrict local file permissions and validate checksum/archive. CI #178 passes mock tests for encryption flow, temporary plaintext cleanup, non-production restore guard and tamper rejection. CI #180 exercises age's real authenticated encryption/decryption with generated ephemeral keys and rejects a wrong identity; CI #183 also verifies rejection of an identity file accessible by group/other users. PostgreSQL utilities remain mocked; the live non-production restore drill and off-site/key-recovery policy remain outstanding. Off-site replication, key escrow and an actual restore drill remain outstanding.
+- Backup scripts now encrypt archives with age, restrict local file permissions and validate checksum/archive. CI #178 passes mock tests for encryption flow, temporary plaintext cleanup, non-production restore guard and tamper rejection. CI #180 exercises age's real authenticated encryption/decryption with generated ephemeral keys and rejects a wrong identity; CI #183 also verifies rejection of an identity file accessible by group/other users. CI #286 passed before the latest multi-recipient change; PostgreSQL utilities remain mocked and a live restore drill remains outstanding. The runbook now documents off-site replication and recovery-custody requirements, and the backup script now supports multiple age recipients; actual off-site storage, retention, protected key custody and recovery-key retrieval are still not configured.
 
 ## Findings and required actions
 
-### High — Shared Redis throttling implemented; CI and live failure test pending
+### High — Shared Redis throttling implemented and CI-verified; live failure test pending
 
 Evidence: `apps/api/src/throttling/redis-throttler.storage.ts` uses an atomic Redis Lua script for shared counters and block windows. `apps/api/src/app.module.ts` configures it as the Nest throttler storage; `REDIS_URL` is required, the API workload waits for Redis health, readiness checks Redis and PostgreSQL, the Redis client disconnects on Nest shutdown, Redis uses `noeviction` to protect active counters, and rate-limited requests fail closed with HTTP 503 on Redis errors or memory-limit write rejection. Unit tests cover atomic command arguments, lazy connection, missing configuration and unavailable Redis; a Redis integration test uses two independent clients to verify shared counters/block state, and CI provisions Redis for the Node job.
 
-Impact: this closes the process-local storage design gap in source, but it is not yet CI-verified in the latest branch checkpoint and no deployed multi-instance/Redis outage drill has been run.
+Impact: the process-local storage gap is closed in source and CI #276/#277/#286 verify the two-client integration and reconnect/fail-closed regression paths. No deployed multi-instance/Redis outage drill has been run.
 
-Required before production: obtain passing CI, run two API instances against one non-production Redis and confirm shared limits, then stop Redis and confirm rate-limited requests fail closed without bypass. Configure production credentials outside the repository.
+Required before production: run two API instances against one non-production Redis and confirm shared limits, then stop Redis and confirm rate-limited requests fail closed without bypass. Configure production credentials outside the repository and alert on Redis memory pressure/unavailability.
 
 ### High — Kafka client security is implemented, but broker TLS/SASL/ACL activation remains open
 
-Evidence: Node outbox relay/provider worker and Go crawler now support CA-verified TLS and SCRAM-SHA-512; production startup rejects plaintext client settings. However `infra/docker/compose.infrastructure.yml` still starts Redpanda with an internal plaintext listener. A TLS/SASL example and ACL runbook are provided but are not active.
+Evidence: Node outbox relay/provider worker and Go crawler now support CA-verified TLS and SCRAM-SHA-512; production startup rejects plaintext client settings. However `infra/docker/compose.infrastructure.yml` still starts end-of-support Redpanda `v24.3.7` with an internal plaintext listener; its `redpanda-init` job uses anonymous plaintext Kafka and cannot be reused after SASL is enabled. A v26.3.1 broker template, first-start Admin API bootstrap example and ACL runbook are provided but are not mounted or active. The template keeps the Admin API loopback-only and requires authentication via the bootstrap file.
 
 Impact: until the broker listener, users and ACLs are activated together, the internal broker remains unauthenticated and queue traffic is not encrypted. Production workers will fail closed rather than connect with plaintext.
 
-Required before production: provision broker certificates and distinct service SCRAM credentials, activate TLS/SASL/ACLs on non-production Redpanda, verify allowed producer/consumer operations and denied cross-topic/group access, then roll out the same reviewed configuration in production.
+Required before production: rehearse the persistent-volume upgrade path to a supported Redpanda release; provision broker/Admin certificates and distinct service SCRAM credentials; protect the Admin API before first startup; replace anonymous topic initialization with authenticated provisioning; activate TLS/SASL/ACLs on non-production Redpanda; verify allowed producer/consumer operations and denied cross-topic/group access. Only then roll out the reviewed configuration in production.
 
-### High — Off-host recovery policy and key-management drill are not implemented
+### High — Off-host recovery policy and key-management drill are documented but not configured
 
-Evidence: `infra/postgres/backup.sh` now encrypts custom-format dumps with age before writing final artifacts and verifies the encrypted-file SHA-256 checksum. The runbook still does not implement off-site replication, retention, PITR, monitoring or key escrow; the age private identity must be managed outside this repository.
+Evidence: `infra/postgres/backup.sh` encrypts custom-format dumps with age before writing final artifacts and verifies the encrypted-file SHA-256 checksum. It now supports multiple independent age recipients and records public recipients in the manifest. The runbook documents off-site replication, retention and key-recovery controls, but no remote destination, retention lifecycle, PITR, monitoring or protected key custody is configured; the age private identities must be managed outside this repository.
 
 Impact: compromise of the age private identity or loss of both the VPS and its local backup can expose data or make recovery impossible. A local encrypted artifact alone is not a disaster-recovery plan.
 
