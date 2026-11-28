@@ -63,5 +63,28 @@ ruby -e '
   abort "secure overlay must use its isolated data volume" unless secure_volume
   abort "secure overlay must not mount the legacy broker volume" if broker.fetch("volumes").any? { |volume| volume["source"] == "redpanda_data" }
   abort "Admin API port must not be published" if broker.fetch("ports", []).any? { |port| port["target"] == 9644 }
+
+  expected_service_secrets = {
+    "outbox_scram_password" => "/run/secrets/outbox-scram-password",
+    "crawler_scram_password" => "/run/secrets/crawler-scram-password",
+    "provider_scram_password" => "/run/secrets/provider-scram-password",
+    "redpanda_admin_password" => "/run/secrets/redpanda-admin-password",
+    "redpanda_ca" => "/run/secrets/redpanda-ca.crt"
+  }
+  mounted_secrets = init.fetch("secrets").to_h { |secret| [secret.fetch("source"), secret.fetch("target")] }
+  expected_service_secrets.each do |source, target|
+    abort "provisioner secret mapping missing or incorrect: #{source}" unless mounted_secrets[source] == target
+  end
+  expected_secret_files = {
+    "outbox_scram_password" => "secrets/kafka/outbox-scram-password",
+    "crawler_scram_password" => "secrets/kafka/crawler-scram-password",
+    "provider_scram_password" => "secrets/kafka/provider-scram-password"
+  }
+  declared_secrets = config.fetch("secrets")
+  expected_secret_files.each do |name, suffix|
+    source_file = declared_secrets.fetch(name).fetch("file")
+    abort "secret file mapping missing or incorrect: #{name}" unless source_file.end_with?(suffix)
+  end
+  abort "provisioner must receive TLS CA paths" unless init.fetch("environment")["RPK_TLS_CA"] == "/run/secrets/redpanda-ca.crt" && init.fetch("environment")["RPK_ADMIN_TLS_CA"] == "/run/secrets/redpanda-ca.crt"
 '
 echo 'Secure Redpanda Compose merge and runtime topology validation passed'
