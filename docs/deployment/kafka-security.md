@@ -71,6 +71,7 @@ The secure overlay creates a separate named volume, redpanda_data_secure; it doe
    - secrets/redpanda/broker.crt and broker.key (broker certificate SAN: redpanda)
    - secrets/redpanda/admin.crt and admin.key (Admin API certificate SAN: localhost)
    - secrets/redpanda/admin-password (at least 32 characters, no colon; owner-readable only, e.g. mode 0600)
+   - secrets/kafka/outbox-scram-password, crawler-scram-password and provider-scram-password (each a unique random password of at least 32 characters; owner-readable only)
 2. Copy .env.redpanda.secure.example to .env.redpanda.secure. Keep REDPANDA_ADMIN_USER=index-assist-admin aligned with the superuser in .bootstrap.yaml.example.
 3. For a NEW empty cluster only, leave REDPANDA_BOOTSTRAP_ONCE=1 and start only the broker:
    ~~~bash
@@ -80,10 +81,17 @@ The secure overlay creates a separate named volume, redpanda_data_secure; it doe
    ~~~
    The broker wrapper reads the bootstrap password from the mounted secret file and exports RP_BOOTSTRAP_USER only for this first startup. The bootstrap file is read only on first cluster creation.
 4. After the authenticated Admin API health check succeeds, set REDPANDA_BOOTSTRAP_ONCE=0 and recreate the broker with the same Compose files. This removes the one-time bootstrap environment from subsequent broker processes while preserving the new secure volume. Do not skip this step.
-5. Start the complete stack with all three Compose files. The one-shot redpanda-init service waits for broker health, authenticates over TLS/SCRAM, and creates the existing topics. Workloads depend on successful completion of this job.
+5. Start the complete stack with all three Compose files:
+   ~~~bash
+   docker compose --env-file .env --env-file .env.redpanda.secure \
+     -f infra/docker/compose.infrastructure.yml \
+     -f infra/docker/compose.redpanda.secure.yml \
+     -f infra/docker/compose.workloads.yml up -d
+   ~~~
+   The one-shot redpanda-init service waits for broker health, authenticates over TLS/SCRAM, creates the existing topics, provisions the three service SCRAM principals and applies their least-privilege ACLs. Workloads depend on successful completion of this job.
 6. Do not point this overlay at the existing v24.3.7 volume. For upgrade testing, make a separate cold copy/snapshot and test the exact supported upgrade sequence on disposable infrastructure first.
 
-The overlay requires the broker/admin certificate and password files to exist before Compose starts. It keeps the Kafka port published only on host loopback and does not publish Admin API port 9644. The admin password is mounted as a Docker secret; the topic provisioner reads it into the rpk process environment rather than placing it in command-line arguments.
+The overlay requires the broker/admin certificate and password files to exist before Compose starts. It keeps the Kafka port published only on host loopback and does not publish Admin API port 9644. The admin password is mounted as a Docker secret; the provisioner reads it into the rpk process environment rather than placing it in command-line arguments. Service password files are also mounted only into the one-shot provisioner; rpk's user-create command accepts the target password as an argument, so that value is briefly visible in the provisioner container's process arguments and must never be logged or run in a shared admin container.
 
 Create dedicated SCRAM-SHA-512 principals:
 
@@ -105,25 +113,10 @@ Grant only the following Kafka ACLs:
 
 The bootstrap/admin identity creates the two existing topics. Application principals must not receive cluster-wide superuser access, topic-create permission, wildcard topic ACLs or access to the other consumer group. Create the three application SCRAM users through an authenticated admin session, then apply the following least-privilege ACLs. Use unique random passwords and inject them through the approved secret manager; do not reuse the bootstrap administrator password.
 
-The following commands show the exact ACL grants. Run them from the broker container or another trusted admin environment configured with TLS-verified Admin API/Kafka connections and the bootstrap superuser. User creation uses the rpk --password argument; run it only in a short-lived, access-controlled admin session, avoid shell history/audit capture of secrets, and rotate the bootstrap credential after service principals have been validated.
+The secure overlay's one-shot provisioner runs infra/redpanda/provision-secure-cluster.sh after the bootstrap superuser is healthy. It reads the three service passwords from Docker secret files, creates missing SCRAM users, creates missing ACLs, and ensures the two existing topics. Existing users are deliberately not recreated or silently password-rotated; if a user already exists, the provisioner retains its current credential. To rotate one, use the authenticated rpk user-update workflow, then update the matching secret file and workload environment file together.
 
-~~~bash
-rpk security user create index-assist-outbox --password "$OUTBOX_SCRAM_PASSWORD" --mechanism SCRAM-SHA-512
-rpk security user create index-assist-crawler --password "$CRAWLER_SCRAM_PASSWORD" --mechanism SCRAM-SHA-512
-rpk security user create index-assist-provider --password "$PROVIDER_SCRAM_PASSWORD" --mechanism SCRAM-SHA-512
+The script grants exactly the ACL matrix above. It is repeat-safe for already-created users, ACLs and topics, and CI exercises that behavior with a mock rpk CLI. rpk's user-create CLI accepts the service password as a command argument; it is used only inside the short-lived provisioner container. Restrict access to that container, avoid enabling shell tracing, and ensure process/audit collection does not capture command arguments.
 
-rpk security acl create --allow-principal User:index-assist-outbox --operation write,describe --topic url.ingestion
-rpk security acl create --allow-principal User:index-assist-outbox --operation write,describe --topic provider.jobs
-rpk security acl create --allow-principal User:index-assist-outbox --operation idempotentwrite --cluster
-
-rpk security acl create --allow-principal User:index-assist-crawler --operation read,describe --topic url.ingestion
-rpk security acl create --allow-principal User:index-assist-crawler --operation read --group index-assist-crawler-v1
-
-rpk security acl create --allow-principal User:index-assist-provider --operation read,describe --topic provider.jobs
-rpk security acl create --allow-principal User:index-assist-provider --operation read --group index-assist-provider-v1
-~~~
-
-The three SCRAM passwords must then be copied into the protected .env.worker, .env.crawler and .env.provider-worker files using the matching username. Keep each workload's KAFKA_TLS_CA_FILE pointing to the read-only CA mount. Never put service credentials in a committed example file.
 
 ## Non-production verification gates
 
