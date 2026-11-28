@@ -6,7 +6,7 @@ Updated: 2026-11-28
 
 This runbook covers the existing `url.ingestion` and `provider.jobs` topics and their existing producer/consumer services. It does not add product features.
 
-**Status: client support is implemented; broker activation and ACL provisioning remain a release gate.** The Compose broker is still configured with a plaintext listener. Do not treat this example as an active security boundary until the broker config, certificates, SCRAM users and ACLs have been installed and verified together.
+**Status: client support is implemented; broker activation and ACL provisioning remain a release gate.** The repository currently pins Redpanda `v24.3.7`; the 24.3 release line reached end of support on 2025-12-03. Do not use this pinned broker version for a new production rollout. Select a currently supported Redpanda release and repeat config compatibility, TLS/SCRAM and ACL tests before production. The Compose broker is still configured with a plaintext listener. Do not treat this example as an active security boundary until the broker config, certificates, SCRAM users and ACLs have been installed and verified together.
 
 The example broker configuration is `infra/redpanda/redpanda.yaml.example`, based on the Redpanda 24.3.x self-managed configuration model. Review compatibility against the exact pinned image before mounting it as `/etc/redpanda/redpanda.yaml`.
 
@@ -42,6 +42,8 @@ Use separate principals and passwords for the outbox relay, crawler and provider
 The production Compose workloads set `NODE_ENV=production`. Both Node and Go clients reject a production configuration without TLS and SCRAM-SHA-512. Partial SCRAM settings and missing/invalid CA files fail startup. TLS certificate verification remains enabled; do not set `rejectUnauthorized: false` or use an insecure TLS skip-verify option.
 
 ## Broker bootstrap and ACL plan
+
+Redpanda requires at least one superuser to be configured before SASL/ACL enforcement is enabled; create that SCRAM superuser before enabling authorization to avoid locking out administration. Use `rpk security user create` with `--mechanism SCRAM-SHA-512`, then create each application principal and its topic/group ACLs using `rpk security acl create`. The pinned 24.3 documentation confirms the user and ACL workflow; use the selected supported release's matching CLI documentation when upgrading the broker.
 
 Use an isolated administrative bootstrap session on the private Docker network. Create the initial SCRAM superuser before enabling authorization, then enable SASL and Kafka ACL enforcement, and use that superuser only for provisioning. Follow the Redpanda 24.3 documentation for the exact bootstrap order and CLI flags. Do not expose the Admin API or unauthenticated bootstrap listener outside the private network.
 
@@ -86,8 +88,10 @@ CI now includes Node tests for the shared Kafka config and Go tests for the craw
 
 ## References
 
-- Redpanda authentication: https://docs.redpanda.com/streaming/24.3/manage/security/authentication/
+- Redpanda authentication and SCRAM user creation: https://docs.redpanda.com/streaming/24.3/manage/security/authentication/
+- Redpanda `rpk security user create`: https://docs.redpanda.com/streaming/24.3/reference/rpk/rpk-security/rpk-security-user-create/
 - Redpanda Kafka TLS: https://docs.redpanda.com/streaming/24.3/manage/security/encryption/
-- Redpanda ACLs: https://docs.redpanda.com/streaming/current/manage/security/authorization/acl/
+- Redpanda ACLs: https://docs.redpanda.com/streaming/24.3/manage/security/authorization/acl/
+- Redpanda `rpk security acl create`: https://docs.redpanda.com/streaming/current/reference/rpk/rpk-security/rpk-security-acl-create/
 - KafkaJS TLS/SASL: https://kafka.js.org/docs/configuration
 - kafka-go TLS/SASL transport: https://pkg.go.dev/github.com/segmentio/kafka-go
