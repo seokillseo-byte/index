@@ -8,6 +8,7 @@
 - Added a CI database test for five-failure MFA challenge lockout semantics.
 - Added a CI database test for consumed authentication-token replay.
 - Serialized MFA enrollment and single-active password-reset/MFA-login challenge issuance with transactional row locking.
+- Documented the Git-based release/VPS deployment procedure and configuration/rollback boundaries.
 
 ### Authentication validation hardening
 
