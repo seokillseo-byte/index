@@ -28,6 +28,7 @@
 - [ ] Fresh CI validation for Redis-backed throttler implementation and outage tests (pending).
 - [x] Added Redis integration test with two independent storage clients to verify shared counters and blocked state; CI Node job now provisions Redis service.
 - [x] Redis client is a Nest-managed provider and disconnects during application shutdown.
+- [x] API readiness checks PostgreSQL and Redis; added controller tests for Redis-unavailable readiness.
 
 ## Provider Job Engine
 
