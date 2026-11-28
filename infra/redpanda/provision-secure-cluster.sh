@@ -28,9 +28,7 @@ ensure_user() {
   fi
   [ -s "$password_file" ] || { echo "Missing SCRAM password file for $username" >&2; exit 1; }
   password="$(cat "$password_file")"
-  [ "$${#password}" -ge 32 ] || { echo "SCRAM password must be at least 32 characters for $username" >&2; exit 1; }
-  case "$password" in *'
-'*) echo "SCRAM password must be a single line for $username" >&2; exit 1 ;; esac
+  [ "${#password}" -ge 32 ] || { echo "SCRAM password must be at least 32 characters for $username" >&2; exit 1; }
   rpk security user create "$username" --password "$password" --mechanism SCRAM-SHA-512
   unset password
 }
