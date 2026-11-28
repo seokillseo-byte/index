@@ -28,6 +28,7 @@ Updated: 2026-11-28
 - Added migration `0019_mfa_challenge_attempt_limits.sql`.
 - Added a CI database test covering the five-failure MFA challenge lockout semantics.
 - Added a CI database regression test for consumed authentication-token replay.
+- Added `docs/deployment/release-process.md` covering the feature-branch workflow, clean Git-based VPS deployment, configuration separation and rollback principles.
 - Serialized MFA enrollment and single-active password-reset/MFA-login challenge issuance with database transactions and row locks.
 
 **Validation caveat:** the authentication implementation has not yet been validated by a successful CI run or focused auth security test suite. Do not mark it production-ready until those checks pass.
@@ -72,7 +73,7 @@ Updated: 2026-11-28
 - Real Google/Bing customer connections and end-to-end provider tests.
 - Backup/restore drill.
 - Production observability/alerting and security review.
-- Production VPS deployment and HTTPS/DNS validation.
+- Production VPS deployment and HTTPS/DNS validation (release procedure is documented, execution remains pending).
 - HA/failover remains outside the single-VPS baseline.
 
 ## Immediate next step
