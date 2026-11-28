@@ -46,11 +46,13 @@ func main() {
  if err != nil { log.Fatal(err) }
  defer pool.Close()
  if err := pool.Ping(ctx); err != nil { log.Fatal(err) }
+ dialer, err := kafkaDialerFromEnv()
+ if err != nil { log.Fatalf("Kafka security configuration: %v", err) }
  reader := kafka.NewReader(kafka.ReaderConfig{
   Brokers: brokers, Topic: env("KAFKA_TOPIC", "url.ingestion"),
   GroupID: env("KAFKA_GROUP_ID", "index-assist-crawler-v1"),
   MinBytes: 1, MaxBytes: 10e6, MaxWait: time.Second,
-  CommitInterval: 0, StartOffset: kafka.FirstOffset,
+  CommitInterval: 0, StartOffset: kafka.FirstOffset, Dialer: dialer,
  })
  defer reader.Close()
  startHealthServer(ctx,pool)
