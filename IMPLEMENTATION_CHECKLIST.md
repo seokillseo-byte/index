@@ -162,3 +162,13 @@ Google URL Inspection is inspection evidence, not an indexing request. Bing subm
 - [x] Restore the existing-principal fixture after each negative case and retain no-mutation assertions.
 - [ ] Confirm CI execution on the latest branch commit.
 - [ ] Run live non-production broker TLS/SCRAM/ACL and recovery validation.
+
+
+## All application SCRAM secret mappings (2026-11-29)
+
+- [x] Verify missing and empty outbox password-file rejection.
+- [x] Verify missing and empty crawler password-file rejection.
+- [x] Verify missing and empty provider password-file rejection.
+- [x] Preserve principal fixtures and final no-mutation assertions.
+- [ ] Confirm CI execution on the latest branch commit.
+- [ ] Validate real TLS/SCRAM/ACL behavior against a non-production broker.
