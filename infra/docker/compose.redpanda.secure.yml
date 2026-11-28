@@ -1,0 +1,82 @@
+services:
+  redpanda:
+    image: redpandadata/redpanda:v26.3.1
+    environment:
+      REDPANDA_ADMIN_USER: \${REDPANDA_ADMIN_USER:?Set REDPANDA_ADMIN_USER}
+      REDPANDA_BOOTSTRAP_ONCE: \${REDPANDA_BOOTSTRAP_ONCE:-0}
+    command:
+      - |
+        if [ "$\${REDPANDA_BOOTSTRAP_ONCE:-0}" = "1" ]; then
+          password="$$(cat /run/secrets/redpanda-admin-password)"
+          [ "$\${#password}" -ge 32 ] || { echo "Admin password must be at least 32 characters" >&2; exit 1; }
+          case "$$password" in *:*) echo "Admin password must not contain ':'" >&2; exit 1 ;; esac
+          export RP_BOOTSTRAP_USER="$\${REDPANDA_ADMIN_USER}:$\${password}:SCRAM-SHA-512"
+          unset password
+        fi
+        exec redpanda start --overprovisioned --smp 2 --memory 2G --reserve-memory 0M --node-id 0 --check=false
+    volumes:
+      - ../redpanda/redpanda.yaml.example:/etc/redpanda/redpanda.yaml:ro
+      - ../redpanda/.bootstrap.yaml.example:/etc/redpanda/.bootstrap.yaml:ro
+    secrets:
+      - source: redpanda_ca
+        target: /etc/redpanda/certs/ca.crt
+        mode: 0444
+      - source: redpanda_broker_cert
+        target: /etc/redpanda/certs/broker.crt
+        mode: 0444
+      - source: redpanda_broker_key
+        target: /etc/redpanda/certs/broker.key
+        mode: 0400
+      - source: redpanda_admin_cert
+        target: /etc/redpanda/certs/admin.crt
+        mode: 0444
+      - source: redpanda_admin_key
+        target: /etc/redpanda/certs/admin.key
+        mode: 0400
+      - source: redpanda_admin_password
+        target: /run/secrets/redpanda-admin-password
+        mode: 0400
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - RPK_USER=$$REDPANDA_ADMIN_USER RPK_PASS=$$(cat /run/secrets/redpanda-admin-password) RPK_SASL_MECHANISM=SCRAM-SHA-512 RPK_ADMIN_HOSTS=localhost:9644 RPK_ADMIN_TLS_ENABLED=true RPK_ADMIN_TLS_CA=/etc/redpanda/certs/ca.crt rpk cluster health >/dev/null 2>&1
+      interval: 10s
+      timeout: 5s
+      retries: 18
+
+  redpanda-init:
+    image: redpandadata/redpanda:v26.3.1
+    environment:
+      REQUIRE_KAFKA_TLS_SASL: "true"
+      RPK_BROKERS: redpanda:9092
+      RPK_TLS_ENABLED: "true"
+      RPK_TLS_CA: /run/secrets/redpanda-ca.crt
+      RPK_SASL_MECHANISM: SCRAM-SHA-512
+      RPK_USER: \${REDPANDA_ADMIN_USER:?Set REDPANDA_ADMIN_USER}
+    command:
+      - |
+        export RPK_PASS="$$(cat /run/secrets/redpanda-admin-password)"
+        exec /bin/sh /opt/index-assist/provision-topics.sh
+    volumes:
+      - ../redpanda/provision-topics.sh:/opt/index-assist/provision-topics.sh:ro
+    secrets:
+      - source: redpanda_ca
+        target: /run/secrets/redpanda-ca.crt
+        mode: 0444
+      - source: redpanda_admin_password
+        target: /run/secrets/redpanda-admin-password
+        mode: 0400
+
+secrets:
+  redpanda_ca:
+    file: ../../secrets/kafka/ca.crt
+  redpanda_broker_cert:
+    file: ../../secrets/redpanda/broker.crt
+  redpanda_broker_key:
+    file: ../../secrets/redpanda/broker.key
+  redpanda_admin_cert:
+    file: ../../secrets/redpanda/admin.crt
+  redpanda_admin_key:
+    file: ../../secrets/redpanda/admin.key
+  redpanda_admin_password:
+    file: ../../secrets/redpanda/admin-password
