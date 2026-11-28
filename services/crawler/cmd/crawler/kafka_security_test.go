@@ -20,6 +20,12 @@ func TestKafkaDialerDefaultsToCompatibilityMode(t *testing.T) {
  if dialer.TLS!=nil||dialer.SASLMechanism!=nil{t.Fatal("unexpected Kafka security configuration")}
 }
 
+func TestKafkaDialerRejectsPlaintextInProduction(t *testing.T) {
+ clearKafkaSecurityEnv(t)
+ t.Setenv("NODE_ENV","production")
+ if _,err:=kafkaDialerFromEnv();err==nil{t.Fatal("expected production plaintext configuration to fail")}
+}
+
 func TestKafkaDialerRejectsPartialSCRAMConfiguration(t *testing.T) {
  clearKafkaSecurityEnv(t)
  t.Setenv("KAFKA_SASL_USERNAME","crawler")
