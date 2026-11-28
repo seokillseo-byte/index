@@ -88,7 +88,7 @@ ruby -e '
 
   broker_start = broker.fetch("command").join("\\n")
   %w[ca.crt broker.crt broker.key admin.crt admin.key].each do |file|
-    abort "broker startup must require readable, non-empty certificate material: #{file}" unless broker_start.include?("/etc/redpanda/certs/#{file}") && broker_start.include?("[ -r") && broker_start.include?("[ -s")
+    abort "broker startup must require readable, non-empty certificate material: #{file}" unless broker_start.include?("/etc/redpanda/certs/#{file}") && broker_start.include?("test -r") && broker_start.include?("test -s")
   end
   abort "bootstrap must validate password length" unless broker_start.include?("password") && broker_start.include?("-ge 32")
   abort "bootstrap must reject colon in password" unless broker_start.include?("case") && broker_start.include?("*:*)")
