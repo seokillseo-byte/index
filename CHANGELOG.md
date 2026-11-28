@@ -1,3 +1,9 @@
+## 2026-11-28 — Protect Redis rate-limit counters from eviction
+
+- Changed the Redis max-memory policy from `allkeys-lru` to `noeviction` so memory pressure cannot silently evict active rate-limit counters and weaken shared abuse controls.
+- If Redis reaches its memory limit and rejects writes, the throttler fails closed with HTTP 503 rather than bypassing limits.
+- Monitor Redis memory/evictions and alert before the configured 2 GB limit is reached.
+
 ## 2026-11-28 — Keep Redis password out of Compose command expansion
 
 - Redis server startup now reads its password from the container environment at runtime using shell command substitution, avoiding host-side Compose interpolation of the secret into the command definition.
