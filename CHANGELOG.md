@@ -288,3 +288,9 @@
 
 - Extended mock negative tests to cover missing and empty service password files for all three application principals: outbox, crawler and provider. Each case targets the new-user path and preserves the final no-mutation assertions.
 - Tests are wired into the Node CI job; latest execution remains unconfirmed. No local shell test or live broker validation is claimed.
+
+
+## 2026-11-29 — Secure Compose secret wiring regression checks
+
+- Expanded the merged-Compose test to catch missing/misrouted application SCRAM secret mounts, incorrect host secret-file declarations, and Kafka/Admin CA path mismatches for the provisioner.
+- Static test source is CI-wired; execution on the latest commit and live broker verification remain outstanding.
