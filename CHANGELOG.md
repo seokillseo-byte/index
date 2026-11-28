@@ -7,6 +7,8 @@
 - Added migration `0019_mfa_challenge_attempt_limits.sql`.
 - Added a CI database test for five-failure MFA challenge lockout semantics.
 - Added a CI database test for consumed authentication-token replay.
+- Added API Jest/ts-jest infrastructure and service-level MFA challenge lockout/token-hashing coverage.
+- Added a CI database test for single-use MFA recovery-code replay.
 - Serialized MFA enrollment and single-active password-reset/MFA-login challenge issuance with transactional row locking.
 - Documented the Git-based release/VPS deployment procedure and configuration/rollback boundaries.
 
