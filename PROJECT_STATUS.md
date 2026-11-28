@@ -8,7 +8,7 @@ Updated: 2026-11-28
 - Capacity target: 32 vCPU / 64 GB RAM / 2 TB NVMe / 1 Gbps; this is a target specification, not a measured throughput result.
 - Main baseline: `568e00af228c64249f5da6e4ec22f29e6cbe10be`.
 - Active implementation branch: `feature/provider-job-engine`.
-- Latest fully passing CI checkpoint is `da76342e9d0e295e565c45e3e541778f59565f5d` (CI #286): database, crawler Go race/vet, Node typecheck/build/Jest, Redis two-client integration/reconnect recovery, worker tests and backup/restore safety tests passed. This checkpoint predates the current multi-recipient age backup source/test changes; those changes require a fresh CI run. The storage client is lifecycle-managed, readiness checks PostgreSQL and Redis, and Compose avoids interpolating the Redis password into command arguments.
+- Latest fully passing CI checkpoint is `da76342e9d0e295e565c45e3e541778f59565f5d` (CI #286): database, crawler Go race/vet, Node typecheck/build/Jest, Redis two-client integration/reconnect recovery, worker tests and backup/restore safety tests passed. CI #306 passed on `bd152d3b6c324720cfdf3047cd73510f54390def` after the multi-recipient backup change; the latest source checkpoint validates two independent age identities plus YAML template syntax. The storage client is lifecycle-managed, readiness checks PostgreSQL and Redis, and Compose avoids interpolating the Redis password into command arguments.
 - Review PR #6 remains open and unmerged.
 - GitHub reports the branch remains diverged from main by one main-only commit that overlaps provider-engine files; PR mergeable=false. Ahead count changes as this long-running feature branch receives incremental commits. Do not rebase or merge automatically; review the effective diff before integration.
 - No local working-tree status is available in this workflow; this status reflects GitHub branch/PR data only.
@@ -35,11 +35,11 @@ Updated: 2026-11-28
 ## CI validation
 
 - CI #184 passed on commit `1a9be1d87fa541866777475f28d0a6c3fe682bb4`: [workflow run](https://github.com/seokillseo-byte/index/actions/runs/46107552896).
-- CI #276 passed on commit `6f2abb0263cd52618f16add28c371f0d4045ddbc`: [workflow run](https://github.com/seokillseo-byte/index/actions/runs/46110245705). CI #277 passed on `f61dc7ffb1605e32c93b2b623277f5d70bfb40f6`: [workflow run](https://github.com/seokillseo-byte/index/actions/runs/46110358016), including Redis reconnect/recovery. CI #286 passed on `da76342e9d0e295e565c45e3e541778f59565f5d`: [workflow run](https://github.com/seokillseo-byte/index/actions/runs/46110473131), all three jobs successful. The current multi-recipient backup changes were committed after #286 and are pending fresh CI.
+- CI #276 passed on commit `6f2abb0263cd52618f16add28c371f0d4045ddbc`: [workflow run](https://github.com/seokillseo-byte/index/actions/runs/46110245705). CI #277 passed on `f61dc7ffb1605e32c93b2b623277f5d70bfb40f6`: [workflow run](https://github.com/seokillseo-byte/index/actions/runs/46110358016), including Redis reconnect/recovery. CI #286 passed on `da76342e9d0e295e565c45e3e541778f59565f5d`: [workflow run](https://github.com/seokillseo-byte/index/actions/runs/46110473131), all three jobs successful. CI #306 passed on `bd152d3b6c324720cfdf3047cd73510f54390def`: [workflow run](https://github.com/seokillseo-byte/index/actions/runs/46111164620). It verifies YAML syntax for both Compose files and Redpanda templates, Node typecheck/build/Jest, mocked backup safety, real age encryption/decryption using two independent recipients (both identities can restore), invalid/duplicate/empty recipient rejection, Go race/vet, and database regressions.
 - All three jobs passed: database migrations plus tenant RLS/MFA/auth-token/recovery-code regression SQL; crawler Go race tests and vet; Node dependency install, typecheck, build, Jest, provider worker syntax checks, backup/restore shell syntax and age-encryption regression tests.
 - Earlier backup security checkpoints also passed: CI #180 validates real age encryption/decryption and wrong-identity rejection; CI #183 validates owner-only age identity permissions.
 - CI coverage does not replace a live PostgreSQL restore drill, provider-account E2E, or production-like capacity benchmark.
-- Any later source change requires its own CI run. The current multi-recipient age backup changes have not yet been CI-verified.
+- Any later source change requires its own CI run. CI #306 passed the multi-recipient age backup source/tests and Redpanda/Compose YAML syntax checks.
 
 ## Backup and recovery
 
