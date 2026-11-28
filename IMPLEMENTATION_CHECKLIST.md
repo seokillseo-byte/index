@@ -57,7 +57,8 @@
 - [x] Add guarded PostgreSQL custom-format backup and non-production restore scripts with checksum/archive validation.
 - [x] Encrypt backup artifacts with age before final storage; restore decrypts only into a private temporary directory and requires an external identity file.
 - [x] Remove partial backup artifacts on failure and prevent interactive password prompts in unattended operations.
-- [x] CI validates Bash syntax and runs backup/restore safety tests, including temporary plaintext cleanup, restore guard and tamper rejection (CI #178 passed); a follow-up adds real age-key cryptographic round-trip testing.
+- [x] CI validates Bash syntax and runs backup/restore safety tests, including temporary plaintext cleanup, restore guard and checksum tamper rejection (CI #178 passed).
+- [x] CI installs age and verifies real ephemeral-key encryption/decryption plus wrong-identity rejection (CI #180 passed); PostgreSQL itself remains mocked.
 - [x] Document post-restore validation and operational limitations.
 - [ ] Configure protected age identity storage/key recovery and off-site encrypted backup replication.
 - [ ] Execute non-production restore drill and record evidence.

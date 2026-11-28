@@ -1,3 +1,9 @@
+## 2026-11-28 — Real age cryptographic CI validation
+
+- CI #180 passed on `fa2b63ef0010f35b84138693591a0387d618974c`.
+- CI installs the age CLI, generates ephemeral test identities, runs the backup script through authenticated encryption, restores through real age decryption, and confirms an unrelated identity cannot decrypt the artifact.
+- PostgreSQL utilities remain mocked in this test; no live PostgreSQL backup/restore or off-site copy was performed.
+
 ## 2026-11-28 — Security documentation checkpoint validation
 
 - CI #179 passed on `1d080708da8b952bdfa3881009f48cf2638b0b4a`; Node, crawler and database jobs all succeeded.
