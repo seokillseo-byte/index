@@ -61,7 +61,7 @@ export PATH="$BIN:$PATH"
 
 export BACKUP_DATABASE_URL='postgresql://mock.invalid/test'
 export BACKUP_OUTPUT_DIR="$OUT"
-export BACKUP_AGE_RECIPIENT='age1mockpublicrecipient'
+export BACKUP_AGE_RECIPIENT='age1aaaaaaaaaaaaaaaaaaaa'
 bash "$ROOT/infra/postgres/backup.sh" >/dev/null
 shopt -s nullglob
 artifacts=("$OUT"/*.dump.age)
