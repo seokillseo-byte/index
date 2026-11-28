@@ -8,7 +8,7 @@ Updated: 2026-11-28
 - Capacity target: 32 vCPU / 64 GB RAM / 2 TB NVMe / 1 Gbps; this is a target specification, not a measured throughput result.
 - Main baseline: `568e00af228c64249f5da6e4ec22f29e6cbe10be`.
 - Active implementation branch: `feature/provider-job-engine`.
-- Latest fully passing implementation CI checkpoint is `f61dc7ffb1605e32c93b2b623277f5d70bfb40f6` (run #277): database, crawler Go race/vet, Node typecheck/build/Jest, Redis two-client integration plus reconnect/recovery regression, worker tests and backup/restore safety tests passed. Later commits only update documentation/status. The storage client is lifecycle-managed, readiness checks PostgreSQL and Redis, and Compose avoids interpolating the Redis password into command arguments.
+- Latest fully passing CI checkpoint is `da76342e9d0e295e565c45e3e541778f59565f5d` (CI #286): database, crawler Go race/vet, Node typecheck/build/Jest, Redis two-client integration/reconnect recovery, worker tests and backup/restore safety tests passed. This checkpoint predates the current multi-recipient age backup source/test changes; those changes require a fresh CI run. The storage client is lifecycle-managed, readiness checks PostgreSQL and Redis, and Compose avoids interpolating the Redis password into command arguments.
 - Review PR #6 remains open and unmerged.
 - GitHub reports the branch remains diverged from main by one main-only commit that overlaps provider-engine files; PR mergeable=false. Ahead count changes as this long-running feature branch receives incremental commits. Do not rebase or merge automatically; review the effective diff before integration.
 - No local working-tree status is available in this workflow; this status reflects GitHub branch/PR data only.
@@ -35,18 +35,18 @@ Updated: 2026-11-28
 ## CI validation
 
 - CI #184 passed on commit `1a9be1d87fa541866777475f28d0a6c3fe682bb4`: [workflow run](https://github.com/seokillseo-byte/index/actions/runs/46107552896).
-- CI #276 passed on commit `6f2abb0263cd52618f16add28c371f0d4045ddbc`: [workflow run](https://github.com/seokillseo-byte/index/actions/runs/46110245705). It includes the Redis two-client integration test, Node typecheck/build/Jest, worker tests/syntax, Go race/vet, database security regressions and age backup/restore tests. CI #277 passed on `f61dc7ffb1605e32c93b2b623277f5d70bfb40f6`: [workflow run](https://github.com/seokillseo-byte/index/actions/runs/46110358016). It includes the Redis reconnect fail-closed/recovery regression test, two-client Redis integration, Node typecheck/build/Jest, crawler Go race/vet, database regressions and backup/restore safety tests. Subsequent commits only update documentation/status.
+- CI #276 passed on commit `6f2abb0263cd52618f16add28c371f0d4045ddbc`: [workflow run](https://github.com/seokillseo-byte/index/actions/runs/46110245705). CI #277 passed on `f61dc7ffb1605e32c93b2b623277f5d70bfb40f6`: [workflow run](https://github.com/seokillseo-byte/index/actions/runs/46110358016), including Redis reconnect/recovery. CI #286 passed on `da76342e9d0e295e565c45e3e541778f59565f5d`: [workflow run](https://github.com/seokillseo-byte/index/actions/runs/46110473131), all three jobs successful. The current multi-recipient backup changes were committed after #286 and are pending fresh CI.
 - All three jobs passed: database migrations plus tenant RLS/MFA/auth-token/recovery-code regression SQL; crawler Go race tests and vet; Node dependency install, typecheck, build, Jest, provider worker syntax checks, backup/restore shell syntax and age-encryption regression tests.
 - Earlier backup security checkpoints also passed: CI #180 validates real age encryption/decryption and wrong-identity rejection; CI #183 validates owner-only age identity permissions.
 - CI coverage does not replace a live PostgreSQL restore drill, provider-account E2E, or production-like capacity benchmark.
-- Any later source change requires its own CI run. Redis and Kafka client changes were added after CI #184; no newer run/status was returned at the latest check.
+- Any later source change requires its own CI run. The current multi-recipient age backup changes have not yet been CI-verified.
 
 ## Backup and recovery
 
 - PostgreSQL custom-format backups are created in a private temporary directory, validated, age-encrypted before final storage, checksummed and manifested; plaintext temporary dumps are removed.
 - Restore verifies checksum, enforces owner-only age identity file permissions, decrypts to a private temporary directory, validates the archive and requires explicit non-production/empty-target operator confirmations.
 - CI tests use mocked PostgreSQL utilities; age cryptography is exercised with ephemeral test identities.
-- No live PostgreSQL restore drill, off-site replication, retention policy, PITR, key escrow or independent recovery-key retrieval test has been completed.
+- Backup encryption now supports multiple independent age recipients and records public recipients in the manifest; a runbook documents off-site replication, retention and recovery-key custody requirements. No remote object-storage destination, retention lifecycle, PITR, protected identity custody or independent recovery-key retrieval test has been configured or completed. No live PostgreSQL restore drill has been completed.
 
 ## Benchmark checkpoint
 
@@ -60,21 +60,21 @@ Updated: 2026-11-28
 - Replaced process-local Nest throttler storage with a Redis-backed storage adapter using one atomic Lua operation for counters/block windows.
 - Redis URL is required; the API does not silently fall back to per-process counters. Redis connection/command failure returns HTTP 503 for rate-limited requests.
 - API Compose startup waits for Redis health; API readiness now checks both PostgreSQL and Redis; Redis uses `noeviction` so memory pressure cannot silently discard throttle counters; `.env.api.example` documents `REDIS_URL` using the same password configured by infrastructure Redis. Client retry backoff now continues reconnect attempts after transient outages while rate-limited requests remain fail-closed during reconnect.
-- Unit tests cover atomic command arguments, lazy connection, missing configuration and fail-closed outage behavior. A Redis-backed integration test uses two independent storage instances to verify shared counters/block state; CI now provisions Redis for the Node job. This integration test passed in CI #276. An additional unit regression test for fail-closed behavior during reconnect and recovery after the client becomes ready is awaiting CI #277.
+- Unit tests cover atomic command arguments, lazy connection, missing configuration and fail-closed outage behavior. A Redis-backed integration test uses two independent storage instances to verify shared counters/block state; CI now provisions Redis for the Node job. The integration test and reconnect/recovery regression passed in CI #276/#277/#286. A deployed Redis outage drill remains outstanding.
 
 ## Kafka / Redpanda transport security
 
 - Added shared KafkaJS TLS/SCRAM-SHA-512 configuration for outbox relay and provider worker, and a Go kafka-go TLS/SCRAM-SHA-512 dialer for crawler.
 - Production worker/crawler containers set `NODE_ENV=production`; both client implementations reject plaintext Kafka configuration in production and require a CA file plus dedicated SCRAM identity.
 - Added unit tests, environment examples, read-only CA mounts, a Redpanda TLS/SASL listener example and `docs/deployment/kafka-security.md` with least-privilege ACL plan and negative test gates.
-- The active Redpanda Compose service is still plaintext/development-only and pins Redpanda v24.3.7, whose 24.3 release line is end-of-support. Select and validate a currently supported broker release before production. Broker TLS listener activation, initial admin bootstrap, SCRAM user provisioning, topic/group ACL enforcement and real Redpanda integration tests are not completed. Do not deploy these production workloads until the broker and client credentials are provisioned together.
+- The active Redpanda Compose service remains plaintext/development-only and pins EOL `v24.3.7`. A template targets `v26.3.1`, enables Kafka TLS/SASL/ACL and loopback-only TLS Admin API; a `.bootstrap.yaml` example protects the Admin API on first startup. These templates are not wired into Compose or validated against a live broker. The Compose `redpanda-init` job still uses anonymous plaintext Kafka and must be replaced with authenticated provisioning for a secured broker. Broker upgrade rehearsal, certificate provisioning, admin bootstrap, SCRAM identities, ACL enforcement and live positive/negative integration tests remain open. Do not deploy these production workloads until all gates pass.
 
 ## Remaining release gates
 
 1. Execute queue benchmark on dedicated non-production database/hardware; record jobs/sec, p50/p95/p99 queue latency, DB CPU/IO, connections and saturation.
 2. Execute sustained queue/backpressure and worker failure/recovery protocols; retain metrics and evidence.
 3. Run real Google/Bing end-to-end tests with non-production provider accounts.
-4. [x] Implement shared Redis-backed API throttling with atomic Lua counters and fail-closed 503 behavior; unit tests added, fresh CI validation pending.
+4. [x] Implement shared Redis-backed API throttling with atomic Lua counters and fail-closed 503 behavior; two-client integration and reconnect/recovery tests passed in CI #276/#277/#286. Live outage drill remains pending.
 5. Enable Kafka/Redpanda TLS, authentication and least-privilege ACLs for API/outbox relay/crawler/provider worker; test denied access.
 6. Configure protected off-site encrypted backups, retention, age identity recovery/key escrow and execute a non-production restore drill.
 7. Implement metrics/logging/alerting, define thresholds/owners and test alert delivery in non-production.
@@ -84,4 +84,4 @@ Updated: 2026-11-28
 
 ## Immediate next step
 
-Next code task: implement Kafka/Redpanda TLS, SASL authentication and per-client ACLs only after validating the exact Redpanda and Kafka client configuration contracts for Node and Go. The benchmark/restore drills still require dedicated non-production PostgreSQL and host-level access. Do not use production credentials/data, merge into `main`, deploy production, or add unrelated features.
+Next: obtain fresh CI for the multi-recipient age backup changes; then rehearse a supported Redpanda upgrade on a disposable non-production data volume and validate TLS/SASL, first-start Admin API protection, authenticated topic provisioning and per-service ACL allow/deny behavior. Off-site object storage, key custody, restore drills and benchmark execution require external non-production infrastructure and operator-controlled credentials. Do not use production credentials/data, merge into `main`, deploy production, or add unrelated features.
