@@ -307,3 +307,9 @@
 - Added merged-Compose regression assertions for broker certificate/key readability guards, bootstrap password validation, and authenticated TLS Admin API healthcheck wiring.
 - Corrected provisioner secret permission normalization for YAML integer/octal representations.
 - Test source is updated and CI-wired; no local execution, latest CI pass, or live broker validation is claimed.
+
+
+## 2026-11-29 — Non-empty Redpanda certificate startup guard
+
+- Broker startup now rejects readable-but-empty CA, broker/admin certificate and private-key files; the merged-Compose test asserts both readable and non-empty checks.
+- CI execution and real non-production container validation remain outstanding.
