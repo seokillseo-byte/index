@@ -15,7 +15,7 @@ This is a source/configuration review of the current repository state, not an in
 - Provider operations are tenant-scoped and constrained to verified properties; worker DB connection uses the restricted runtime role.
 - Docker workload ports are not published publicly in the checked compose file; API is bound to loopback on the host.
 - Environment files are ignored by Git, with example templates retained.
-- Backup scripts now encrypt archives with age, restrict local file permissions and validate checksum/archive. Off-site replication, key escrow and an actual restore drill remain outstanding.
+- Backup scripts now encrypt archives with age, restrict local file permissions and validate checksum/archive. CI mock tests exercise encryption flow, temporary plaintext cleanup, non-production restore guard and tamper rejection. Off-site replication, key escrow and an actual restore drill remain outstanding.
 
 ## Findings and required actions
 

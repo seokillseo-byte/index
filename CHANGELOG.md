@@ -1,3 +1,8 @@
+## 2026-11-28 — Backup/restore mock regression tests
+
+- Added CI-executed mocked tests for age-encrypted backup creation, private temporary plaintext cleanup, restrictive artifact permissions, guarded non-production restore and tampered artifact rejection.
+- Mocks avoid requiring a live PostgreSQL instance or age key in CI; they do not replace a real cryptographic/database restore drill.
+
 ## 2026-11-28 — Encrypt PostgreSQL backup artifacts
 
 - Changed the backup workflow to create plaintext dumps only in a private temporary directory, validate the archive, encrypt with age, and persist only the encrypted artifact plus checksum/manifest.

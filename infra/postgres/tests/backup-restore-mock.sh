@@ -27,7 +27,7 @@ cat > "$BIN/pg_restore" <<'MOCK'
 #!/usr/bin/env bash
 if [[ "${1:-}" == --list ]]; then
   file="${2:?missing archive}"
-  grep -q 'mock-pg-dump-archive' "$file"
+  [[ "$(cat "$file")" == 'mock-pg-dump-archive' ]]
   exit
 fi
 last=''
@@ -37,7 +37,7 @@ while (($#)); do
   last="$1"
   shift
 done
-grep -q 'mock-pg-dump-archive' "$last"
+[[ "$(cat "$last")" == 'mock-pg-dump-archive' ]]
 printf '%s\n' "$db" > "$RESTORE_MARKER"
 MOCK
 cat > "$BIN/age" <<'MOCK'
@@ -94,7 +94,7 @@ fi
 tampered="$OUT/tampered.dump.age"
 cp "$dump" "$tampered"
 printf 'tamper' >> "$tampered"
-cp "$dump.sha256" "$tampered.sha256"
+printf '%s  %s\\n' "$(sha256sum "$dump" | awk '{print $1}')" "$(basename "$tampered")" > "$tampered.sha256"
 export RESTORE_DUMP_FILE="$tampered"
 if bash "$ROOT/infra/postgres/restore.sh" >/dev/null 2>&1; then
   echo 'tampered encrypted backup was accepted' >&2
