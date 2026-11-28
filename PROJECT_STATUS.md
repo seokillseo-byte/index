@@ -102,3 +102,11 @@ Next: provision actual non-production certificates and secret files, bring up th
 - Added a regression assertion to `infra/redpanda/tests/compose-secure-config-mock.sh` that requires the escaped form.
 - Current branch head: `98c9527242933868675a1e357e3d04003ba4238d`. No CI run for this latest checkpoint was visible through the available PR-run/status lookup at review time; treat the change as pending CI until a run is confirmed.
 - PR #6 remains open, unmerged and `mergeable=false`; branch comparison reports 361 commits ahead and 1 behind `main`. No merge/rebase/deployment or live broker action was performed.
+
+
+## 2026-11-29 — Secure Redpanda Compose topology regression guard
+
+- Extended `infra/redpanda/tests/compose-secure-config-mock.sh` to inspect the fully merged Compose model, not just YAML syntax. The test now asserts that the secure overlay keeps both broker and provisioner on Redpanda v26.3.1, preserves the provisioner's shared broker network namespace and healthy-broker dependency, uses only the isolated `redpanda_data_secure` volume, and does not publish the Admin API port.
+- Latest implementation checkpoint: `11ae3cd1b9c8e2bf222475ee1602fc783061b139`. The available GitHub PR-run/status lookup returned no run/status entries for this SHA; CI is therefore pending/unconfirmed, not passed.
+- This validates the merged Compose topology statically in CI when the test runs. It does not start Redpanda or verify TLS/SCRAM/ACL behavior against a live broker.
+- PR #6 remains open and unmerged; no merge/rebase, deployment, secret change, volume migration or destructive action was performed.
