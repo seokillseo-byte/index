@@ -37,7 +37,7 @@ export class RedisThrottlerStorage implements ThrottlerStorage, OnModuleDestroy 
       commandTimeout: 2000,
       maxRetriesPerRequest: 1,
       enableOfflineQueue: false,
-      retryStrategy: () => null,
+      retryStrategy: (attempt) => Math.min(attempt * 100, 5000),
     });
   }
 
