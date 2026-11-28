@@ -135,3 +135,8 @@ Next: provision actual non-production certificates and secret files, bring up th
 ## 2026-11-29 — Redpanda service-secret negative paths
 - Added mock rejection cases for a missing service SCRAM password file and an empty service SCRAM password file. Each case temporarily removes the outbox principal from mock state to exercise the new-user validation path, then restores the fixture.
 - Invalid-input resource-count assertions remain in place for topics, SCRAM principals and ACLs. These are mock regressions wired into CI; latest CI execution and live broker validation are not confirmed.
+
+
+## 2026-11-29 — Full service-secret mapping coverage
+- Expanded the missing/empty SCRAM password-file mock cases from the outbox principal to crawler and provider principals. The test now exercises all three `*_PASSWORD_FILE` environment mappings on the new-user path, with each mock principal restored after its rejection cases.
+- The existing final no-mutation assertions still check topic, user and ACL counts. This is CI-wired test source only; CI execution and live broker behavior remain unverified.
