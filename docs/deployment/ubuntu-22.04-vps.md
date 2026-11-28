@@ -10,7 +10,7 @@
 ## First boot
 
 1. Clone the repository and copy `.env.example` to `.env`, `.env.api.example` to `.env.api`, `.env.worker.example` to `.env.worker`, `.env.crawler.example` to `.env.crawler`, and `.env.provider-worker.example` to `.env.provider-worker`.
-2. Generate independent secrets, e.g. `openssl rand -hex 32`, for the PostgreSQL bootstrap password, runtime DB password, relay DB password, Redis, ClickHouse, MinIO, JWT signing secret, OAUTH_STATE_SECRET and INTEGRATION_ENCRYPTION_KEY. Use a separate 32-byte hex encryption key and share that exact value between `.env.api` and `.env.provider-worker`. Set the same runtime password in `APP_DB_PASSWORD` and the password portion of `DATABASE_URL` and `PROVIDER_DATABASE_URL`.
+2. Generate independent secrets, e.g. `openssl rand -hex 32`, for the PostgreSQL bootstrap password, runtime DB password, relay DB password, Redis, ClickHouse, MinIO, JWT signing secret, OAUTH_STATE_SECRET and INTEGRATION_ENCRYPTION_KEY. Set `REDIS_URL` in `.env.api` to `redis://:<same-REDIS_PASSWORD>@redis:6379/0`; keep the URL and password only in the protected env file. Use a separate 32-byte hex encryption key and share that exact value between `.env.api` and `.env.provider-worker`. Set the same runtime password in `APP_DB_PASSWORD` and the password portion of `DATABASE_URL` and `PROVIDER_DATABASE_URL`.
 3. Keep `MIGRATION_DATABASE_URL` only in the host-side `.env` file; the API and crawler env files contain only `index_assist_runtime`, while the relay env file contains only `index_assist_relay`, and the provider-worker env file uses the restricted `index_assist_runtime` role. Do not mount the root `.env` into app containers.
 4. Register OAuth clients with Google and Microsoft/Bing and allow the exact callback URLs configured in `.env.api.example`: `/api/v1/integrations/google_search_console/callback` and `/api/v1/integrations/bing_webmaster/callback`. Use the production HTTPS origin; OAuth connections cannot be tested until DNS and TLS are live.
 5. Start the infrastructure from the repository root:
@@ -39,7 +39,7 @@ The PostgreSQL init script creates the non-superuser runtime role only when the 
 
 ## Release constraints
 
-This is a single-VPS baseline, not an HA deployment. Before public customer traffic, complete email verification, MFA, account recovery, Redis-backed distributed rate limiting, tenant RLS integration tests using the runtime role, authenticated Kafka/TLS and ACLs, crawler load/conformance testing, payment webhook idempotency, backup/restore drills, security review and load tests. Do not expose service ports directly to the internet.
+This is a single-VPS baseline, not an HA deployment. Before public customer traffic, complete email verification, MFA, account recovery, Redis-backed distributed rate limiting (API `REDIS_URL` must match infrastructure `REDIS_PASSWORD`), tenant RLS integration tests using the runtime role, authenticated Kafka/TLS and ACLs, crawler load/conformance testing, payment webhook idempotency, backup/restore drills, security review and load tests. Do not expose service ports directly to the internet.
 
 
 The provider worker also requires the same INTEGRATION_ENCRYPTION_KEY and Google/Bing OAuth client credentials as the API, copied into .env.provider-worker. Configure exact provider callback URLs before enabling customer connections. The worker consumes the provider.jobs Kafka topic created by the infrastructure compose stack.
