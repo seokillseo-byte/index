@@ -250,3 +250,10 @@
 - Updated the secure Compose overlay so the Admin password command substitution in `redpanda-init` is escaped as `$$(...)`, deferring expansion to the container shell.
 - Added a regression assertion in `compose-secure-config-mock.sh` to prevent Compose-side expansion from being reintroduced.
 - Latest branch head: `98c9527242933868675a1e357e3d04003ba4238d`; CI validation is pending confirmation. No live Redpanda broker or external infrastructure was accessed.
+
+
+## 2026-11-29 — Validate merged secure Redpanda Compose topology
+
+- Strengthened the secure Compose mock test to render and inspect the merged Compose configuration, asserting that the provisioner inherits `network_mode: service:redpanda` and waits for broker health, both services use the pinned v26.3.1 image, only the isolated secure data volume is mounted, and Admin API port 9644 is not published.
+- Latest implementation checkpoint: `11ae3cd1b9c8e2bf222475ee1602fc783061b139`. CI status is pending/unconfirmed because the available PR workflow/status lookup returned no entries.
+- No live broker, VPS, credentials, certificates or existing data volumes were accessed.
