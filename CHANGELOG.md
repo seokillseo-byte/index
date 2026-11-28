@@ -1,6 +1,6 @@
 ## 2026-11-28 — Redis infrastructure healthcheck correction
 
-- Corrected Redis Compose healthcheck to pass the container's password through `REDISCLI_AUTH` using Compose-escaped shell expansion, rather than expanding the secret in the host Compose parser.
+- Corrected Redis Compose healthcheck to pass the container's password through `REDISCLI_AUTH` using shell command substitution that avoids Compose interpolation, rather than expanding the secret in the host Compose parser.
 - This ensures the API's new `depends_on: redis: service_healthy` gate can observe the authenticated Redis health check without putting the password in the redis-cli argument list.
 - No Redis credential or running infrastructure was accessed or changed.
 
