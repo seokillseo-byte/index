@@ -9,6 +9,8 @@
 - Added a CI database test for consumed authentication-token replay.
 - Added API Jest/ts-jest infrastructure and service-level MFA challenge lockout/token-hashing coverage.
 - Added a CI database test for single-use MFA recovery-code replay.
+- Added application-level tenant/session isolation tests for JWT session binding, tenant switching and session ownership.
+- Hardened MFA disable with transactional row locking and a second MFA-state/credential check before disabling.
 - Serialized MFA enrollment and single-active password-reset/MFA-login challenge issuance with transactional row locking.
 - Documented the Git-based release/VPS deployment procedure and configuration/rollback boundaries.
 
