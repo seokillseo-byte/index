@@ -8,9 +8,9 @@ Updated: 2026-11-28
 - Capacity target: 32 vCPU / 64 GB RAM / 2 TB NVMe / 1 Gbps; this is a target specification, not a measured throughput result.
 - Main baseline: `568e00af228c64249f5da6e4ec22f29e6cbe10be`.
 - Active implementation branch: `feature/provider-job-engine`.
-- Latest implementation checkpoint before Redis throttling work: `1a9be1d87fa541866777475f28d0a6c3fe682bb4`; current Redis implementation checkpoint is `8e6c3cf49f4a14dac3a5267311fea2d8345a8fe4` and awaits CI. The storage client is lifecycle-managed, readiness checks PostgreSQL and Redis, and Compose avoids interpolating the Redis password into command arguments.
+- Latest verified CI checkpoint remains `1a9be1d87fa541866777475f28d0a6c3fe682bb4`; subsequent Redis and Kafka client-security changes are committed on this branch and await fresh CI. The storage client is lifecycle-managed, readiness checks PostgreSQL and Redis, and Compose avoids interpolating the Redis password into command arguments.
 - Review PR #6 remains open and unmerged.
-- GitHub reports the branch diverged from main: 213 commits ahead, one commit behind at the latest comparison; PR mergeable=false. The one main-only commit overlaps provider-engine files. Do not rebase or merge automatically; review the effective diff before integration. The one main-only commit overlaps provider-engine files. Do not rebase or merge automatically; review the effective diff before integration.
+- GitHub reports the branch diverged from main: 247 commits ahead and one behind at the last confirmed comparison; PR mergeable=false. One main-only commit overlaps provider-engine files. Do not rebase or merge automatically; review the effective diff before integration.
 - No local working-tree status is available in this workflow; this status reflects GitHub branch/PR data only.
 
 ## Authentication and tenant isolation
@@ -38,7 +38,7 @@ Updated: 2026-11-28
 - All three jobs passed: database migrations plus tenant RLS/MFA/auth-token/recovery-code regression SQL; crawler Go race tests and vet; Node dependency install, typecheck, build, Jest, provider worker syntax checks, backup/restore shell syntax and age-encryption regression tests.
 - Earlier backup security checkpoints also passed: CI #180 validates real age encryption/decryption and wrong-identity rejection; CI #183 validates owner-only age identity permissions.
 - CI coverage does not replace a live PostgreSQL restore drill, provider-account E2E, or production-like capacity benchmark.
-- Any later source change requires its own CI run.
+- Any later source change requires its own CI run. Redis and Kafka client changes were added after CI #184; no newer run/status was returned at the latest check.
 
 ## Backup and recovery
 
@@ -60,6 +60,13 @@ Updated: 2026-11-28
 - Redis URL is required; the API does not silently fall back to per-process counters. Redis connection/command failure returns HTTP 503 for rate-limited requests.
 - API Compose startup waits for Redis health; API readiness now checks both PostgreSQL and Redis; Redis uses `noeviction` so memory pressure cannot silently discard throttle counters; `.env.api.example` documents `REDIS_URL` using the same password configured by infrastructure Redis.
 - Unit tests cover atomic command arguments, lazy connection, missing configuration and fail-closed outage behavior. A Redis-backed integration test uses two independent storage instances to verify shared counters/block state; CI now provisions Redis for the Node job. Fresh CI result is pending.
+
+## Kafka / Redpanda transport security
+
+- Added shared KafkaJS TLS/SCRAM-SHA-512 configuration for outbox relay and provider worker, and a Go kafka-go TLS/SCRAM-SHA-512 dialer for crawler.
+- Production worker/crawler containers set `NODE_ENV=production`; both client implementations reject plaintext Kafka configuration in production and require a CA file plus dedicated SCRAM identity.
+- Added unit tests, environment examples, read-only CA mounts, a Redpanda TLS/SASL listener example and `docs/deployment/kafka-security.md` with least-privilege ACL plan and negative test gates.
+- The active Redpanda Compose service is still plaintext/development-only. Broker TLS listener activation, initial admin bootstrap, SCRAM user provisioning, topic/group ACL enforcement and real Redpanda integration tests are not completed. Do not deploy these production workloads until the broker and client credentials are provisioned together.
 
 ## Remaining release gates
 
