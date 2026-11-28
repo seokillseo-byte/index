@@ -313,3 +313,9 @@
 
 - Broker startup now rejects readable-but-empty CA, broker/admin certificate and private-key files; the merged-Compose test asserts both readable and non-empty checks.
 - CI execution and real non-production container validation remain outstanding.
+
+
+## 2026-11-29 — Compose-safe certificate preflight
+
+- Replaced the secure broker startup loop variable with explicit per-path readability and non-empty checks to avoid Compose interpolation of shell variables.
+- Updated static merged-Compose assertions; CI execution and live container validation remain outstanding.
