@@ -1,3 +1,14 @@
+## 2026-11-28 — Secure Redpanda non-production Compose and principal provisioning
+
+- Added a separate Compose overlay targeting Redpanda v26.3.1 with Kafka TLS/SASL-SCRAM, ACL authorization, loopback-only TLS Admin API, and first-start bootstrap user injection from a protected secret file.
+- The overlay uses a new redpanda_data_secure named volume and deliberately does not attach or alter the existing v24.3.7 redpanda_data volume.
+- Moved redpanda-init into the broker network namespace so the one-shot provisioner can reach the loopback-only Admin API without publishing port 9644.
+- Added authenticated repeat-safe topic provisioning plus SCRAM user creation for outbox relay, crawler and provider worker, and least-privilege ACLs including idempotent-write for the outbox producer.
+- Service credentials and certificate material are mounted from ignored local secrets/ files as Docker secrets; no real credential or certificate was added.
+- Added mock tests for topic/user/ACL provisioning, repeat-safe behavior, secure-mode fail-closed checks, and Compose overlay merge validation. Fresh CI is pending.
+- No live Redpanda broker was started, no v24.3.7 data volume was upgraded or modified, and no production deployment was performed.
+- Official Redpanda references used: current security/authentication, rpk environment variables, ACL operations, first-start Admin API bootstrap and release lifecycle.
+
 ## 2026-11-28 — Multi-recipient backup recovery and Redpanda admin hardening templates
 
 - Extended PostgreSQL backup encryption to accept comma-separated BACKUP_AGE_RECIPIENTS, retaining the legacy single-recipient variable as fallback; the manifest records public recipient values and count.
