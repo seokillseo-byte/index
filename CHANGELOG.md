@@ -1,3 +1,10 @@
+## 2026-11-28 — Redpanda SASL activation config assertion
+
+- Static review against current Redpanda security documentation found that the secure broker template configured SASL on the listener but omitted the cluster-level `redpanda.enable_sasl: true` switch required to activate SASL.
+- Enabled `redpanda.enable_sasl: true` in the v26.3.1 template.
+- Strengthened the secure-config mock test to assert SASL activation, listener SASL mode, Kafka ACL authorization, Kafka TLS, and loopback-only Admin API binding with TLS; YAML syntax validation alone would not catch these missing security settings.
+- This is a repository configuration/test correction only. No live broker, certificate, secret, or persistent volume was accessed.
+
 ## 2026-11-28 — Secure Redpanda non-production Compose and principal provisioning
 
 - Added a separate Compose overlay targeting Redpanda v26.3.1 with Kafka TLS/SASL-SCRAM, ACL authorization, loopback-only TLS Admin API, and first-start bootstrap user injection from a protected secret file.

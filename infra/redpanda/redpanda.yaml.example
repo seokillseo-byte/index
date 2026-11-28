@@ -2,6 +2,8 @@
 # This is a template only. Validate it against the exact broker image before use.
 # Provision all certificate/key files out-of-band; never commit private keys.
 redpanda:
+  # Required to activate SASL authentication for Kafka clients.
+  enable_sasl: true
   kafka_api:
     - address: 0.0.0.0
       port: 9092
