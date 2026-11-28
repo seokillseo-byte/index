@@ -1,3 +1,9 @@
+## 2026-11-28 — Security documentation checkpoint validation
+
+- CI #179 passed on `1d080708da8b952bdfa3881009f48cf2638b0b4a`; Node, crawler and database jobs all succeeded.
+- Extended backup/restore CI coverage to install age and exercise real key generation, authenticated encryption/decryption, and rejection of an unrelated private identity, in addition to mocked database tools.
+- The real age interoperability test is pending CI validation on the next commit; this still does not constitute a PostgreSQL recovery drill.
+
 ## 2026-11-28 — Encrypted backup test correction and CI validation
 
 - CI #177 exposed a false-positive tamper test fixture: the copied checksum still referenced the original filename, so the test did not exercise checksum mismatch on the tampered artifact.
