@@ -8,7 +8,7 @@ Updated: 2026-11-28
 - Capacity target: 32 vCPU / 64 GB RAM / 2 TB NVMe / 1 Gbps; this is a target specification, not a measured throughput result.
 - Main baseline: `568e00af228c64249f5da6e4ec22f29e6cbe10be`.
 - Active implementation branch: `feature/provider-job-engine`.
-- Latest implementation checkpoint before the current Redis throttling work: `1a9be1d87fa541866777475f28d0a6c3fe682bb4`; Redis changes are being committed incrementally and require fresh CI.
+- Latest implementation checkpoint before Redis throttling work: `1a9be1d87fa541866777475f28d0a6c3fe682bb4`; current Redis implementation is in commit `c76b935a7b7cf051e9dab1f5a8a77b5a8c2e5f73` and awaits CI.
 - Review PR #6 remains open and unmerged.
 - GitHub reports the branch diverged from main: 186 commits ahead, one commit behind; PR mergeable=false. The one main-only commit overlaps provider-engine files. Do not rebase or merge automatically; review the effective diff before integration.
 - No local working-tree status is available in this workflow; this status reflects GitHub branch/PR data only.
@@ -59,7 +59,7 @@ Updated: 2026-11-28
 - Replaced process-local Nest throttler storage with a Redis-backed storage adapter using one atomic Lua operation for counters/block windows.
 - Redis URL is required; the API does not silently fall back to per-process counters. Redis connection/command failure returns HTTP 503 for rate-limited requests.
 - API Compose startup waits for Redis health; `.env.api.example` documents `REDIS_URL` using the same password configured by infrastructure Redis.
-- Unit tests cover atomic command arguments, lazy connection, missing configuration and fail-closed outage behavior. These tests have not yet been validated by a fresh CI run.
+- Unit tests cover atomic command arguments, lazy connection, missing configuration and fail-closed outage behavior. A Redis-backed integration test uses two independent storage instances to verify shared counters/block state; CI now provisions Redis for the Node job. Fresh CI result is pending.
 
 ## Remaining release gates
 
