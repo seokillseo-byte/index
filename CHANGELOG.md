@@ -1,3 +1,11 @@
+## 2026-11-28 — Encrypted backup test correction and CI validation
+
+- CI #177 exposed a false-positive tamper test fixture: the copied checksum still referenced the original filename, so the test did not exercise checksum mismatch on the tampered artifact.
+- Corrected the fixture to bind the original digest to the tampered artifact's filename, ensuring checksum verification rejects modified ciphertext before restore.
+- CI #178 passed on `025020b3b90fe40d32507be779ce4e02bd6343f3`; Node build/tests, crawler race/vet, database migrations/regressions and encrypted backup/restore mock tests all passed.
+- CI #175 passed on `cf35d791fdaef5bbb165b67d18ab9d4fb780ddb3`; CI #176 passed on `0feeff260d95f997842bdf477326401752533423`.
+- Mock tests do not replace an actual age cryptographic interoperability check or non-production PostgreSQL restore drill.
+
 ## 2026-11-28 — Backup/restore mock regression tests
 
 - Added CI-executed mocked tests for age-encrypted backup creation, private temporary plaintext cleanup, restrictive artifact permissions, guarded non-production restore and tampered artifact rejection.
