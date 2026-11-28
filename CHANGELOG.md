@@ -1,3 +1,13 @@
+## 2026-11-28 — Redis CI repair and reconnect recovery
+
+- Inspected failed GitHub Actions logs and identified Redis throttler TypeScript errors: NestJS record type was not publicly exported and ioredis CommonJS import did not match package typings.
+- Corrected the API adapter to use the NestJS storage interface, local compatible record shape and ioredis named class import.
+- Corrected the test mock's ioredis type import.
+- CI #276 passed on `6f2abb0263cd52618f16add28c371f0d4045ddbc`: database, crawler Go race/vet, Node typecheck/build/Jest, worker Kafka/quota tests, Redis two-client integration and age backup/restore safety tests.
+- Changed Redis retry strategy to continue bounded reconnect attempts after transient outages; requests still fail closed while Redis is not ready.
+- Added a Redis reconnect/recovery regression test in `f61dc7ffb1605e32c93b2b623277f5d70bfb40f6`; CI #277 is pending.
+- No live non-production Redis outage drill or production deployment was performed.
+
 ## 2026-11-28 — Kafka TLS/SCRAM client support and rollout guardrails
 
 - Added a shared KafkaJS client config for the outbox relay and provider worker with CA-verified TLS and SCRAM-SHA-512.
