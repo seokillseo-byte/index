@@ -234,3 +234,12 @@
 - Google URL Inspection remains bounded by configured per-site daily/minute limits; Bing remains bounded by live provider quota.
 - Provider acceptance and inspection evidence are not presented as proof of indexing.
 
+
+
+## 2026-11-28 — Secure Redpanda runtime configuration corrections
+
+- Explicitly enabled broker SASL and strengthened secure-config assertions for SASL, Kafka ACL authorization, Kafka TLS and loopback-bound Admin API TLS.
+- Added fail-fast readability checks for broker certificates/keys, Admin bootstrap password, CA files and service SCRAM password files; documented ownership alignment with the pinned image's unprivileged UID/GID.
+- Corrected Compose shell-variable escaping so runtime shell variables and command substitutions are evaluated inside containers, not by Compose.
+- CI #351 passed on `651aa595da71c1c70e6ed6bee31ac3ca25b5d6c1`: [workflow](https://github.com/seokillseo-byte/index/actions/runs/46167799041). Database, Node and crawler jobs all passed.
+- CI remains static/mock validation. Live broker TLS/SCRAM/ACL tests, workload recovery, volume upgrade/rollback, non-production restore/benchmark and provider-account E2E remain outstanding.
