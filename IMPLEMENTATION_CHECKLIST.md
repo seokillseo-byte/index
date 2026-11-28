@@ -181,3 +181,12 @@ Google URL Inspection is inspection evidence, not an indexing request. Bing subm
 - [x] Assert Kafka and Admin API CA environment paths match the mounted CA secret.
 - [ ] Confirm the updated Compose mock test executes successfully in CI.
 - [ ] Validate secret readability and authentication against a real non-production broker.
+
+
+## Redpanda secret mount and permission coverage (2026-11-29)
+
+- [x] Assert broker CA/certificate/private-key/bootstrap-password mounts and target paths.
+- [x] Assert broker private keys and bootstrap password use mode `0400`; public CA/certificates use `0444`.
+- [x] Assert all provisioner secret mounts, restrictive modes and host source-file mappings.
+- [ ] Confirm the expanded merged-Compose test executes successfully in CI.
+- [ ] Verify effective UID/GID and secret readability inside real non-production containers.
