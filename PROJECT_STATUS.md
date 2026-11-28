@@ -26,6 +26,7 @@ Updated: 2026-11-28
 - MFA login challenges now persist failed-attempt counts and are invalidated after five incorrect TOTP or recovery-code attempts.
 - Password-reset success responses no longer return internal user IDs.
 - Added migration `0019_mfa_challenge_attempt_limits.sql`.
+- Added a CI database test covering the five-failure MFA challenge lockout semantics.
 
 **Validation caveat:** the authentication implementation has not yet been validated by a successful CI run or focused auth security test suite. Do not mark it production-ready until those checks pass.
 
@@ -54,7 +55,7 @@ Updated: 2026-11-28
 ## CI and release validation
 
 - Previous CI run `46047692879` passed for an earlier provider-engine checkpoint only.
-- No workflow run is currently visible for the latest authentication/benchmark changes. Current branch validation is therefore pending.
+- The latest auth hardening now has an explicit CI database test for MFA challenge lockout; a successful workflow run for the current branch head is still pending.
 - Google URL Inspection reservation values are capped at 2,000/day and 600/minute per site.
 - Bing submissions are bounded by live provider DailyQuota/MonthlyQuota.
 - Provider acceptance/inspection evidence must not be presented as proof of indexing.
