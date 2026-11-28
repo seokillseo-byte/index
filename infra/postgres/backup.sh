@@ -47,7 +47,9 @@ age --encrypt "${age_recipient_args[@]}" --output "$encrypted" "$plain"
  printf 'database_name=%s\n' "$database_name"
  printf 'pg_dump_version=%s\n' "$(pg_dump --version)"
  printf 'dump_file=%s\n' "$(basename "$encrypted")"
- printf 'format=custom\nencryption=age\nowner_and_acl=excluded\narchive_validation=passed_before_encryption\n'
+ printf 'format=custom\nencryption=age\nrecipient_count=%s\n' "${#recipients[@]}"
+ for i in "${!recipients[@]}"; do printf 'recipient_%s=%s\n' "$((i + 1))" "${recipients[$i]}"; done
+ printf 'owner_and_acl=excluded\narchive_validation=passed_before_encryption\n'
 } > "$manifest"
 chmod 600 "$encrypted" "$checksum" "$manifest"
 completed=1
