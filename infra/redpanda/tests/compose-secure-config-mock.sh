@@ -42,7 +42,7 @@ REDPANDA_BOOTSTRAP_ONCE=1
 ENV
 
 cd "$ROOT"
-grep -Fq 'export RPK_PASS="$(cat /run/secrets/redpanda-admin-password)"' infra/docker/compose.redpanda.secure.yml || { echo "Provisioner password command must defer expansion to the container shell" >&2; exit 1; }
+grep -Fq 'export RPK_PASS="$$(cat /run/secrets/redpanda-admin-password)"' infra/docker/compose.redpanda.secure.yml || { echo "Provisioner password command must defer expansion to the container shell" >&2; exit 1; }
 # YAML parsing alone cannot detect a missing security-critical broker setting.
 ruby -e 'require "yaml"; c=YAML.load_file("infra/redpanda/redpanda.yaml.example").fetch("redpanda"); abort "enable_sasl must be true" unless c["enable_sasl"] == true; abort "Kafka listener must require SASL" unless c.fetch("kafka_api").any? { |x| x["authentication_method"] == "sasl" }; abort "Kafka ACL authorization must be enabled" unless c["kafka_enable_authorization"] == true; abort "Kafka TLS must be enabled" unless c.fetch("kafka_api_tls").any? { |x| x["name"] == "internal" && x["enabled"] == true }; abort "Admin API must bind loopback" unless c.fetch("admin").any? { |x| x["address"] == "127.0.0.1" }; abort "Admin API TLS must be enabled" unless c.fetch("admin_api_tls").any? { |x| x["name"] == "admin" && x["enabled"] == true }'
 docker compose --env-file "$TMP/infrastructure.env" --env-file "$TMP/redpanda.env" \
