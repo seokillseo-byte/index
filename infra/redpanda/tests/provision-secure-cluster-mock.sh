@@ -12,11 +12,11 @@ export MOCK_ACLS="$TMP/acls"
 cat > "$TMP/bin/rpk" <<'MOCK'
 #!/usr/bin/env bash
 set -euo pipefail
-case "$1 $2" in
-  "topic describe")
+case "$1 $2 $3" in
+  "topic describe "*)
     grep -Fxq "$3" "$MOCK_TOPICS"
     ;;
-  "topic create")
+  "topic create "*)
     printf '%s\n' "$3" >> "$MOCK_TOPICS"
     ;;
   "security user list")
