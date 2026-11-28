@@ -34,6 +34,23 @@ export class RedisThrottlerStorage implements ThrottlerStorage, OnModuleDestroy 
     });
   }
 
+  private async ensureConnected(): Promise<void> {
+    if (this.redis.status === 'wait') {
+      this.connectPromise ??= this.redis.connect().finally(() => { this.connectPromise = undefined; });
+    }
+    if (this.connectPromise) await this.connectPromise;
+    if (this.redis.status !== 'ready') throw new Error('Redis is not ready');
+  }
+
+  async checkHealth(): Promise<void> {
+    try {
+      await this.ensureConnected();
+      if (await this.redis.ping() !== 'PONG') throw new Error('Redis health check failed');
+    } catch {
+      throw new ServiceUnavailableException('Shared rate-limiting service is unavailable');
+    }
+  }
+
   async increment(
     key: string,
     ttl: number,
@@ -42,11 +59,7 @@ export class RedisThrottlerStorage implements ThrottlerStorage, OnModuleDestroy 
     throttlerName: string,
   ): Promise<ThrottlerStorageRecord> {
     try {
-      if (this.redis.status === 'wait') {
-        this.connectPromise ??= this.redis.connect().finally(() => { this.connectPromise = undefined; });
-      }
-      if (this.connectPromise) await this.connectPromise;
-      if (this.redis.status !== 'ready') throw new Error('Redis is not ready');
+      await this.ensureConnected();
       const prefix = `index-assist:throttle:${throttlerName}:${key}`;
       const blockMs = Math.max(1, blockDuration || ttl);
       const result = await this.redis.eval(
