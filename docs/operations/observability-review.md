@@ -14,6 +14,7 @@ Static review of repository configuration and application/worker health/logging 
 - API has a readiness endpoint used by the Compose health check.
 - Crawler has a readiness endpoint used by its Compose health check.
 - API and workers emit process logs; provider worker records provider/queue errors to standard output/error.
+- API rate-limited requests depend on shared Redis; the current adapter fails closed with HTTP 503 when Redis is unavailable. Redis availability/error-rate alerting and multi-instance outage drills remain outstanding.
 - Provider queue state and attempt/error fields are persisted in PostgreSQL.
 - Benchmark harness reports queue-path throughput/latency, PostgreSQL counter deltas and connection snapshots.
 - No metrics scraper, dashboard, distributed tracing collector, log aggregation configuration, alert rules or notification integration was found in the repository tree.
