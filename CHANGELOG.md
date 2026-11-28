@@ -1,3 +1,9 @@
+## 2026-11-28 — Redis infrastructure healthcheck correction
+
+- Corrected Redis Compose healthcheck to pass the container's password through `REDISCLI_AUTH` using Compose-escaped shell expansion, rather than expanding the secret in the host Compose parser.
+- This ensures the API's new `depends_on: redis: service_healthy` gate can observe the authenticated Redis health check without putting the password in the redis-cli argument list.
+- No Redis credential or running infrastructure was accessed or changed.
+
 ## 2026-11-28 — Shared Redis rate limiting implementation
 
 - Added a Redis-backed Nest throttler storage adapter using an atomic Lua script for shared counters and block windows across API instances.
