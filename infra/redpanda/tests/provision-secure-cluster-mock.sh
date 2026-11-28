@@ -38,7 +38,7 @@ case "$1 $2" in
         *) shift ;;
       esac
     done
-    grep -Fxq "$principal|$operation|$resource_type|$resource" "$MOCK_ACLS" && printf '%s\n' "$principal"
+    grep -Fxq "$principal|$operation|$resource_type|$resource" "$MOCK_ACLS" && printf '%s\n' "$principal" || true
     ;;
   "security acl create")
     principal=''; resource_type=''; resource=''; operation=''
