@@ -5,6 +5,7 @@
 - Added a persistent failed-attempt counter to auth tokens and invalidate MFA login challenges after five invalid TOTP or recovery-code attempts.
 - Password-reset success responses no longer disclose the internal user ID.
 - Added migration `0019_mfa_challenge_attempt_limits.sql`.
+- Added a CI database test for five-failure MFA challenge lockout semantics.
 
 ### Authentication validation hardening
 
