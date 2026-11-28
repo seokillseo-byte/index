@@ -85,3 +85,12 @@ Updated: 2026-11-28
 ## Immediate next step
 
 Next: provision actual non-production certificates and secret files, bring up the isolated v26.3.1 overlay on its separate volume, verify TLS/SCRAM and positive/negative ACL behavior, then rehearse the v24.3.7 data-volume upgrade on a separate cold copy with a rollback plan. Off-site object storage, key custody, restore drills and benchmark execution require external non-production infrastructure and operator-controlled credentials. Do not use production credentials/data, merge into `main`, deploy production, or add unrelated features.
+
+
+## 2026-11-28 — Secure Redpanda configuration checkpoint
+
+- CI #351 passed on branch head `651aa595da71c1c70e6ed6bee31ac3ca25b5d6c1`: [workflow run](https://github.com/seokillseo-byte/index/actions/runs/46167799041). All three jobs passed: database migrations/security regressions, Node typecheck/build/Jest plus Compose/Redpanda YAML, shell syntax and backup/Redpanda mock tests, and crawler Go race/vet.
+- Static review corrections validated by this run: explicitly enable `redpanda.enable_sasl: true`; assert Kafka ACL/TLS and loopback Admin API TLS settings; check secret/certificate readability for the non-root image; escape container-shell variables from Compose interpolation.
+- CI is static/mock validation only. It does not start a Redpanda broker or prove TLS/SCRAM handshakes, ACL allow/deny, restart recovery, volume upgrade or rollback.
+- The Kafka security runbook UID/GID `printf` example was checked for newline escaping; no runtime behavior is changed by that example.
+- PR #6 remains open, unmerged and mergeable=false. No merge, rebase, production deployment, secret change or destructive operation was performed.
