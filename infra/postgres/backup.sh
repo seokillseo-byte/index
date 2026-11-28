@@ -4,6 +4,7 @@ set -euo pipefail
 : "${BACKUP_OUTPUT_DIR:?Set BACKUP_OUTPUT_DIR}"
 recipient_csv="${BACKUP_AGE_RECIPIENTS:-${BACKUP_AGE_RECIPIENT:-}}"
 : "${recipient_csv:?Set BACKUP_AGE_RECIPIENTS (comma-separated age recipients) or BACKUP_AGE_RECIPIENT}"
+[[ "$recipient_csv" != ,* && "$recipient_csv" != *, && "$recipient_csv" != *,,* ]] || { echo "Empty age recipient entry" >&2; exit 1; }
 IFS=',' read -r -a recipients <<< "$recipient_csv"
 (("${#recipients[@]}" > 0)) || { echo "At least one age recipient is required" >&2; exit 1; }
 age_recipient_args=()
