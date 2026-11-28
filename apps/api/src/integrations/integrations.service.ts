@@ -220,7 +220,7 @@ export class IntegrationsService{
    const domain=siteUrl.slice(10).toLowerCase();
    return target.hostname.toLowerCase()===domain||target.hostname.toLowerCase().endsWith('.'+domain);
   }
-  try{const property=new URL(siteUrl);return target.origin===property.origin&&target.pathname.startsWith(property.pathname);}catch{return false;}
+  try{const property=new URL(siteUrl);const pathPrefix=property.pathname.endsWith('/')?property.pathname:property.pathname+'/';const pathMatches=target.pathname===property.pathname||target.pathname.startsWith(pathPrefix);return target.origin===property.origin&&pathMatches;}catch{return false;}
  }
  private async bingSubmissionQuota(principal:Principal,connectionId:string,siteUrl:string){
   const {provider,credential}=await this.connectionCredential(principal,connectionId);
