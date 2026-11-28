@@ -63,7 +63,7 @@ async function worker(){
  while(true){
   const rows=await tx(async client=>{
    const result=await client.query(
-    "WITH due AS (SELECT id FROM app.provider_jobs WHERE tenant_id=$1 AND project_id=$2 AND connection_id=$3 AND provider=$4 AND site_url=$5 AND action=$6 AND status='queued' AND idempotency_key LIKE $8 ORDER BY created_at LIMIT $7 FOR UPDATE SKIP LOCKED) UPDATE app.provider_jobs j SET status='leased',lease_owner=$9,lease_expires_at=now()+interval '10 minutes',attempt_count=attempt_count+1,updated_at=now() FROM due WHERE j.tenant_id=$1 AND j.id=due.id RETURNING j.id,j.created_at",
+    "WITH due AS (SELECT id FROM app.provider_jobs WHERE tenant_id=$1 AND project_id=$2 AND connection_id=$3 AND provider=$4 AND site_url=$5 AND action=$6 AND status='queued' AND idempotency_key LIKE $8 ORDER BY created_at LIMIT $7 FOR UPDATE SKIP LOCKED) UPDATE app.provider_jobs j SET status='leased',lease_owner=$9,lease_expires_at=now()+interval '10 minutes',attempt_count=attempt_count+1,updated_at=now() FROM due WHERE j.tenant_id=$1 AND j.id=due.id RETURNING j.id,j.created_at,clock_timestamp() AS claimed_at",
     [tenantId,projectId,connectionId,provider,siteUrl,action,batchSize,idempotencyPrefix+'%',workerId]
    );
    if(!result.rowCount)return [];
@@ -72,7 +72,7 @@ async function worker(){
   });
   if(!rows.length)return {processed,latenciesMs};
   const claimedAt=Date.now();
-  for(const row of rows)latenciesMs.push(Math.max(0,claimedAt-new Date(row.created_at).getTime()));
+  for(const row of rows)latenciesMs.push(Math.max(0,new Date(row.claimed_at).getTime()-new Date(row.created_at).getTime()));
   processed+=rows.length;
  }
 }
@@ -118,7 +118,7 @@ try{
   queueLatencyMs:{p50:Number(percentile(latenciesMs,50).toFixed(2)),p95:Number(percentile(latenciesMs,95).toFixed(2)),p99:Number(percentile(latenciesMs,99).toFixed(2)),samples:latenciesMs.length},
   databaseCountersDuringDrain:counterDelta(beforeDrain.stats,afterDrain.stats),
   visibleConnections:{before:beforeDrain.connections.visible_connections,after:afterDrain.connections.visible_connections,benchmarkBefore:beforeDrain.connections.benchmark_connections,benchmarkAfter:afterDrain.connections.benchmark_connections},
-  poolMaxConnections:pool.totalCount
+  poolConnectionsAtReport:pool.totalCount
  },null,2));
 }finally{
  try{

@@ -36,6 +36,8 @@
 ## Capacity and production readiness
 
 - [x] Bounded non-production PostgreSQL queue benchmark harness and runbook.
+- [x] Benchmark reports queue-latency percentiles, PostgreSQL counter deltas and connection snapshots; host CPU/disk IO are measured separately at host level.
+- [x] CI validates benchmark metric instrumentation and all existing checks on commit `67f8447801b8837550fcdba607f09932be82eb29` (run #46102361891).
 - [ ] Execute benchmark on dedicated non-production database/hardware.
 - [ ] Record queue latency, jobs/sec, DB CPU/IO, connections and saturation.
 - [ ] Sustained queue/backpressure benchmark.

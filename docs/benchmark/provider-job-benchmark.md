@@ -43,7 +43,7 @@ pnpm --filter @index-assist/worker benchmark:provider-jobs
 - Queue latency p50/p95/p99 from job creation to successful claim.
 - Queue batch size and worker concurrency.
 - PostgreSQL counter deltas during draining (transactions, buffer reads/hits, tuple writes, deadlocks and temp bytes).
-- Visible database connections before/after the drain and benchmark pool connection count.
+- Visible database connections before/after the drain and benchmark pool connection count at report time.
 - PostgreSQL host CPU, disk IO, memory and connection saturation (collect from the database host during the run; SQL statistics are not a substitute for OS-level metrics).
 
 Each invocation creates a unique run ID and workers claim only that run's jobs. Cleanup is scoped to the same unique idempotency prefix and runs from a `finally` block, including when seeding or draining fails. Concurrent benchmark runs therefore do not clean up one another's rows.

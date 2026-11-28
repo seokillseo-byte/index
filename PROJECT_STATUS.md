@@ -36,7 +36,9 @@ Updated: 2026-11-28
 - CI run [#46101301044](https://github.com/seokillseo-byte/index/actions/runs/46101301044) passed on `af3fc9c8b9f2375dd945266ac0ce86d1975f2d9b`.
 - CI run [#46101487019](https://github.com/seokillseo-byte/index/actions/runs/46101487019) passed on `ac3bb0968ce1bc097337cdf2f9b22241e3fce057`, validating the status/checklist/changelog checkpoint.
 - Both runs passed Node install/typecheck/build/Jest/worker syntax checks, crawler Go tests with race detector and vet, and database migrations plus tenant RLS/MFA/auth-token/recovery-code regression tests.
-- CI is now verified green for the latest documented checkpoint. Any later source change must be validated by its own run.
+- CI run [#46102361891](https://github.com/seokillseo-byte/index/actions/runs/46102361891) passed on `67f8447801b8837550fcdba607f09932be82eb29`, including Node typecheck/build/Jest/worker syntax, Go race tests/vet, and database migration/RLS/auth regression checks.
+- The benchmark harness now reports queue-latency p50/p95/p99, PostgreSQL counter deltas and connection snapshots; host CPU/disk IO still require host-level monitoring.
+- Any later source change must be validated by its own run.
 
 ## Benchmark checkpoint
 
