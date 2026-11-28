@@ -16,8 +16,8 @@
 - [x] API service tests for MFA lockout and challenge-token hashing.
 - [x] Database tests for auth-token replay, recovery-code replay, and tenant RLS.
 - [x] Application tests for JWT session binding, tenant-switch rejection, and session ownership.
-- [x] CI typecheck/build/tests pass on validation commit `af3fc9c8b9f2375dd945266ac0ce86d1975f2d9b` (run #46101301044).
-- [ ] CI pass on the newest checkpoint commit after this status update.
+- [x] CI install/typecheck/build/Jest/worker syntax checks pass on commit `af3fc9c8b9f2375dd945266ac0ce86d1975f2d9b` (run #46101301044).
+- [x] CI validation of the docs/status checkpoint passes on commit `ac3bb0968ce1bc097337cdf2f9b22241e3fce057` (run #46101487019).
 
 ## Provider Job Engine
 
@@ -31,8 +31,7 @@
 - [x] Retry/backoff, dead-letter, lease recovery and batch draining.
 - [x] Provider job history, attempt tracking and indexes.
 - [x] Runtime RLS claim and provider quota SQL tests.
-- [x] CI database migrations and regression tests pass on validation commit above.
-- [ ] CI pass on newest checkpoint commit.
+- [x] CI database migrations and regression tests pass on both validation checkpoints above.
 
 ## Capacity and production readiness
 

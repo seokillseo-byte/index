@@ -2,7 +2,7 @@
 
 - Added push-triggered CI for `feature/provider-job-engine`, ensuring branch commits run the same validation jobs rather than relying solely on pull-request events.
 - CI run #46101301044 passed on `af3fc9c8b9f2375dd945266ac0ce86d1975f2d9b`: Node install/typecheck/build/Jest/worker syntax checks, Go crawler tests with race detector and vet, ordered database migrations, tenant RLS, MFA lockout, auth-token replay, and MFA recovery-code replay.
-- The next docs-only checkpoint commit is expected to trigger CI again; its status must be checked separately before claiming latest-head validation.
+- Documentation/status checkpoint commit `ac3bb0968ce1bc097337cdf2f9b22241e3fce057` also passed CI run #46101487019 across all three jobs.
 - No benchmark execution, production credential use, production deployment, main merge, or destructive operation was performed.
 
 ## 2026-11-28 — Authentication challenge hardening

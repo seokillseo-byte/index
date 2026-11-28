@@ -33,9 +33,10 @@ Updated: 2026-11-28
 ## CI validation
 
 - Added a push trigger for `feature/provider-job-engine` so implementation commits run CI without relying only on PR events.
-- Workflow run [#46101301044](https://github.com/seokillseo-byte/index/actions/runs/46101301044) completed successfully on commit `af3fc9c8b9f2375dd945266ac0ce86d1975f2d9b`.
-- Passing jobs: Node (install, typecheck, build, Jest tests, worker syntax checks), crawler (Go tests with race detector and vet), and database (migrations, tenant RLS, MFA lockout, auth-token replay, recovery-code replay).
-- This successful run validates the workflow-trigger commit. The documentation checkpoint that follows it will receive its own push-triggered CI run; do not treat that later run as passed until GitHub reports success.
+- CI run [#46101301044](https://github.com/seokillseo-byte/index/actions/runs/46101301044) passed on `af3fc9c8b9f2375dd945266ac0ce86d1975f2d9b`.
+- CI run [#46101487019](https://github.com/seokillseo-byte/index/actions/runs/46101487019) passed on `ac3bb0968ce1bc097337cdf2f9b22241e3fce057`, validating the status/checklist/changelog checkpoint.
+- Both runs passed Node install/typecheck/build/Jest/worker syntax checks, crawler Go tests with race detector and vet, and database migrations plus tenant RLS/MFA/auth-token/recovery-code regression tests.
+- CI is now verified green for the latest documented checkpoint. Any later source change must be validated by its own run.
 
 ## Benchmark checkpoint
 
@@ -46,14 +47,13 @@ Updated: 2026-11-28
 
 ## Remaining release gates
 
-1. Complete CI for the latest documentation checkpoint commit.
-2. Run queue benchmark against a dedicated non-production database and record jobs/sec, queue latency, PostgreSQL CPU/IO, connections and saturation.
-3. Run sustained queue/backpressure and failure/recovery benchmarks.
-4. Run real Google/Bing end-to-end tests with non-production provider accounts.
-5. Complete backup/restore drill, security review, and observability/alerting review.
-6. Complete production VPS, HTTPS and DNS validation only after the preceding gates and explicit release approval.
-7. Assess the 1,000,000 URL/day target only from measured end-to-end capacity; no current claim is made.
+1. Run queue benchmark against a dedicated non-production database and record jobs/sec, queue latency, PostgreSQL CPU/IO, connections and saturation.
+2. Run sustained queue/backpressure and failure/recovery benchmarks.
+3. Run real Google/Bing end-to-end tests with non-production provider accounts.
+4. Complete backup/restore drill, security review, and observability/alerting review.
+5. Complete production VPS, HTTPS and DNS validation only after the preceding gates and explicit release approval.
+6. Assess the 1,000,000 URL/day target only from measured end-to-end capacity; no current claim is made.
 
 ## Immediate next step
 
-Finish CI for the latest checkpoint, then execute the existing non-production benchmark harness. Do not add unrelated features, use production credentials/data, merge into `main`, or deploy production as part of this checkpoint.
+Execute the existing non-production queue benchmark on a dedicated test database/hardware. Do not add unrelated features, use production credentials/data, merge into `main`, or deploy production as part of this checkpoint.
