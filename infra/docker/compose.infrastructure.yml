@@ -33,8 +33,10 @@ services:
       timeout: 5s
       retries: 10
     networks: [data]
-  # DEVELOPMENT-ONLY: this listener is plaintext. Replace with the TLS/SASL config
-  # from infra/redpanda/redpanda.yaml.example and provision SCRAM users/ACLs before production.
+  # DEVELOPMENT-ONLY: pinned v24.3.7 is end-of-support and this listener is plaintext.
+  # Do not use for production or upgrade a persisted volume by only changing the image tag.
+  # The secure v26.3.1 template is infra/redpanda/redpanda.yaml.example; it requires a
+  # rehearsed data upgrade, certs, first-start Admin API bootstrap and SCRAM/ACL provisioning.
   redpanda:
     image: redpandadata/redpanda:v24.3.7
     restart: unless-stopped
@@ -42,6 +44,8 @@ services:
     volumes: [redpanda_data:/var/lib/redpanda/data]
     ports: ["127.0.0.1:19092:9092"]
     networks: [data]
+  # DEVELOPMENT-ONLY: this job uses anonymous plaintext Kafka and must be replaced
+  # with authenticated topic provisioning before enabling broker SASL/ACL enforcement.
   redpanda-init:
     image: redpandadata/redpanda:v24.3.7
     restart: "no"
