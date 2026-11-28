@@ -92,14 +92,27 @@ bash "$ROOT/infra/redpanda/provision-secure-cluster.sh"
 [[ "$(wc -l < "$MOCK_USERS")" -eq 3 ]]
 [[ "$(wc -l < "$MOCK_ACLS")" -eq 11 ]]
 
-if RPK_TLS_ENABLED=false bash "$ROOT/infra/redpanda/provision-secure-cluster.sh" >/dev/null 2>&1; then
-  echo 'secure provisioning accepted plaintext Kafka' >&2
-  exit 1
-fi
+expect_rejected() {
+  description="$1"
+  shift
+  if "$@" bash "$ROOT/infra/redpanda/provision-secure-cluster.sh" >/dev/null 2>&1; then
+    echo "secure provisioning accepted invalid configuration: $description" >&2
+    exit 1
+  fi
+}
+
+expect_rejected 'plaintext Kafka' env RPK_TLS_ENABLED=false
+expect_rejected 'Admin API without TLS' env RPK_ADMIN_TLS_ENABLED=false
+expect_rejected 'non-SCRAM mechanism' env RPK_SASL_MECHANISM=PLAIN
+expect_rejected 'missing bootstrap password' env -u RPK_PASS
+printf 'short\n' > "$TMP/short.pass"
+expect_rejected 'short service password' env OUTBOX_PASSWORD_FILE="$TMP/short.pass"
 chmod 000 "$TMP/ca.crt"
-if bash "$ROOT/infra/redpanda/provision-secure-cluster.sh" >/dev/null 2>&1; then
-  echo 'secure provisioning accepted an unreadable CA file' >&2
-  exit 1
-fi
+expect_rejected 'unreadable CA file' env
 chmod 600 "$TMP/ca.crt"
+
+# Invalid configurations must be rejected before mutating broker resources.
+[[ "$(wc -l < "$MOCK_TOPICS")" -eq 2 ]]
+[[ "$(wc -l < "$MOCK_USERS")" -eq 3 ]]
+[[ "$(wc -l < "$MOCK_ACLS")" -eq 11 ]]
 echo 'Secure Redpanda provisioning mock tests passed'
