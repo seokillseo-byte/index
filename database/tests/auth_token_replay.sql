@@ -47,8 +47,7 @@ BEGIN
    WHERE token_hash=v_token_hash
      AND purpose='password_reset'
      AND consumed_at IS NULL
-     AND expires_at>now()
-     FOR UPDATE;
+     AND expires_at>now();
 
   IF v_found<>0 THEN
     RAISE EXCEPTION 'AUTH REPLAY FAILURE: second lookup can still claim the token';
