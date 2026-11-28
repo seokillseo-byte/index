@@ -153,3 +153,12 @@ Google URL Inspection is inspection evidence, not an indexing request. Bing subm
 - [x] Preserve final no-mutation assertions for topics, SCRAM users and ACLs after invalid configuration cases.
 - [ ] Confirm CI execution on the latest branch commit.
 - [ ] Validate real broker TLS/SCRAM/ACL and workload restart/recovery in non-production.
+
+
+## Service SCRAM secret validation (2026-11-29)
+
+- [x] Add missing service password-file rejection coverage on the new-user path.
+- [x] Add empty service password-file rejection coverage on the new-user path.
+- [x] Restore the existing-principal fixture after each negative case and retain no-mutation assertions.
+- [ ] Confirm CI execution on the latest branch commit.
+- [ ] Run live non-production broker TLS/SCRAM/ACL and recovery validation.
