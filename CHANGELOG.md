@@ -1,3 +1,12 @@
+## 2026-11-28 — Kafka TLS/SCRAM client support and rollout guardrails
+
+- Added a shared KafkaJS client config for the outbox relay and provider worker with CA-verified TLS and SCRAM-SHA-512.
+- Added a Go kafka-go dialer for the crawler with TLS 1.2+, CA verification and SCRAM-SHA-512.
+- Production workloads now set `NODE_ENV=production`; Node and Go clients reject plaintext Kafka settings in production and reject incomplete SCRAM/CA configuration.
+- Added unit tests for Node/Go config validation, environment examples, read-only CA mounts, CI syntax checks, a Redpanda TLS/SASL listener template and a least-privilege ACL rollout runbook.
+- The existing Redpanda Compose listener remains plaintext and is explicitly marked development-only. Broker activation, admin bootstrap, per-service SCRAM users, ACL enforcement and live denied-access tests remain incomplete; do not deploy production workloads before those gates pass.
+- No broker, credential, certificate or live infrastructure was accessed or modified. Fresh CI validation is pending.
+
 ## 2026-11-28 — Protect Redis rate-limit counters from eviction
 
 - Changed the Redis max-memory policy from `allkeys-lru` to `noeviction` so memory pressure cannot silently evict active rate-limit counters and weaken shared abuse controls.
