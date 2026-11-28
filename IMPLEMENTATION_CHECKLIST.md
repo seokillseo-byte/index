@@ -23,7 +23,7 @@
 - [ ] Authentication CI/typecheck/test validation for the current branch head.
 - [x] Focused authentication service coverage for MFA brute-force/lockout and challenge-token hashing.
 - [x] Focused database coverage for single-use MFA recovery-code replay.
-- [ ] Tenant/session isolation validation at the application/API level.
+- [x] Tenant/session isolation validation at the application/API level (JWT session binding, tenant-switch guard, and session ownership tests).
 
 ## Provider Job Engine
 
