@@ -20,6 +20,7 @@ return {hits, ttl, 0, 0}
 
 export class RedisThrottlerStorage implements ThrottlerStorage {
   private readonly redis: Redis;
+  private connectPromise?: Promise<void>;
 
   constructor(redisUrl: string, redisClient?: Redis) {
     if (!redisUrl) throw new Error('REDIS_URL is required for shared API rate limiting');
@@ -41,7 +42,10 @@ export class RedisThrottlerStorage implements ThrottlerStorage {
     throttlerName: string,
   ): Promise<ThrottlerStorageRecord> {
     try {
-      if (this.redis.status === 'wait') await this.redis.connect();
+      if (this.redis.status === 'wait') {
+        this.connectPromise ??= this.redis.connect().finally(() => { this.connectPromise = undefined; });
+      }
+      if (this.connectPromise) await this.connectPromise;
       if (this.redis.status !== 'ready') throw new Error('Redis is not ready');
       const prefix = `index-assist:throttle:${throttlerName}:${key}`;
       const blockMs = Math.max(1, blockDuration || ttl);
