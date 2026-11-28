@@ -300,3 +300,10 @@
 
 - Expanded secure Compose merged-config assertions to cover broker certificate/key/CA/bootstrap secret paths, expected file modes, provisioner secret modes, and all nine host secret-file declarations. Mode values are normalized to avoid YAML octal/integer representation differences.
 - These checks are static test source; latest CI execution and real container permission behavior remain unverified.
+
+
+## 2026-11-29 — Broker startup and authenticated healthcheck checks
+
+- Added merged-Compose regression assertions for broker certificate/key readability guards, bootstrap password validation, and authenticated TLS Admin API healthcheck wiring.
+- Corrected provisioner secret permission normalization for YAML integer/octal representations.
+- Test source is updated and CI-wired; no local execution, latest CI pass, or live broker validation is claimed.
