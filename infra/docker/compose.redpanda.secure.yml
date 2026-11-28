@@ -16,6 +16,7 @@ services:
         fi
         exec redpanda start --overprovisioned --smp 2 --memory 2G --reserve-memory 0M --node-id 0 --check=false
     volumes:
+      - redpanda_data_secure:/var/lib/redpanda/data
       - ../redpanda/redpanda.yaml.example:/etc/redpanda/redpanda.yaml:ro
       - ../redpanda/.bootstrap.yaml.example:/etc/redpanda/.bootstrap.yaml:ro
     secrets:
@@ -81,3 +82,6 @@ secrets:
     file: ../../secrets/redpanda/admin.key
   redpanda_admin_password:
     file: ../../secrets/redpanda/admin-password
+
+volumes:
+  redpanda_data_secure:
