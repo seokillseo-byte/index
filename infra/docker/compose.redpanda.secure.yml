@@ -8,7 +8,7 @@ services:
     command:
       - |
         for file in /etc/redpanda/certs/ca.crt /etc/redpanda/certs/broker.crt /etc/redpanda/certs/broker.key /etc/redpanda/certs/admin.crt /etc/redpanda/certs/admin.key; do
-          [ -r "$file" ] && [ -s "$file" ] || { echo "Redpanda cannot read non-empty required certificate material: $file" >&2; exit 1; }
+          [ -r "${file}" ] && [ -s "${file}" ] || { echo "Redpanda cannot read non-empty required certificate material: ${file}" >&2; exit 1; }
         done
         if [ "$${REDPANDA_BOOTSTRAP_ONCE:-0}" = "1" ]; then
           [ -r /run/secrets/redpanda-admin-password ] || { echo "Redpanda cannot read the Admin bootstrap password secret" >&2; exit 1; }
