@@ -162,3 +162,8 @@ Next: provision actual non-production certificates and secret files, bring up th
 ## 2026-11-29 — Reject empty broker certificate material
 - Tightened the secure broker entrypoint guard so each mounted CA/certificate/private-key file must be both readable and non-empty before Redpanda starts. Extended the merged-Compose regression assertion to require both checks for all five certificate-material paths.
 - This closes a static configuration gap where a readable but empty bind-mounted file could pass the startup preflight. CI execution and real container behavior remain unverified.
+
+
+## 2026-11-29 — Compose-safe explicit certificate preflight
+- Replaced the startup certificate loop's shell-variable expansion with five explicit `test -r` and `test -s` checks. This avoids Compose interpolating an unescaped `$file` variable before the container shell runs while preserving readable/non-empty checks for every certificate path.
+- Updated the merged-Compose regression assertion to match the explicit checks. Source was re-fetched from the branch; no local shell/Compose execution or CI pass is claimed.
