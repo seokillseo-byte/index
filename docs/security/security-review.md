@@ -1,7 +1,7 @@
 # Index Assist — Preliminary security review
 
 Updated: 2026-11-28
-Branch reviewed: `feature/provider-job-engine` at `1a9be1d87fa541866777475f28d0a6c3fe682bb4`
+Branch reviewed: `feature/provider-job-engine` at current Redis throttling implementation checkpoint
 
 ## Scope and confidence
 
@@ -21,13 +21,13 @@ This is a source/configuration review of the current repository state, not an in
 
 ## Findings and required actions
 
-### High — API rate limits are process-local
+### High — Shared Redis throttling implemented; CI and live failure test pending
 
-Evidence: `apps/api/src/app.module.ts` configures Nest Throttler with the default storage and a global 120/minute limit; endpoint-specific authentication limits are also configured in controllers. No shared Redis throttler storage is configured in this branch.
+Evidence: `apps/api/src/throttling/redis-throttler.storage.ts` uses an atomic Redis Lua script for shared counters and block windows. `apps/api/src/app.module.ts` configures it as the Nest throttler storage; `REDIS_URL` is required, the API workload waits for Redis health, and rate-limited requests fail closed with HTTP 503 on Redis errors. Unit tests cover atomic command arguments, lazy connection, missing configuration and unavailable Redis.
 
-Impact: limits can multiply across API replicas/restarts and do not provide a reliable shared abuse-control boundary.
+Impact: this closes the process-local storage design gap in source, but it is not yet CI-verified in the latest branch checkpoint and no live multi-instance/Redis outage drill has been run.
 
-Required before multi-replica/public production: configure and test shared Redis-backed throttler storage, including behavior when Redis is unavailable. Do not describe the current in-memory limits as distributed protection.
+Required before production: obtain passing CI, run two API instances against one non-production Redis and confirm shared limits, then stop Redis and confirm rate-limited requests fail closed without bypass. Configure production credentials outside the repository.
 
 ### High — Kafka/Redpanda transport has no authentication, TLS or ACLs
 
