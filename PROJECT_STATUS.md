@@ -8,7 +8,7 @@ Updated: 2026-11-28
 - Capacity target: 32 vCPU / 64 GB RAM / 2 TB NVMe / 1 Gbps; this is a target specification, not a measured throughput result.
 - Main baseline: `568e00af228c64249f5da6e4ec22f29e6cbe10be`.
 - Active implementation branch: `feature/provider-job-engine`.
-- Latest implementation checkpoint before Redis throttling work: `1a9be1d87fa541866777475f28d0a6c3fe682bb4`; current Redis implementation is in commit `ccebdd7208c4c35477367763b742aad875cc3042` and awaits CI. The storage client is lifecycle-managed and disconnects during Nest shutdown.
+- Latest implementation checkpoint before Redis throttling work: `1a9be1d87fa541866777475f28d0a6c3fe682bb4`; current Redis implementation checkpoint is `3544dff928ddd191d681bdf771d9ea7ebae16446` and awaits CI. The storage client is lifecycle-managed, readiness checks PostgreSQL and Redis, and Compose avoids interpolating the Redis password into command arguments.
 - Review PR #6 remains open and unmerged.
 - GitHub reports the branch diverged from main: 213 commits ahead, one commit behind at the latest comparison; PR mergeable=false. The one main-only commit overlaps provider-engine files. Do not rebase or merge automatically; review the effective diff before integration. The one main-only commit overlaps provider-engine files. Do not rebase or merge automatically; review the effective diff before integration.
 - No local working-tree status is available in this workflow; this status reflects GitHub branch/PR data only.
