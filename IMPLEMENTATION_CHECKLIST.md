@@ -200,3 +200,10 @@ Google URL Inspection is inspection evidence, not an indexing request. Bing subm
 - [x] Normalize provisioner secret modes when YAML represents octal modes as integers.
 - [ ] Confirm merged-Compose test passes in CI.
 - [ ] Validate effective container UID/GID, TLS/SCRAM authentication and healthcheck against non-production Redpanda.
+
+
+## Non-empty Redpanda certificate preflight (2026-11-29)
+
+- [x] Require CA, broker/admin certificates and private keys to be readable and non-empty before broker startup.
+- [x] Assert the merged secure Compose startup command includes both readability and non-empty checks.
+- [ ] Confirm the updated test in CI and verify with real certificate files in non-production.
