@@ -5,6 +5,6 @@ ALTER TABLE app.auth_tokens
   CHECK (attempt_count >= 0);
 
 -- The API increments this counter under SELECT ... FOR UPDATE and consumes
--- an MFA login challenge after five invalid TOTP attempts.
+-- an MFA login challenge or recovery challenge after five invalid TOTP or recovery-code attempts.
 
 COMMIT;
