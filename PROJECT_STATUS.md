@@ -29,6 +29,8 @@ Updated: 2026-11-28
 - Added a CI database test covering the five-failure MFA challenge lockout semantics.
 - Added a CI database regression test for consumed authentication-token replay.
 - Added API Jest/ts-jest infrastructure and service-level MFA challenge lockout/token-hashing coverage.
+- Added application-level tenant/session isolation tests for JWT session binding, tenant-switch rejection and session ownership.
+- Hardened MFA disable to re-lock and re-check MFA state/credential inside the transaction before disabling and revoking sessions.
 - Added a CI database regression test for single-use MFA recovery-code replay.
 - Added `docs/deployment/release-process.md` covering the feature-branch workflow, clean Git-based VPS deployment, configuration separation and rollback principles.
 - Serialized MFA enrollment and single-active password-reset/MFA-login challenge issuance with database transactions and row locks.
@@ -68,7 +70,7 @@ Updated: 2026-11-28
 ## Release gates still open
 
 - CI/typecheck/build and tests for the current branch head.
-- Focused auth security tests: MFA challenge brute-force/lockout and recovery-code replay are now covered; application-level tenant/session isolation remains open. Basic consumed-token replay is covered by CI.
+- Focused auth security tests: MFA challenge brute-force/lockout, recovery-code replay and application-level tenant/session isolation are now covered. TOTP replay is constrained by single-use MFA login challenges; no separate global TOTP replay cache is claimed. Basic consumed-token replay is covered by CI.
 - Execute queue benchmark on non-production hardware and record PostgreSQL CPU/IO/connection saturation.
 - Sustained queue/backpressure and failure/recovery benchmarks.
 - Validate 1,000,000 URLs/day only after measured end-to-end capacity; no such result exists yet.
