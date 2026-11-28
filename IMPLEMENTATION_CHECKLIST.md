@@ -145,3 +145,11 @@ Google URL Inspection is inspection evidence, not an indexing request. Bing subm
 - [x] Keep invalid-input checks ahead of topic/user/ACL provisioning and retain the no-mutation assertions.
 - [ ] Confirm CI execution on the updated branch head.
 - [ ] Run live non-production broker TLS/SCRAM/ACL and restart/recovery validation.
+
+
+## Empty Kafka CA regression (2026-11-29)
+
+- [x] Add an empty Kafka CA rejection case to complement missing/unreadable Kafka CA and missing/empty Admin API CA cases.
+- [x] Preserve final no-mutation assertions for topics, SCRAM users and ACLs after invalid configuration cases.
+- [ ] Confirm CI execution on the latest branch commit.
+- [ ] Validate real broker TLS/SCRAM/ACL and workload restart/recovery in non-production.
