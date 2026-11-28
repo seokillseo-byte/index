@@ -65,7 +65,7 @@ services:
     command:
       - |
         [ -r /run/secrets/redpanda-admin-password ] || { echo "Provisioner cannot read the Admin password secret" >&2; exit 1; }
-        export RPK_PASS="$(cat /run/secrets/redpanda-admin-password)"
+        export RPK_PASS="$$(cat /run/secrets/redpanda-admin-password)"
         exec /bin/sh /opt/index-assist/provision-secure-cluster.sh
     volumes:
       - ../redpanda/provision-secure-cluster.sh:/opt/index-assist/provision-secure-cluster.sh:ro
