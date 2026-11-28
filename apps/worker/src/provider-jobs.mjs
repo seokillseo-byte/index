@@ -97,22 +97,36 @@ async function markAttempt(tenantId,jobIds){
 
 async function reserveGoogleAttempt(payload,job){
  const now=new Date(),dayStart=new Date(now);dayStart.setUTCHours(0,0,0,0);
- const configured=Number(process.env.GOOGLE_INSPECTION_DAILY_LIMIT||2000);
- const dailyLimit=Number.isFinite(configured)?Math.min(2000,Math.max(1,configured)):2000;
+ const minuteStart=new Date(now.getTime()-60_000);
+ const configuredDaily=Number(process.env.GOOGLE_INSPECTION_DAILY_LIMIT||2000);
+ const configuredMinute=Number(process.env.GOOGLE_INSPECTION_PER_MINUTE_LIMIT||600);
+ const dailyLimit=Number.isFinite(configuredDaily)?Math.min(2000,Math.max(1,configuredDaily)):2000;
+ const minuteLimit=Number.isFinite(configuredMinute)?Math.min(600,Math.max(1,configuredMinute)):600;
  const decision=await tenantTransaction(payload.tenantId,async client=>{
+  // Serialize reservations for this tenant/property across all worker instances.
   await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[payload.tenantId+':'+payload.siteUrl+':'+dayStart.toISOString().slice(0,10)]);
-  const row=await client.query("SELECT created_at,last_attempt_at FROM app.provider_jobs WHERE tenant_id=$1 AND id=$2 AND lease_owner=$3",[payload.tenantId,job.id,workerId]);
-  if(!row.rowCount)return {allowed:false,defer:false};
-  const created=new Date(row.rows[0].created_at),last=row.rows[0].last_attempt_at?new Date(row.rows[0].last_attempt_at):null;
-  if(last&&last>=dayStart)return {allowed:false,defer:true};
-  if(created<dayStart){
-   const count=await client.query("SELECT count(*)::int total FROM app.provider_jobs WHERE tenant_id=$1 AND site_url=$2 AND provider='google_search_console' AND action='inspect' AND status<>'cancelled' AND (created_at >= $3 OR last_attempt_at >= $3)",[payload.tenantId,payload.siteUrl,dayStart]);
-   if(count.rows[0].total>=dailyLimit)return {allowed:false,defer:true};
-  }
+  const row=await client.query("SELECT last_attempt_at FROM app.provider_jobs WHERE tenant_id=$1 AND id=$2 AND lease_owner=$3",[payload.tenantId,job.id,workerId]);
+  if(!row.rowCount)return {allowed:false,defer:null};
+  const last=row.rows[0].last_attempt_at?new Date(row.rows[0].last_attempt_at):null;
+  if(last&&last>=dayStart)return {allowed:false,defer:'daily'};
+  const usage=await client.query(
+   "SELECT count(*) FILTER(WHERE last_attempt_at >= $3)::int AS daily,count(*) FILTER(WHERE last_attempt_at >= $4)::int AS minute FROM app.provider_jobs WHERE tenant_id=$1 AND site_url=$2 AND provider='google_search_console' AND action='inspect' AND status<>'cancelled'",
+   [payload.tenantId,payload.siteUrl,dayStart,minuteStart]
+  );
+  if(usage.rows[0].daily>=dailyLimit)return {allowed:false,defer:'daily'};
+  if(usage.rows[0].minute>=minuteLimit)return {allowed:false,defer:'minute'};
   await client.query("UPDATE app.provider_jobs SET last_attempt_at=now(),updated_at=now() WHERE tenant_id=$1 AND id=$2 AND lease_owner=$3",[payload.tenantId,job.id,workerId]);
-  return {allowed:true,defer:false};
+  return {allowed:true,defer:null};
  });
- if(decision.defer){const next=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate()+1,0,5));await deferProviderJobs(payload,[job],next,'Google Search Console daily inspection quota window exhausted');}
+ if(decision.defer){
+  const next=decision.defer==='daily'
+   ?new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate()+1,0,5))
+   :new Date(Math.floor(now.getTime()/60_000)*60_000+60_250);
+  const reason=decision.defer==='daily'
+   ?'Google Search Console daily inspection quota window exhausted'
+   :'Google Search Console rolling per-minute inspection quota exhausted';
+  await deferProviderJobs(payload,[job],next,reason);
+ }
  return decision.allowed;
 }
 async function processGoogle(payload,jobs,credential){
