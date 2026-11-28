@@ -1,3 +1,11 @@
+## 2026-11-28 — Redis reconnect regression CI passed; Redpanda lifecycle gate
+
+- CI #277 passed on `f61dc7ffb1605e32c93b2b623277f5d70bfb40f6`: Redis reconnect/recovery unit test, two-client Redis integration, Node typecheck/build/Jest, worker tests, crawler Go race/vet, database regressions and age backup/restore safety checks.
+- Redis retry policy now continues reconnect attempts with bounded backoff after transient connection failures; rate-limited API requests remain fail-closed until Redis is ready.
+- Static review found the infrastructure pins Redpanda `v24.3.7`, from the 24.3 release line which is end-of-support. This is now a production release gate: select a supported broker release and repeat TLS/SCRAM/ACL compatibility tests before deployment.
+- Kafka Node/Go client TLS/SCRAM support and ACL runbook are implemented, but the active broker listener remains plaintext/development-only. Broker activation and real positive/negative ACL integration remain outstanding.
+- No live Redpanda broker, credentials, certificates, non-production PostgreSQL host or production environment was accessed or modified.
+
 ## 2026-11-28 — Redis CI repair and reconnect recovery
 
 - Inspected failed GitHub Actions logs and identified Redis throttler TypeScript errors: NestJS record type was not publicly exported and ioredis CommonJS import did not match package typings.
