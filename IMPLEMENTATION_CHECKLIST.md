@@ -21,7 +21,9 @@
 - [x] MFA enrollment and single-active-challenge issuance serialized transactionally.
 
 - [ ] Authentication CI/typecheck/test validation for the current branch head.
-- [ ] Focused authentication security tests (TOTP replay/brute force, recovery-code replay, tenant/session isolation).
+- [x] Focused authentication service coverage for MFA brute-force/lockout and challenge-token hashing.
+- [x] Focused database coverage for single-use MFA recovery-code replay.
+- [ ] Tenant/session isolation validation at the application/API level.
 
 ## Provider Job Engine
 
